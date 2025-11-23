@@ -13,25 +13,10 @@
         theme: {
           extend: {
             colors: {
-              brand: {
-                50: '#f0f9ff',
-                100: '#e0f2fe',
-                500: '#0ea5e9',
-                600: '#2C3340',
-                800: '#1e232e',
-                900: '#2C3340',
-              },
-              accent: {
-                50: '#fffbf0',
-                100: '#fef3c7',
-                400: '#E6BC76',
-                500: '#CE9B52',
-                600: '#b0823e',
-              }
+              brand: { 900: '#2C3340', 800: '#1e232e', 50: '#f0f9ff' },
+              accent: { 400: '#E6BC76', 500: '#CE9B52', 600: '#b0823e' }
             },
-            fontFamily: {
-              sans: ['Cairo', 'sans-serif'],
-            }
+            fontFamily: { sans: ['Cairo', 'sans-serif'] }
           }
         }
       }
@@ -40,32 +25,18 @@
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
     
-    <!-- Libraries (UMD) -->
+    <!-- React & Libraries (UMD - No Import Maps to prevent conflicts) -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
     <script src="https://unpkg.com/recharts@2.12.0/umd/Recharts.min.js"></script>
 
     <style>
       body { font-family: 'Cairo', sans-serif; background-color: #f8fafc; color: #2C3340; }
-      ::-webkit-scrollbar { width: 6px; height: 6px; }
-      ::-webkit-scrollbar-track { background: transparent; }
-      ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-      ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
       .date-en { font-family: sans-serif; direction: ltr; display: inline-block; }
-      .animate-fade-in { animation: fadeIn 0.4s ease-out; }
-      @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-      
-      /* Global Error Overlay */
-      #global-error {
-        display: none;
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: white; z-index: 9999;
-        align-items: center; justify-content: center; flex-direction: column;
-        padding: 20px; text-align: center;
-      }
+      .loader { border: 3px solid #f3f3f3; border-radius: 50%; border-top: 3px solid #2C3340; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 <script type="importmap">
 {
@@ -81,35 +52,22 @@
 </script>
 </head>
 <body>
-    <div id="global-error">
-        <h2 style="color: #2C3340; font-size: 24px; font-weight: bold; margin-bottom: 10px;">حدث خطأ غير متوقع</h2>
-        <p id="error-msg" style="color: #666; margin-bottom: 20px; background: #f1f5f9; padding: 10px; rounded: 8px; font-family: monospace; font-size: 12px; direction: ltr;"></p>
-        <button onclick="window.location.reload()" style="background: #2C3340; color: white; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer;">تحديث الصفحة</button>
-    </div>
-
     <div id="root"></div>
 
-    <!-- Error Handler Script -->
+    <!-- Error Handler -->
     <script>
         window.onerror = function(msg, url, line, col, error) {
-            if (msg && typeof msg === 'string' && msg.includes('ResizeObserver')) return;
-            const errDiv = document.getElementById('global-error');
-            if(errDiv) {
-                errDiv.style.display = 'flex';
-                document.getElementById('error-msg').innerText = msg || 'Unknown Error';
-            }
-            return false;
+            // Ignore ResizeObserver loop limit exceeded
+            if (msg && msg.includes('ResizeObserver')) return false;
+            console.error("Global Error:", msg, error);
+            return false; 
         };
     </script>
 
-    <!-- Firebase SDK -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getDatabase, ref, set, push, onValue, update, remove, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
-        // المفاتيح الصحيحة لمشروع Boyoticom-15c4b
-        const defaultConfig = {
+    <!-- Firebase SDK & App Logic -->
+    <script type="text/babel">
+        // --- FIREBASE CONFIGURATION (Boyoticom-15c4b) ---
+        const firebaseConfig = {
           apiKey: "AIzaSyAOMnl9ikDMngZZH-eSa3ldqtDCh6qsy_U",
           authDomain: "boyoticom-15c4b.firebaseapp.com",
           databaseURL: "https://boyoticom-15c4b-default-rtdb.firebaseio.com",
@@ -119,113 +77,43 @@
           appId: "1:433583401372:web:2d483367ad0e0184a10059"
         };
 
-        let firebaseConfig = defaultConfig;
-        // Allow overriding via LocalStorage for emergency fixes
-        try {
-            const savedConfig = localStorage.getItem('boyoticom_firebase_config');
-            if (savedConfig) firebaseConfig = JSON.parse(savedConfig);
-        } catch(e) { console.error(e); }
+        // --- IMPORTS ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getDatabase, ref, set, push, onValue, update, remove, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-        try {
-            const app = initializeApp(firebaseConfig);
-            const auth = getAuth(app);
-            const db = getDatabase(app);
+        // --- INITIALIZE FIREBASE ---
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getDatabase(app);
 
-            window.CRM_SERVICES = {
-                saveConfig: (configString) => {
-                    try {
-                        let jsonStr = configString;
-                        if (jsonStr.includes('=')) jsonStr = jsonStr.substring(jsonStr.indexOf('=') + 1).trim();
-                        if (jsonStr.endsWith(';')) jsonStr = jsonStr.slice(0, -1);
-                        JSON.parse(jsonStr); 
-                        localStorage.setItem('boyoticom_firebase_config', jsonStr);
-                        window.location.reload();
-                    } catch (e) { alert("تنسيق الكود غير صحيح."); }
-                },
-                resetConfig: () => {
-                    localStorage.removeItem('boyoticom_firebase_config');
-                    window.location.reload();
-                },
-                auth: {
-                    login: async (email, password) => {
-                        const cred = await signInWithEmailAndPassword(auth, email, password);
-                        const userSnap = await get(ref(db, `users/${cred.user.uid}`));
-                        let userData = userSnap.exists() ? userSnap.val() : null;
-                        if (!userData) {
-                            const role = email.toLowerCase().includes('asaleh') ? 'admin' : 'employee';
-                            userData = { name: email.split('@')[0], email, role };
-                            await set(ref(db, `users/${cred.user.uid}`), userData);
-                        }
-                        return { id: cred.user.uid, email: cred.user.email, ...userData };
-                    },
-                    logout: () => signOut(auth),
-                    onStateChange: (cb) => onAuthStateChanged(auth, (u) => {
-                        if (u) {
-                            onValue(ref(db, `users/${u.uid}`), (s) => {
-                                const d = s.val();
-                                cb(d ? { id: u.uid, email: u.email, ...d } : { id: u.uid, email: u.email, name: 'مستخدم', role: 'employee' });
-                            });
-                        } else {
-                            cb(null);
-                        }
-                    })
-                },
-                db: {
-                    getClients: (cb) => onValue(ref(db, 'clients'), s => cb(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})).reverse() : [])),
-                    addClient: (d) => set(push(ref(db, 'clients')), d),
-                    updateClient: (id, d) => update(ref(db, `clients/${id}`), d),
-                    deleteClient: (id) => remove(ref(db, `clients/${id}`)),
-                    getUsers: (cb) => onValue(ref(db, 'users'), s => cb(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})) : [])),
-                    updateUserRole: (id, role) => update(ref(db, `users/${id}`), { role })
-                }
-            };
-            // Signal ready
-            setTimeout(() => window.dispatchEvent(new Event('firebase-ready')), 100);
-        } catch (e) { console.error("Firebase Init Error", e); }
-    </script>
-
-    <!-- React Application -->
-    <script type="text/babel">
-        const { useState, useEffect, useRef, Component } = React;
-        const Recharts = window.Recharts || {};
-        const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip: RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } = Recharts;
-        
-        // --- DATA SANITIZERS (CRITICAL FOR FIXING ERROR #130) ---
-        // This function guarantees that ONLY a string is returned. No objects, no nulls.
+        // --- DATA SANITIZERS (CRITICAL FIX FOR ERROR #130) ---
+        // These functions prevent the app from crashing if DB returns Objects/Nulls instead of Strings/Arrays
         const safeStr = (val) => {
             if (val === null || val === undefined) return '';
             if (typeof val === 'string') return val;
             if (typeof val === 'number') return String(val);
-            return ''; // If it's an object or array, return empty string to prevent crash
+            return ''; // If object/array, return empty string
         };
         
         const safeArr = (val) => {
             if (!val) return [];
             if (Array.isArray(val)) return val;
-            if (typeof val === 'object') return Object.values(val); 
+            if (typeof val === 'object') return Object.values(val); // Handle Firebase object-arrays
             return [];
         };
 
-        // --- Error Boundary ---
-        class ErrorBoundary extends Component {
-            constructor(props) { super(props); this.state = { hasError: false }; }
-            static getDerivedStateFromError(error) { return { hasError: true }; }
-            componentDidCatch(error, errorInfo) { console.error("React Error:", error, errorInfo); }
-            render() {
-                if (this.state.hasError) {
-                    return (
-                        <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 text-center p-4">
-                            <div className="bg-white p-8 rounded-2xl shadow-lg border border-red-100">
-                                <h1 className="text-xl font-bold text-brand-900 mb-2">حدث خطأ بسيط</h1>
-                                <button onClick={() => window.location.reload()} className="bg-brand-900 text-white px-6 py-2 rounded-lg">تحديث الصفحة</button>
-                            </div>
-                        </div>
-                    );
-                }
-                return this.props.children;
-            }
-        }
+        // --- REACT COMPONENTS ---
+        const { useState, useEffect, useMemo } = React;
+        const Recharts = window.Recharts || {};
+        const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip: RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } = Recharts;
 
+        const Icon = ({ name, size = 20, className = "" }) => {
+            useEffect(() => { if (window.lucide) window.lucide.createIcons(); }, [name]);
+            return <i data-lucide={name} width={size} height={size} className={className}></i>;
+        };
+
+        // --- CONSTANTS ---
         const STATUS_LIST = [
           { key: 'New', label: 'عميل جديد', color: 'bg-blue-50 text-blue-700 border-blue-200' },
           { key: 'Contacted1', label: 'تم التواصل 1', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
@@ -235,269 +123,97 @@
           { key: 'Sold', label: 'تم البيع', color: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
           { key: 'Cancelled', label: 'ملغي', color: 'bg-red-50 text-red-700 border-red-200' },
         ];
-        const CLIENT_SOURCES = ["مباشر", "عقار", "اعلانات رقمية", "توصية صديق"];
         const PROJECT_LIST = ["مشروع العارض", "مشروع النرجس", "بيوتكم 1", "بيوتكم 2", "فلل الياسمين", "أراضي الخير"];
         const PURCHASE_TYPES = [{ id: 'Cash', label: 'كاش' }, { id: 'Finance', label: 'تمويل بنكي' }];
+        const CLIENT_SOURCES = ["مباشر", "عقار", "اعلانات رقمية", "توصية صديق"];
 
-        const Icon = ({ name, size = 20, className = "" }) => {
-            React.useEffect(() => { if (window.lucide) window.lucide.createIcons(); }, [name]);
-            return <i data-lucide={name} width={size} height={size} className={className}></i>;
-        };
-
-        const ConfigModal = ({ onClose }) => {
-            const [configStr, setConfigStr] = useState('');
-            return (
-                <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-lg p-6 text-right">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-xl font-bold">إعدادات الاتصال</h3>
-                            <button onClick={onClose}><Icon name="x" /></button>
-                        </div>
-                        <textarea className="w-full h-48 bg-gray-50 border p-3 rounded-lg text-xs font-mono mb-4 text-left dir-ltr" value={configStr} onChange={e=>setConfigStr(e.target.value)} placeholder="Paste firebaseConfig here..." />
-                        <div className="flex gap-2">
-                            <button onClick={()=>window.CRM_SERVICES.saveConfig(configStr)} className="flex-1 bg-brand-900 text-white py-3 rounded-lg font-bold">حفظ</button>
-                            <button onClick={()=>window.CRM_SERVICES.resetConfig()} className="px-4 text-red-500 text-sm">استعادة</button>
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
-        const App = () => {
-            const [user, setUser] = useState(null);
-            const [clients, setClients] = useState([]);
-            const [users, setUsers] = useState([]);
-            const [page, setPage] = useState('dashboard');
-            const [loading, setLoading] = useState(true);
-            const [isModalOpen, setIsModalOpen] = useState(false);
-            const [editingClient, setEditingClient] = useState(null);
-            const [showConfig, setShowConfig] = useState(false);
-            const [loginError, setLoginError] = useState('');
-            const [sidebarOpen, setSidebarOpen] = useState(false);
+        // --- LOGIN COMPONENT ---
+        const Login = () => {
             const [email, setEmail] = useState('');
             const [password, setPassword] = useState('');
-
-            useEffect(() => {
-                const checkFirebase = setInterval(() => {
-                    if (window.CRM_SERVICES) {
-                        clearInterval(checkFirebase);
-                        window.CRM_SERVICES.auth.onStateChange((u) => {
-                            setUser(u);
-                            setLoading(false);
-                        });
-                    }
-                }, 100);
-                return () => clearInterval(checkFirebase);
-            }, []);
-
-            useEffect(() => {
-                if (user && window.CRM_SERVICES) {
-                    window.CRM_SERVICES.db.getClients(setClients);
-                    window.CRM_SERVICES.db.getUsers(setUsers);
-                }
-            }, [user]);
+            const [error, setError] = useState('');
+            const [loading, setLoading] = useState(false);
+            const [showConfig, setShowConfig] = useState(false); // Hidden gear for emergencies
 
             const handleLogin = async (e) => {
                 e.preventDefault();
-                setLoginError('');
+                setLoading(true);
+                setError('');
                 try {
-                    await window.CRM_SERVICES.auth.login(email, password);
+                    await signInWithEmailAndPassword(auth, email, password);
                 } catch (err) {
-                    setLoginError('خطأ في تسجيل الدخول. تأكد من البيانات.');
+                    console.error(err);
+                    let msg = 'خطأ في تسجيل الدخول.';
+                    if(err.code === 'auth/user-not-found') msg = 'المستخدم غير موجود';
+                    if(err.code === 'auth/wrong-password') msg = 'كلمة المرور خاطئة';
+                    if(err.code === 'auth/invalid-email') msg = 'البريد الإلكتروني غير صالح';
+                    setError(msg);
+                    setLoading(false);
                 }
             };
-
-            const handleSaveClient = async (data) => {
-                try {
-                    if (editingClient) {
-                        await window.CRM_SERVICES.db.updateClient(editingClient.id, data);
-                    } else {
-                        await window.CRM_SERVICES.db.addClient({
-                            ...data,
-                            dateAdded: new Date().toISOString(),
-                            addedBy: user.email,
-                            assignedTo: data.assignedTo || (user.role === 'employee' ? user.name : '')
-                        });
-                    }
-                    setIsModalOpen(false);
-                    setEditingClient(null);
-                } catch(e) { alert('Error saving'); }
-            };
-
-            const toggleUserRole = async (u) => {
-                if (confirm(`هل أنت متأكد من تغيير صلاحية ${u.name}؟`)) {
-                    const newRole = u.role === 'admin' ? 'employee' : 'admin';
-                    await window.CRM_SERVICES.db.updateUserRole(u.id, newRole);
-                }
-            };
-
-            if (loading) return <div className="h-screen flex items-center justify-center bg-gray-50 font-bold text-brand-900">جاري التحميل...</div>;
-
-            if (!user) {
-                return (
-                    <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4">
-                        {showConfig && <ConfigModal onClose={()=>setShowConfig(false)} />}
-                        <button onClick={()=>setShowConfig(true)} className="absolute top-4 left-4 p-2 text-gray-300 hover:text-brand-900 transition"><Icon name="settings" /></button>
-                        <div className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md text-center border border-gray-100">
-                            <div className="w-20 h-20 bg-brand-900 rounded-2xl mx-auto flex items-center justify-center text-accent-500 mb-6 shadow-xl">
-                                <Icon name="building-2" size={40} />
-                            </div>
-                            <h1 className="text-3xl font-black text-brand-900 mb-2">بيوتكم العقارية</h1>
-                            <p className="text-gray-500 mb-8">نظام إدارة العملاء الداخلي</p>
-                            {loginError && <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-6 text-sm font-bold border border-red-100">{loginError}</div>}
-                            <form onSubmit={handleLogin} className="space-y-4">
-                                <input type="email" required placeholder="البريد الإلكتروني" className="w-full p-4 border rounded-xl outline-none focus:border-brand-900 bg-gray-50 focus:bg-white text-right date-en" value={email} onChange={e=>setEmail(e.target.value)} />
-                                <input type="password" required placeholder="كلمة المرور" className="w-full p-4 border rounded-xl outline-none focus:border-brand-900 bg-gray-50 focus:bg-white text-right date-en" value={password} onChange={e=>setPassword(e.target.value)} />
-                                <button className="w-full bg-brand-900 text-white p-4 rounded-xl font-bold hover:bg-brand-800 transition shadow-lg">تسجيل الدخول</button>
-                            </form>
-                        </div>
-                    </div>
-                );
-            }
 
             return (
-                <div className="min-h-screen bg-[#f8fafc] flex">
-                    {sidebarOpen && <div className="fixed inset-0 bg-black/30 z-40 md:hidden" onClick={()=>setSidebarOpen(false)} />}
-                    <aside className={`fixed md:sticky top-0 h-screen w-72 bg-white border-l z-50 transition-transform ${sidebarOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}`}>
-                        <div className="p-8 flex flex-col h-full">
-                            <div className="flex flex-col items-center mb-10">
-                                <div className="w-12 h-12 bg-brand-900 rounded-xl flex items-center justify-center text-accent-500 mb-3 shadow-lg"><Icon name="building-2" size={24} /></div>
-                                <h1 className="text-xl font-black text-brand-900">بيوتكم</h1>
-                                <span className="text-[10px] text-accent-600 font-bold tracking-widest uppercase">BOYOTICOM</span>
-                            </div>
-                            <nav className="flex-1 space-y-2">
-                                {[
-                                    {id: 'dashboard', icon: 'layout-dashboard', label: 'لوحة التحكم'},
-                                    {id: 'clients', icon: 'users', label: 'العملاء والطلبات'},
-                                    ...(user.role === 'admin' ? [{id: 'users', icon: 'shield', label: 'الموظفين'}] : [])
-                                ].map(item => (
-                                    <button key={item.id} onClick={()=>{setPage(item.id);setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition ${page===item.id ? 'bg-brand-900 text-white shadow-lg shadow-brand-900/20' : 'text-gray-500 hover:bg-gray-50'}`}>
-                                        <Icon name={item.icon} size={20} className={page===item.id ? "text-accent-400" : ""} /> {item.label}
-                                    </button>
-                                ))}
-                            </nav>
-                            <div className="pt-6 border-t mt-auto">
-                                <div className="flex items-center gap-3 mb-4 bg-gray-50 p-3 rounded-xl border">
-                                    <div className="w-10 h-10 rounded-full bg-brand-900 text-white flex items-center justify-center font-bold">{safeStr(user.name).charAt(0)}</div>
-                                    <div className="flex-1 min-w-0 text-right">
-                                        <p className="text-sm font-bold text-brand-900 truncate">{safeStr(user.name)}</p>
-                                        <p className="text-xs text-gray-500 truncate">{user.role === 'admin' ? 'مسؤول' : 'موظف مبيعات'}</p>
-                                    </div>
-                                </div>
-                                <button onClick={()=>window.CRM_SERVICES.auth.logout()} className="w-full flex items-center justify-center gap-2 text-red-600 hover:bg-red-50 py-2 rounded-lg text-sm font-bold"><Icon name="log-out" size={16} /> خروج</button>
-                            </div>
+                <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4">
+                    <div className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md text-center relative">
+                        <button onClick={()=>setShowConfig(!showConfig)} className="absolute top-4 left-4 text-gray-300 hover:text-gray-500"><Icon name="settings" size={16}/></button>
+                        <div className="w-20 h-20 bg-brand-900 rounded-2xl mx-auto flex items-center justify-center text-accent-500 mb-6">
+                            <Icon name="building-2" size={40} />
                         </div>
-                    </aside>
-
-                    <main className="flex-1 flex flex-col h-screen overflow-hidden">
-                        <header className="md:hidden bg-white border-b p-4 flex justify-between items-center shrink-0">
-                            <div className="flex items-center gap-2 font-bold text-brand-900"><Icon name="building-2" className="text-brand-900" /> بيوتكم</div>
-                            <button onClick={()=>setSidebarOpen(true)}><Icon name="menu" /></button>
-                        </header>
-                        <div className="flex-1 overflow-y-auto p-4 md:p-8">
-                            <div className="max-w-7xl mx-auto">
-                                {page === 'dashboard' && <Dashboard clients={clients} />}
-                                {page === 'clients' && <ClientList clients={clients} users={users} currentUser={user} onAdd={()=>{setEditingClient(null);setIsModalOpen(true)}} onEdit={(c)=>{setEditingClient(c);setIsModalOpen(true)}} />}
-                                {page === 'users' && (
-                                    <div className="space-y-6">
-                                        <div className="flex justify-between items-center">
-                                            <h2 className="text-2xl font-bold text-brand-900">الموظفين</h2>
-                                        </div>
-                                        <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
-                                            {users.map(u => (
-                                                <div key={u.id} className="flex justify-between items-center p-4 border-b last:border-0 hover:bg-gray-50 transition">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-600">{safeStr(u.name).charAt(0)}</div>
-                                                        <div>
-                                                            <div className="font-bold text-brand-900">{safeStr(u.name)}</div>
-                                                            <div className="text-xs text-gray-500 date-en">{safeStr(u.email)}</div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-4">
-                                                        <span className={`px-3 py-1 rounded-lg text-xs font-bold ${u.role === 'admin' ? 'bg-brand-900 text-white' : 'bg-gray-100 text-gray-600'}`}>
-                                                            {u.role === 'admin' ? 'مسؤول' : 'موظف مبيعات'}
-                                                        </span>
-                                                        {user.role === 'admin' && user.id !== u.id && (
-                                                            <button 
-                                                                onClick={() => toggleUserRole(u)} 
-                                                                className={`p-2 rounded-lg transition flex items-center gap-1 text-xs font-bold ${u.role === 'admin' ? 'text-red-600 hover:bg-red-50' : 'text-green-600 hover:bg-green-50'}`}
-                                                                title={u.role === 'admin' ? "تنزيل الرتبة" : "ترقية لمسؤول"}
-                                                            >
-                                                                <Icon name={u.role === 'admin' ? "arrow-down" : "arrow-up"} size={16} />
-                                                                {u.role === 'admin' ? 'تنزيل' : 'ترقية'}
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                        <p className="text-center text-sm text-gray-400 mt-4">لإضافة موظف جديد، قم بإنشاء حساب له في Firebase Authentication.</p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </main>
-
-                    {isModalOpen && (
-                        <ClientModal 
-                            client={editingClient} 
-                            isOpen={isModalOpen} 
-                            onClose={()=>setIsModalOpen(false)} 
-                            onSave={handleSaveClient} 
-                            users={users} 
-                            currentUser={user} 
-                        />
-                    )}
+                        <h1 className="text-3xl font-black text-brand-900 mb-2">بيوتكم العقارية</h1>
+                        <p className="text-gray-500 mb-8">نظام إدارة العملاء الداخلي</p>
+                        {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm font-bold">{error}</div>}
+                        <form onSubmit={handleLogin} className="space-y-4">
+                            <input className="w-full p-4 border rounded-xl bg-gray-50 text-right date-en outline-none focus:border-brand-900" type="email" required placeholder="البريد الإلكتروني" value={email} onChange={e=>setEmail(e.target.value)} />
+                            <input className="w-full p-4 border rounded-xl bg-gray-50 text-right date-en outline-none focus:border-brand-900" type="password" required placeholder="كلمة المرور" value={password} onChange={e=>setPassword(e.target.value)} />
+                            <button disabled={loading} className="w-full bg-brand-900 text-white p-4 rounded-xl font-bold hover:bg-brand-800 transition shadow-lg disabled:opacity-70">
+                                {loading ? 'جاري الدخول...' : 'تسجيل الدخول'}
+                            </button>
+                        </form>
+                    </div>
                 </div>
             );
         };
 
+        // --- DASHBOARD COMPONENT ---
         const Dashboard = ({ clients }) => {
             const statusData = STATUS_LIST.map(s => ({name: s.label, count: clients.filter(c => c.status === s.key).length})).filter(d=>d.count>0);
-            const COLORS = ['#2C3340', '#CE9B52', '#E6BC76', '#94a3b8'];
             const projectStats = {};
-            clients.forEach(c => {
-                safeArr(c.projects).forEach(p => {
-                    const pName = safeStr(p);
-                    if(pName) projectStats[pName] = (projectStats[pName] || 0) + 1;
-                });
-            });
+            clients.forEach(c => safeArr(c.projects).forEach(p => { const n = safeStr(p); if(n) projectStats[n] = (projectStats[n]||0)+1; }));
             const projectData = Object.entries(projectStats).map(([name, value]) => ({ name, value }));
+            const COLORS = ['#2C3340', '#CE9B52', '#E6BC76', '#94a3b8'];
 
             return (
                 <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div className="bg-white p-6 rounded-2xl border shadow-sm"><div className="text-gray-500 text-sm mb-1">العملاء</div><div className="text-3xl font-black text-brand-900">{clients.length}</div></div>
-                        <div className="bg-white p-6 rounded-2xl border shadow-sm"><div className="text-gray-500 text-sm mb-1">جديد</div><div className="text-3xl font-black text-blue-600">{clients.filter(c=>c.status==='New').length}</div></div>
-                        <div className="bg-white p-6 rounded-2xl border shadow-sm"><div className="text-gray-500 text-sm mb-1">صفقات</div><div className="text-3xl font-black text-emerald-600">{clients.filter(c=>c.status==='Sold').length}</div></div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                            <div className="text-gray-500 text-xs font-bold mb-1">العملاء</div>
+                            <div className="text-2xl font-black text-brand-900">{clients.length}</div>
+                        </div>
+                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                            <div className="text-gray-500 text-xs font-bold mb-1">جديد</div>
+                            <div className="text-2xl font-black text-blue-600">{clients.filter(c=>c.status==='New').length}</div>
+                        </div>
+                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                            <div className="text-gray-500 text-xs font-bold mb-1">تم البيع</div>
+                            <div className="text-2xl font-black text-emerald-600">{clients.filter(c=>c.status==='Sold').length}</div>
+                        </div>
+                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                            <div className="text-gray-500 text-xs font-bold mb-1">ملغي</div>
+                            <div className="text-2xl font-black text-red-500">{clients.filter(c=>c.status==='Cancelled').length}</div>
+                        </div>
                     </div>
                     {window.Recharts && (
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            <div className="bg-white p-6 rounded-2xl border shadow-sm lg:col-span-2">
-                                <h3 className="font-bold text-lg mb-4 text-brand-900">تحليل الحالات</h3>
-                                <div className="h-80" dir="ltr">
-                                    <ResponsiveContainer><BarChart data={statusData}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="name" /><YAxis /><RechartsTooltip /><Bar dataKey="count" fill="#2C3340" radius={[4,4,0,0]} /></BarChart></ResponsiveContainer>
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 lg:col-span-2">
+                                <h3 className="font-bold text-brand-900 mb-4">تحليل الحالات</h3>
+                                <div className="h-64" dir="ltr">
+                                    <ResponsiveContainer><BarChart data={statusData}><CartesianGrid strokeDasharray="3 3" vertical={false}/><XAxis dataKey="name"/><YAxis/><RechartsTooltip/><Bar dataKey="count" fill="#2C3340" radius={[4,4,0,0]} barSize={40}/></BarChart></ResponsiveContainer>
                                 </div>
                             </div>
-                            <div className="bg-white p-6 rounded-2xl border shadow-sm">
-                                <h3 className="font-bold text-lg mb-4 text-brand-900">المشاريع</h3>
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                                <h3 className="font-bold text-brand-900 mb-4">توزيع المشاريع</h3>
                                 <div className="h-64" dir="ltr">
-                                    <ResponsiveContainer>
-                                        <PieChart>
-                                            <Pie data={projectData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
-                                                {projectData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                                            </Pie>
-                                            <RechartsTooltip />
-                                        </PieChart>
-                                    </ResponsiveContainer>
-                                </div>
-                                <div className="mt-4 space-y-2">
-                                    {projectData.map((entry, index) => (
-                                        <div key={index} className="flex justify-between text-xs">
-                                            <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full" style={{background: COLORS[index % COLORS.length]}}></span>{safeStr(entry.name)}</span>
-                                            <span className="font-bold">{entry.value}</span>
-                                        </div>
-                                    ))}
+                                    <ResponsiveContainer><PieChart><Pie data={projectData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">{projectData.map((e,i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}</Pie><RechartsTooltip/></PieChart></ResponsiveContainer>
                                 </div>
                             </div>
                         </div>
@@ -506,69 +222,48 @@
             );
         };
 
-        const ClientList = ({ clients, users, currentUser, onAdd, onEdit }) => {
+        // --- CLIENT LIST COMPONENT ---
+        const ClientList = ({ clients, users, currentUser, onEdit, onAdd }) => {
             const [search, setSearch] = useState('');
             const [filterStatus, setFilterStatus] = useState('');
-            const [filterUser, setFilterUser] = useState('');
-
+            
             const filtered = clients.filter(c => {
-                if(currentUser.role === 'employee' && c.assignedTo !== currentUser.name && c.addedBy !== currentUser.email) return false;
-                const searchLower = safeStr(search).toLowerCase();
-                const nameLower = safeStr(c.name).toLowerCase();
-                const phoneStr = safeStr(c.phone);
-                const matchSearch = nameLower.includes(searchLower) || phoneStr.includes(searchLower);
-                const matchStatus = filterStatus ? c.status === filterStatus : true;
-                const matchUser = filterUser ? c.assignedTo === filterUser : true;
-                return matchSearch && matchStatus && matchUser;
+                if(currentUser.role !== 'admin' && c.assignedTo !== currentUser.name && c.addedBy !== currentUser.email) return false;
+                const s = safeStr(search).toLowerCase();
+                const matchesSearch = safeStr(c.name).toLowerCase().includes(s) || safeStr(c.phone).includes(s);
+                const matchesStatus = filterStatus ? c.status === filterStatus : true;
+                return matchesSearch && matchesStatus;
             });
 
             return (
                 <div className="space-y-4">
                     <div className="flex justify-between items-center">
                         <h2 className="text-2xl font-bold text-brand-900">العملاء</h2>
-                        <button onClick={onAdd} className="bg-brand-900 text-white px-4 py-2 rounded-xl flex items-center gap-2"><Icon name="plus" size={18}/> إضافة</button>
+                        <button onClick={onAdd} className="bg-brand-900 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2"><Icon name="plus" size={18}/> إضافة</button>
                     </div>
-                    <div className="bg-white p-4 rounded-2xl border shadow-sm flex flex-col md:flex-row gap-2">
-                        <div className="flex-1 flex items-center gap-2 bg-gray-50 border rounded-xl px-3">
-                            <Icon name="search" className="text-gray-400" />
-                            <input className="flex-1 bg-transparent outline-none py-2" placeholder="بحث..." value={search} onChange={e=>setSearch(e.target.value)} />
-                        </div>
-                        <select className="bg-gray-50 border rounded-xl px-3 py-2 outline-none" value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}>
+                    <div className="bg-white p-3 rounded-xl shadow-sm border flex gap-2">
+                        <input className="flex-1 bg-gray-50 rounded-lg px-3 py-2 outline-none" placeholder="بحث..." value={search} onChange={e=>setSearch(e.target.value)} />
+                        <select className="bg-gray-50 rounded-lg px-3 py-2 outline-none" value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}>
                             <option value="">كل الحالات</option>
-                            {STATUS_LIST.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+                            {STATUS_LIST.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}
                         </select>
-                        {currentUser.role === 'admin' && (
-                            <select className="bg-gray-50 border rounded-xl px-3 py-2 outline-none" value={filterUser} onChange={e=>setFilterUser(e.target.value)}>
-                                <option value="">كل الموظفين</option>
-                                {users.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
-                            </select>
-                        )}
                     </div>
-                    <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
+                    <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
                         <table className="w-full text-right">
-                            <thead className="bg-gray-50 text-brand-900 font-bold text-sm"><tr><th className="p-4">العميل</th><th className="p-4">المشاريع</th><th className="p-4">الحالة</th><th className="p-4">المسؤول</th><th className="p-4"></th></tr></thead>
+                            <thead className="bg-gray-50 text-sm font-bold text-brand-900"><tr><th className="p-4">الاسم</th><th className="p-4">المشاريع</th><th className="p-4">الحالة</th><th className="p-4">المسؤول</th><th className="p-4"></th></tr></thead>
                             <tbody className="divide-y">
                                 {filtered.map(c => (
-                                    <tr key={c.id} className="hover:bg-gray-50">
+                                    <tr key={c.id} className="hover:bg-gray-50 group">
                                         <td className="p-4">
                                             <div className="font-bold text-brand-900">{safeStr(c.name)}</div>
                                             <div className="text-xs text-gray-500 date-en">{safeStr(c.phone)}</div>
                                         </td>
-                                        <td className="p-4 text-sm">
-                                            {safeArr(c.projects).map((p,i) => (
-                                                <span key={i} className="block text-xs text-gray-600">• {safeStr(p)}</span>
-                                            ))}
+                                        <td className="p-4 text-sm text-gray-600">
+                                            {safeArr(c.projects).map((p,i)=><div key={i}>• {safeStr(p)}</div>)}
                                         </td>
                                         <td className="p-4"><span className={`px-2 py-1 rounded text-xs border ${STATUS_LIST.find(s=>s.key===c.status)?.color}`}>{STATUS_LIST.find(s=>s.key===c.status)?.label}</span></td>
-                                        <td className="p-4 text-sm">
-                                            <div className="flex items-center gap-1">
-                                                <span>{safeStr(c.assignedTo) || '-'}</span>
-                                            </div>
-                                            {currentUser.role === 'admin' && c.addedBy && (
-                                                <div className="text-[10px] text-gray-400 mt-1">بواسطة: {safeStr(users.find(u=>u.email===c.addedBy)?.name) || safeStr(c.addedBy)}</div>
-                                            )}
-                                        </td>
-                                        <td className="p-4"><button onClick={()=>onEdit(c)} className="text-brand-600"><Icon name="edit" size={18} /></button></td>
+                                        <td className="p-4 text-sm">{safeStr(c.assignedTo) || '-'}</td>
+                                        <td className="p-4 text-left"><button onClick={()=>onEdit(c)} className="text-brand-900 hover:bg-gray-100 p-2 rounded"><Icon name="edit" size={16}/></button></td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -578,56 +273,166 @@
             );
         };
 
-        const ClientModal = ({ client, isOpen, onClose, onSave, users, currentUser }) => {
-            const [d, setD] = useState({ name: '', phone: '', status: 'New', projects: [], source: 'مباشر', assignedTo: currentUser.role==='employee'?currentUser.name:'' });
-            useEffect(() => { if (client) setD(client); else setD({ name: '', phone: '', status: 'New', projects: [], source: 'مباشر', assignedTo: currentUser.role==='employee'?currentUser.name:'' }); }, [client]);
-            
+        // --- USERS COMPONENT (With Promote/Demote) ---
+        const UsersList = ({ users, currentUser }) => {
+            const toggleRole = (u) => {
+                if(!confirm(`هل تريد تغيير صلاحية ${safeStr(u.name)}؟`)) return;
+                const newRole = u.role === 'admin' ? 'employee' : 'admin';
+                update(ref(db, `users/${u.id}`), { role: newRole });
+            };
+
+            return (
+                <div className="space-y-6">
+                    <h2 className="text-2xl font-bold text-brand-900">الموظفين</h2>
+                    <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                        {users.map(u => (
+                            <div key={u.id} className="flex justify-between items-center p-4 border-b last:border-0 hover:bg-gray-50">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-500">{safeStr(u.name).charAt(0)}</div>
+                                    <div>
+                                        <div className="font-bold text-brand-900">{safeStr(u.name)}</div>
+                                        <div className="text-xs text-gray-500 date-en">{safeStr(u.email)}</div>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <span className={`px-3 py-1 rounded text-xs font-bold ${u.role==='admin' ? 'bg-brand-900 text-white' : 'bg-gray-100 text-gray-700'}`}>
+                                        {u.role === 'admin' ? 'مسؤول' : 'موظف مبيعات'}
+                                    </span>
+                                    {currentUser.role === 'admin' && currentUser.id !== u.id && (
+                                        <button onClick={()=>toggleRole(u)} className="p-2 text-gray-400 hover:text-brand-900 hover:bg-gray-200 rounded transition" title="تغيير الصلاحية">
+                                            <Icon name="arrow-up-down" size={16} />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        // --- MAIN APP COMPONENT ---
+        const App = () => {
+            const [user, setUser] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [page, setPage] = useState('dashboard');
+            const [clients, setClients] = useState([]);
+            const [users, setUsers] = useState([]);
+            const [sidebarOpen, setSidebarOpen] = useState(false);
+            const [modalOpen, setModalOpen] = useState(false);
+            const [editClient, setEditClient] = useState(null);
+
+            // Auth Listener
+            useEffect(() => {
+                return onAuthStateChanged(auth, (u) => {
+                    if (u) {
+                        // Get User Role
+                        onValue(ref(db, `users/${u.uid}`), (s) => {
+                            const d = s.val();
+                            setUser(d ? { id: u.uid, email: u.email, ...d } : { id: u.uid, email: u.email, name: 'User', role: 'employee' });
+                            setLoading(false);
+                        });
+                        // Load Data
+                        onValue(ref(db, 'clients'), s => setClients(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})).reverse() : []));
+                        onValue(ref(db, 'users'), s => setUsers(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})) : []));
+                    } else {
+                        setUser(null);
+                        setLoading(false);
+                    }
+                });
+            }, []);
+
+            const saveClient = (data) => {
+                const payload = { ...data, assignedTo: safeStr(data.assignedTo), projects: safeArr(data.projects) };
+                if (editClient) update(ref(db, `clients/${editClient.id}`), payload);
+                else push(ref(db, 'clients'), { ...payload, dateAdded: new Date().toISOString(), addedBy: user.email });
+                setModalOpen(false);
+            };
+
+            if (loading) return <div className="h-screen flex items-center justify-center"><div className="loader"></div></div>;
+            if (!user) return <Login />;
+
+            return (
+                <div className="min-h-screen flex">
+                    <aside className={`fixed md:sticky top-0 h-screen w-72 bg-white border-l z-50 transition-transform ${sidebarOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}`}>
+                        <div className="p-6 h-full flex flex-col">
+                            <div className="flex items-center gap-2 mb-8 text-brand-900 font-black text-xl"><Icon name="building-2" /> بيوتكم</div>
+                            <nav className="flex-1 space-y-1">
+                                <button onClick={()=>{setPage('dashboard');setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='dashboard'?'bg-brand-900 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="layout-dashboard"/> لوحة التحكم</button>
+                                <button onClick={()=>{setPage('clients');setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='clients'?'bg-brand-900 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="users"/> العملاء والطلبات</button>
+                                {user.role==='admin' && <button onClick={()=>{setPage('users');setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='users'?'bg-brand-900 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="shield"/> الموظفين</button>}
+                            </nav>
+                            <div className="border-t pt-4 mt-auto">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <div className="w-8 h-8 rounded-full bg-brand-900 text-white flex items-center justify-center text-xs">{safeStr(user.name).charAt(0)}</div>
+                                    <div>
+                                        <div className="text-sm font-bold text-brand-900">{safeStr(user.name)}</div>
+                                        <div className="text-xs text-gray-500">{user.role==='admin'?'مسؤول':'موظف مبيعات'}</div>
+                                    </div>
+                                </div>
+                                <button onClick={()=>signOut(auth)} className="text-red-500 text-sm flex items-center gap-2 font-bold"><Icon name="log-out" size={16}/> خروج</button>
+                            </div>
+                        </div>
+                    </aside>
+                    
+                    <main className="flex-1 flex flex-col h-screen overflow-hidden">
+                        <header className="md:hidden bg-white border-b p-4 flex justify-between items-center">
+                            <div className="font-bold text-brand-900">بيوتكم</div>
+                            <button onClick={()=>setSidebarOpen(true)}><Icon name="menu"/></button>
+                        </header>
+                        <div className="flex-1 overflow-y-auto p-6">
+                            <div className="max-w-5xl mx-auto">
+                                {page === 'dashboard' && <Dashboard clients={clients} />}
+                                {page === 'clients' && <ClientList clients={clients} users={users} currentUser={user} onAdd={()=>{setEditClient(null);setModalOpen(true)}} onEdit={(c)=>{setEditClient(c);setModalOpen(true)}} />}
+                                {page === 'users' && <UsersList users={users} currentUser={user} />}
+                            </div>
+                        </div>
+                    </main>
+
+                    {modalOpen && <ClientModal isOpen={modalOpen} onClose={()=>setModalOpen(false)} client={editClient} onSave={saveClient} users={users} currentUser={user} />}
+                </div>
+            );
+        };
+
+        // --- SIMPLE CLIENT MODAL ---
+        const ClientModal = ({ isOpen, onClose, client, onSave, users, currentUser }) => {
+            const [d, setD] = useState({ name: '', phone: '', projects: [], status: 'New', assignedTo: currentUser.role==='employee'?currentUser.name:'', source: 'مباشر' });
+            useEffect(() => { if(client) setD(client); else setD({ name: '', phone: '', projects: [], status: 'New', assignedTo: currentUser.role==='employee'?currentUser.name:'', source: 'مباشر' }); }, [client]);
+
             const toggleProject = (p) => {
                 const curr = safeArr(d.projects);
-                setD({ ...d, projects: curr.includes(p) ? curr.filter(x => x !== p) : [...curr, p] });
+                setD({ ...d, projects: curr.includes(p) ? curr.filter(x=>x!==p) : [...curr, p] });
             };
 
             return (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-xl font-bold text-brand-900">{client ? 'تعديل' : 'إضافة عميل'}</h3>
-                            <button onClick={onClose}><Icon name="x" /></button>
-                        </div>
+                    <div className="bg-white w-full max-w-lg rounded-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+                        <div className="flex justify-between mb-4"><h3 className="font-bold text-lg">{client?'تعديل':'إضافة'}</h3><button onClick={onClose}><Icon name="x"/></button></div>
                         <div className="space-y-4">
-                            <input className="w-full bg-gray-50 border rounded-xl p-3 outline-none focus:border-brand-900" placeholder="الاسم" value={d.name} onChange={e=>setD({...d, name:e.target.value})} />
-                            <input className="w-full bg-gray-50 border rounded-xl p-3 outline-none focus:border-brand-900 date-en text-right" placeholder="05xxxxxxxx" value={d.phone} onChange={e=>setD({...d, phone:e.target.value})} />
+                            <input className="w-full bg-gray-50 border rounded-lg p-3" placeholder="الاسم" value={d.name} onChange={e=>setD({...d, name:e.target.value})} />
+                            <input className="w-full bg-gray-50 border rounded-lg p-3 date-en text-right" placeholder="05xxxxxxxx" value={d.phone} onChange={e=>setD({...d, phone:e.target.value})} />
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 mb-2">المشاريع</label>
+                                <label className="text-xs font-bold block mb-2">المشاريع</label>
                                 <div className="grid grid-cols-2 gap-2">
                                     {PROJECT_LIST.map(p => (
-                                        <button key={p} onClick={()=>toggleProject(p)} className={`p-2 rounded-lg text-xs border transition ${safeArr(d.projects).includes(p) ? 'bg-brand-900 text-white' : 'text-gray-600'}`}>{p}</button>
+                                        <button key={p} onClick={()=>toggleProject(p)} className={`p-2 rounded text-xs border ${safeArr(d.projects).includes(p)?'bg-brand-900 text-white':'bg-white'}`}>{p}</button>
                                     ))}
                                 </div>
                             </div>
-                            <select className="w-full bg-gray-50 border rounded-xl p-3" value={d.source} onChange={e=>setD({...d, source:e.target.value})}>
+                            <select className="w-full bg-gray-50 border rounded-lg p-3" value={d.source} onChange={e=>setD({...d, source:e.target.value})}>
                                 {CLIENT_SOURCES.map(s=><option key={s} value={s}>{s}</option>)}
                             </select>
                             {client && (
-                                <div className="pt-4 border-t space-y-4">
-                                    <input className="w-full bg-gray-50 border rounded-xl p-3" placeholder="رقم الوحدة" value={d.unitNumber||''} onChange={e=>setD({...d, unitNumber:e.target.value})} />
-                                    <select className="w-full bg-gray-50 border rounded-xl p-3" value={d.purchaseType||''} onChange={e=>setD({...d, purchaseType:e.target.value})}>
-                                        <option value="">طريقة الشراء</option>
-                                        {PURCHASE_TYPES.map(t=><option key={t.id} value={t.id}>{t.label}</option>)}
-                                    </select>
-                                    <select className="w-full bg-gray-50 border rounded-xl p-3" value={d.status} onChange={e=>setD({...d, status:e.target.value})}>
-                                        {STATUS_LIST.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}
-                                    </select>
-                                </div>
+                                <>
+                                    <input className="w-full bg-gray-50 border rounded-lg p-3" placeholder="رقم الوحدة" value={safeStr(d.unitNumber)} onChange={e=>setD({...d, unitNumber:e.target.value})} />
+                                    <select className="w-full bg-gray-50 border rounded-lg p-3" value={d.status} onChange={e=>setD({...d, status:e.target.value})}>{STATUS_LIST.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}</select>
+                                </>
                             )}
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 mb-1">المسؤول</label>
-                                <select className="w-full bg-gray-50 border rounded-xl p-3 disabled:opacity-50" value={d.assignedTo} onChange={e=>setD({...d, assignedTo:e.target.value})} disabled={currentUser.role !== 'admin'}>
-                                    <option value="">بدون إسناد</option>
-                                    {users.map(u=><option key={u.id} value={u.name}>{u.name}</option>)}
-                                </select>
-                            </div>
-                            <button onClick={()=>onSave(d)} className="w-full bg-brand-900 text-white py-3 rounded-xl font-bold hover:bg-brand-800">حفظ</button>
+                            <select className="w-full bg-gray-50 border rounded-lg p-3 disabled:opacity-50" value={safeStr(d.assignedTo)} onChange={e=>setD({...d, assignedTo:e.target.value})} disabled={currentUser.role!=='admin'}>
+                                <option value="">بدون إسناد</option>
+                                {users.map(u=><option key={u.id} value={u.name}>{u.name}</option>)}
+                            </select>
+                            <button onClick={()=>onSave(d)} className="w-full bg-brand-900 text-white py-3 rounded-lg font-bold">حفظ</button>
                         </div>
                     </div>
                 </div>
@@ -635,7 +440,8 @@
         };
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<ErrorBoundary><App /></ErrorBoundary>);
+        root.render(<App />);
     </script>
 </body>
 </html>
+    
