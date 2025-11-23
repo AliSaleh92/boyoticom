@@ -40,15 +40,12 @@
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
     
-    <!-- Libraries (UMD) - Order is Important -->
+    <!-- Libraries (UMD) -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    
-    <!-- Prop Types (Required for Recharts UMD) -->
     <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
-    <!-- Recharts -->
     <script src="https://unpkg.com/recharts@2.12.0/umd/Recharts.min.js"></script>
 
     <style>
@@ -77,58 +74,51 @@
 <body>
     <div id="root"></div>
 
-    <!-- Firebase SDK (Module) -->
+    <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getDatabase, ref, set, push, onValue, update, remove, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-        // Boyoticom Config - Default
+        // --- إعدادات Firebase (تم التحديث بالمفاتيح الجديدة) ---
         const defaultConfig = {
-          apiKey: "AIzaSyDn_cf5IxRvjViXDJhK2Q5M-g5yqsfWwHk",
-          authDomain: "boyoticom-crm.firebaseapp.com",
-          databaseURL: "https://boyoticom-crm-default-rtdb.firebaseio.com",
-          projectId: "boyoticom-crm",
-          storageBucket: "boyoticom-crm.firebasestorage.app",
-          messagingSenderId: "668735845078",
-          appId: "1:668735845078:web:e3033148644f3f29cb4f77"
+          apiKey: "AIzaSyAOMnl9ikDMngZZH-eSa3ldqtDCh6qsy_U",
+          authDomain: "boyoticom-15c4b.firebaseapp.com",
+          databaseURL: "https://boyoticom-15c4b-default-rtdb.firebaseio.com",
+          projectId: "boyoticom-15c4b",
+          storageBucket: "boyoticom-15c4b.firebasestorage.app",
+          messagingSenderId: "433583401372",
+          appId: "1:433583401372:web:2d483367ad0e0184a10059"
         };
 
-        // Try to get config from localStorage (in case user pasted a new one via UI)
+        // Load saved config from localStorage if available (The "Gear Icon" feature)
         let firebaseConfig = defaultConfig;
         try {
             const savedConfig = localStorage.getItem('boyoticom_firebase_config');
             if (savedConfig) {
                 firebaseConfig = JSON.parse(savedConfig);
-                console.log("Using saved Firebase config");
+                console.log("✅ Using custom Firebase config from storage");
             }
-        } catch(e) { console.error("Error loading saved config", e); }
+        } catch(e) { console.error("Error loading config", e); }
 
         try {
             const app = initializeApp(firebaseConfig);
             const auth = getAuth(app);
             const db = getDatabase(app);
 
-            // Expose services to window for React
+            // Expose to React
             window.CRM_SERVICES = {
                 saveConfig: (configString) => {
                     try {
                         let jsonStr = configString;
-                        // Try to clean up JS object notation if user pasted raw JS
-                        if (jsonStr.includes('=')) {
-                            jsonStr = jsonStr.substring(jsonStr.indexOf('=') + 1).trim();
-                        }
-                        if (jsonStr.endsWith(';')) {
-                            jsonStr = jsonStr.slice(0, -1);
-                        }
-                        // Simple fix for unquoted keys if pasted from JS
-                        // This is a basic attempt, proper JSON is best
-                        if (!jsonStr.trim().startsWith('{')) throw new Error();
-
+                        if (jsonStr.includes('=')) jsonStr = jsonStr.substring(jsonStr.indexOf('=') + 1).trim();
+                        if (jsonStr.endsWith(';')) jsonStr = jsonStr.slice(0, -1);
+                        // Validate JSON
+                        JSON.parse(jsonStr); 
                         localStorage.setItem('boyoticom_firebase_config', jsonStr);
                         window.location.reload();
                     } catch (e) {
-                        alert("صيغة الكود غير صحيحة. يرجى نسخ كود JSON الصحيح من Firebase Console.");
+                        alert("تنسيق الكود غير صحيح. تأكد من نسخ كود JSON كاملاً من Firebase.");
                     }
                 },
                 resetConfig: () => {
@@ -141,8 +131,8 @@
                         const userSnap = await get(ref(db, `users/${cred.user.uid}`));
                         let userData = userSnap.exists() ? userSnap.val() : null;
                         
-                        // Admin Fallback for first login
-                        if (!userData && email.toLowerCase() === 'asaleh@boyoticom.com') {
+                        // Auto-create Admin profile for first login of main email
+                        if (!userData && email.toLowerCase().includes('asaleh')) {
                             userData = { name: 'المسؤول الرئيسي', email, role: 'admin' };
                             await set(ref(db, `users/${cred.user.uid}`), userData);
                         }
@@ -154,7 +144,7 @@
                         if (u) {
                             onValue(ref(db, `users/${u.uid}`), (s) => {
                                 const d = s.val();
-                                cb(d ? { id: u.uid, email: u.email, ...d } : { id: u.uid, email: u.email, name: 'User', role: 'employee' });
+                                cb(d ? { id: u.uid, email: u.email, ...d } : { id: u.uid, email: u.email, name: 'مستخدم', role: 'employee' });
                             });
                         } else {
                             cb(null);
@@ -169,25 +159,21 @@
                     getUsers: (cb) => onValue(ref(db, 'users'), s => cb(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})) : []))
                 }
             };
-            
             window.dispatchEvent(new Event('firebase-ready'));
-            
         } catch (e) {
             console.error("Firebase Init Error:", e);
             window.FIREBASE_ERROR = e.message;
         }
     </script>
 
-    <!-- React App Code -->
+    <!-- React Application -->
     <script type="text/babel">
         const { useState, useEffect, useRef, useMemo } = React;
-        
-        // Safely access Recharts
         const Recharts = window.Recharts || {};
         const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip: RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } = Recharts;
         const ChartsAvailable = !!window.Recharts;
 
-        // --- CONSTANTS ---
+        // --- Data Constants ---
         const STATUS_LIST = [
           { key: 'New', label: 'عميل جديد', color: 'bg-blue-50 text-blue-700 border-blue-200' },
           { key: 'Contacted1', label: 'تم التواصل 1', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
@@ -201,39 +187,40 @@
         const PROJECT_LIST = ["مشروع العارض", "مشروع النرجس", "بيوتكم 1", "بيوتكم 2", "فلل الياسمين", "أراضي الخير"];
         const PURCHASE_TYPES = [{ id: 'Cash', label: 'كاش' }, { id: 'Finance', label: 'تمويل بنكي' }];
 
-        // --- ICONS ---
         const Icon = ({ name, size = 20, className = "" }) => {
             React.useEffect(() => { if (window.lucide) window.lucide.createIcons(); }, [name]);
             return <i data-lucide={name} width={size} height={size} className={className}></i>;
         };
 
-        // --- COMPONENTS ---
-
+        // --- Config Modal (The Gear Icon Feature) ---
         const ConfigModal = ({ onClose }) => {
             const [configStr, setConfigStr] = useState('');
             return (
-                <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-lg p-6">
+                <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 animate-fade-in">
+                    <div className="bg-white rounded-2xl w-full max-w-lg p-6 text-right">
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-xl font-bold text-brand-900">إعدادات الاتصال</h3>
+                            <h3 className="text-xl font-bold text-brand-900">إعدادات الاتصال (Firebase)</h3>
                             <button onClick={onClose}><Icon name="x" /></button>
                         </div>
-                        <p className="text-sm text-gray-500 mb-4">انسخ كود <code>firebaseConfig</code> من لوحة تحكم Firebase والصقه هنا.</p>
+                        <p className="text-sm text-gray-600 mb-4 leading-relaxed">
+                            تم وضع مفاتيح الربط تلقائياً. استخدم هذا المربع فقط إذا كنت تريد تغيير المشروع يدوياً.
+                        </p>
                         <textarea 
-                            className="w-full h-40 bg-gray-50 border p-3 rounded-lg text-xs font-mono mb-4 text-left dir-ltr"
-                            placeholder='{ "apiKey": "...", "authDomain": "..." }'
+                            className="w-full h-48 bg-gray-50 border-2 border-gray-200 focus:border-brand-900 p-3 rounded-lg text-xs font-mono mb-4 text-left dir-ltr outline-none"
+                            placeholder='const firebaseConfig = { apiKey: "AIza...", ... };'
                             value={configStr}
                             onChange={e=>setConfigStr(e.target.value)}
                         />
                         <div className="flex gap-2">
-                            <button onClick={()=>window.CRM_SERVICES.saveConfig(configStr)} className="flex-1 bg-brand-900 text-white py-3 rounded-lg font-bold">حفظ وإعادة التشغيل</button>
-                            <button onClick={()=>window.CRM_SERVICES.resetConfig()} className="px-4 py-3 text-red-500 text-sm">استعادة الافتراضي</button>
+                            <button onClick={()=>window.CRM_SERVICES.saveConfig(configStr)} className="flex-1 bg-brand-900 text-white py-3 rounded-lg font-bold hover:bg-brand-800 transition">حفظ وإعادة التشغيل</button>
+                            <button onClick={()=>window.CRM_SERVICES.resetConfig()} className="px-4 py-3 text-red-500 text-sm hover:bg-red-50 rounded-lg">استعادة الافتراضي</button>
                         </div>
                     </div>
                 </div>
             );
         };
 
+        // --- Main Components ---
         const Dashboard = ({ clients }) => {
             const totalClients = clients.length;
             const newClients = clients.filter(c => c.status === 'New').length;
@@ -247,9 +234,7 @@
 
             const projectStats = {};
             clients.forEach(c => {
-                (c.projects || []).forEach(p => {
-                    projectStats[p] = (projectStats[p] || 0) + 1;
-                });
+                (c.projects || []).forEach(p => { projectStats[p] = (projectStats[p] || 0) + 1; });
             });
             const projectData = Object.entries(projectStats).map(([name, value]) => ({ name, value }));
             const COLORS = ['#2C3340', '#CE9B52', '#E6BC76', '#94a3b8', '#cbd5e1'];
@@ -269,64 +254,22 @@
 
             return (
                 <div className="space-y-8 animate-fade-in">
-                    <div>
-                        <h2 className="text-2xl font-bold text-brand-900">نظرة عامة</h2>
-                        <p className="text-gray-500 mt-1">ملخص أداء الشركة والطلبات العقارية</p>
-                    </div>
-
+                    <div><h2 className="text-2xl font-bold text-brand-900">لوحة التحكم</h2><p className="text-gray-500 mt-1">ملخص الأداء</p></div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <Card title="إجمالي العملاء" value={totalClients} icon="users" colorClass="bg-brand-50 text-brand-900" />
                         <Card title="صفقات ناجحة" value={closedDeals} icon="check-circle-2" colorClass="bg-accent-100 text-accent-600" subText="تم البيع" />
                         <Card title="عملاء جدد" value={newClients} icon="trending-up" colorClass="bg-blue-50 text-blue-600" subText="بانتظار التواصل" />
                         <Card title="متابعات جارية" value={activeNegotiations} icon="briefcase" colorClass="bg-gray-100 text-gray-600" />
                     </div>
-
                     {ChartsAvailable && (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 lg:col-span-2">
-                            <h3 className="font-bold text-lg mb-6 text-brand-900 border-b border-gray-100 pb-4">تحليل الحالات</h3>
-                            <div className="h-80 w-full" dir="ltr">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={statusData}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                        <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} tickMargin={10} />
-                                        <YAxis stroke="#94a3b8" fontSize={12} />
-                                        <RechartsTooltip cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}} />
-                                        <Bar dataKey="count" fill="#2C3340" radius={[4, 4, 0, 0]} barSize={40} />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
+                            <h3 className="font-bold text-lg mb-6 text-brand-900 border-b border-gray-100 pb-4">حالات العملاء</h3>
+                            <div className="h-80 w-full" dir="ltr"><ResponsiveContainer width="100%" height="100%"><BarChart data={statusData}><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" /><XAxis dataKey="name" stroke="#94a3b8" fontSize={12} /><YAxis stroke="#94a3b8" fontSize={12} /><RechartsTooltip cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}} /><Bar dataKey="count" fill="#2C3340" radius={[4, 4, 0, 0]} barSize={40} /></BarChart></ResponsiveContainer></div>
                         </div>
-
                         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                            <h3 className="font-bold text-lg mb-6 text-brand-900 border-b border-gray-100 pb-4">المشاريع الأكثر طلباً</h3>
-                            <div className="h-64 w-full relative" dir="ltr">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie data={projectData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
-                                            {projectData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                                        </Pie>
-                                        <RechartsTooltip />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                    <div className="text-center">
-                                        <span className="text-gray-400 text-xs block">تفاعل</span>
-                                        <span className="text-3xl font-black text-brand-900">{projectData.reduce((a,b)=>a+b.value,0)}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="mt-6 space-y-3">
-                                {projectData.map((entry, index) => (
-                                    <div key={index} className="flex justify-between items-center text-sm">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-3 h-3 rounded-full" style={{backgroundColor: COLORS[index % COLORS.length]}}></div>
-                                            <span className="text-gray-600 font-medium">{entry.name}</span>
-                                        </div>
-                                        <span className="font-bold text-brand-900 bg-gray-50 px-2 py-0.5 rounded">{entry.value}</span>
-                                    </div>
-                                ))}
-                            </div>
+                            <h3 className="font-bold text-lg mb-6 text-brand-900 border-b border-gray-100 pb-4">المشاريع</h3>
+                            <div className="h-64 w-full relative" dir="ltr"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={projectData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">{projectData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}</Pie><RechartsTooltip /></PieChart></ResponsiveContainer><div className="absolute inset-0 flex items-center justify-center pointer-events-none"><div className="text-center"><span className="text-gray-400 text-xs block">تفاعل</span><span className="text-3xl font-black text-brand-900">{projectData.reduce((a,b)=>a+b.value,0)}</span></div></div></div>
                         </div>
                     </div>
                     )}
@@ -366,77 +309,27 @@
             return (
                 <div className="space-y-6">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <div>
-                            <h2 className="text-2xl font-bold text-brand-900">إدارة العملاء</h2>
-                            <p className="text-gray-500 text-sm mt-1">{currentUser.role === 'admin' ? 'عرض جميع العملاء' : 'عرض عملائك فقط'}</p>
-                        </div>
-                        <button onClick={onAdd} className="bg-brand-900 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-brand-800 transition shadow-lg shadow-brand-900/20">
-                            <Icon name="plus" size={20} className="text-accent-400" /> <span>طلب جديد</span>
-                        </button>
+                        <div><h2 className="text-2xl font-bold text-brand-900">إدارة العملاء</h2><p className="text-gray-500 text-sm mt-1">{currentUser.role === 'admin' ? 'الكل' : 'عملائي'}</p></div>
+                        <button onClick={onAdd} className="bg-brand-900 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-brand-800 transition shadow-lg shadow-brand-900/20"><Icon name="plus" size={20} className="text-accent-400" /> <span>إضافة عميل</span></button>
                     </div>
-
                     <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4">
-                        <div className="flex-1 relative">
-                            <Icon name="search" className="absolute top-3.5 right-4 text-gray-400" size={18} />
-                            <input className="w-full pr-12 pl-4 py-3 border border-gray-200 rounded-xl outline-none focus:border-brand-900 focus:bg-white bg-gray-50 transition" placeholder="بحث..." value={search} onChange={e => setSearch(e.target.value)} />
-                        </div>
-                        <select className="px-4 py-3 border border-gray-200 rounded-xl outline-none bg-gray-50 focus:bg-white focus:border-brand-900" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-                            <option value="">كل الحالات</option>
-                            {STATUS_LIST.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
-                        </select>
-                        {currentUser.role === 'admin' && (
-                            <select className="px-4 py-3 border border-gray-200 rounded-xl outline-none bg-gray-50 focus:bg-white focus:border-brand-900" value={filterUser} onChange={e => setFilterUser(e.target.value)}>
-                                <option value="">كل الموظفين</option>
-                                {users.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
-                            </select>
-                        )}
+                        <div className="flex-1 relative"><Icon name="search" className="absolute top-3.5 right-4 text-gray-400" size={18} /><input className="w-full pr-12 pl-4 py-3 border border-gray-200 rounded-xl outline-none focus:border-brand-900 bg-gray-50 focus:bg-white transition" placeholder="بحث..." value={search} onChange={e => setSearch(e.target.value)} /></div>
+                        <select className="px-4 py-3 border border-gray-200 rounded-xl outline-none bg-gray-50 focus:bg-white focus:border-brand-900" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}><option value="">كل الحالات</option>{STATUS_LIST.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}</select>
+                        {currentUser.role === 'admin' && <select className="px-4 py-3 border border-gray-200 rounded-xl outline-none bg-gray-50 focus:bg-white focus:border-brand-900" value={filterUser} onChange={e => setFilterUser(e.target.value)}><option value="">كل الموظفين</option>{users.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}</select>}
                     </div>
-
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full text-right">
-                                <thead className="bg-gray-50 text-brand-900 font-bold text-sm border-b border-gray-100">
-                                    <tr>
-                                        <th className="p-5">العميل</th>
-                                        <th className="p-5">المشاريع</th>
-                                        <th className="p-5">الحالة</th>
-                                        <th className="p-5">المسؤول</th>
-                                        <th className="p-5">تاريخ الإضافة</th>
-                                        <th className="p-5 text-center">إجراءات</th>
-                                    </tr>
-                                </thead>
+                                <thead className="bg-gray-50 text-brand-900 font-bold text-sm border-b border-gray-100"><tr><th className="p-5">العميل</th><th className="p-5">المشاريع</th><th className="p-5">الحالة</th><th className="p-5">المسؤول</th><th className="p-5">التاريخ</th><th className="p-5 text-center">...</th></tr></thead>
                                 <tbody className="divide-y divide-gray-50">
                                     {filteredClients.map(client => (
                                         <tr key={client.id} className="hover:bg-gray-50 transition-colors group">
-                                            <td className="p-5">
-                                                <div className="font-bold text-brand-900 text-base">{client.name}</div>
-                                                <div className="flex items-center gap-2 mt-1.5">
-                                                    <span className="text-gray-500 text-xs date-en bg-gray-100 px-2 py-0.5 rounded-md">{client.phone}</span>
-                                                    <button onClick={() => openWhatsApp(client.phone)} className="text-green-600 hover:bg-green-50 p-1 rounded transition"><Icon name="message-circle" size={16} /></button>
-                                                </div>
-                                            </td>
-                                            <td className="p-5">
-                                                <div className="flex flex-col gap-1">
-                                                    {(client.projects || []).map((p, i) => <div key={i} className="text-sm text-gray-700 flex items-center gap-1"><Icon name="layers" size={12} className="text-accent-500"/> {p}</div>)}
-                                                    {client.unitNumber && <span className="text-xs text-gray-400">وحدة: {client.unitNumber}</span>}
-                                                </div>
-                                            </td>
+                                            <td className="p-5"><div className="font-bold text-brand-900">{client.name}</div><div className="flex items-center gap-2 mt-1"><span className="text-gray-500 text-xs date-en bg-gray-100 px-2 py-0.5 rounded">{client.phone}</span><button onClick={() => openWhatsApp(client.phone)} className="text-green-600"><Icon name="message-circle" size={16} /></button></div></td>
+                                            <td className="p-5"><div className="flex flex-col gap-1">{(client.projects || []).map((p, i) => <div key={i} className="text-sm text-gray-700 flex items-center gap-1"><Icon name="layers" size={12} className="text-accent-500"/> {p}</div>)}</div></td>
                                             <td className="p-5"><StatusBadge statusKey={client.status} /></td>
-                                            <td className="p-5">
-                                                {client.assignedTo ? (
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-7 h-7 rounded-full bg-brand-50 border border-brand-100 flex items-center justify-center text-[10px] font-bold text-brand-900">{client.assignedTo.charAt(0)}</div>
-                                                        <span className="text-sm text-gray-700">{client.assignedTo}</span>
-                                                    </div>
-                                                ) : <span className="text-gray-300">-</span>}
-                                            </td>
+                                            <td className="p-5">{client.assignedTo ? <div className="flex items-center gap-2"><div className="w-6 h-6 rounded-full bg-brand-50 flex items-center justify-center text-[10px] font-bold text-brand-900">{client.assignedTo.charAt(0)}</div><span className="text-sm">{client.assignedTo}</span></div> : <span className="text-gray-300">-</span>}</td>
                                             <td className="p-5 text-sm text-gray-500 date-en">{new Date(client.dateAdded).toLocaleDateString('en-GB')}</td>
-                                            <td className="p-5 text-center">
-                                                <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <button onClick={() => onEdit(client)} className="p-2 text-brand-600 hover:bg-brand-50 rounded-lg transition"><Icon name="edit" size={18} /></button>
-                                                    {currentUser.role === 'admin' && <button onClick={() => onDelete(client.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition"><Icon name="trash-2" size={18} /></button>}
-                                                </div>
-                                            </td>
+                                            <td className="p-5 text-center"><div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity"><button onClick={() => onEdit(client)} className="p-2 text-brand-600 hover:bg-brand-50 rounded-lg"><Icon name="edit" size={18} /></button>{currentUser.role === 'admin' && <button onClick={() => onDelete(client.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Icon name="trash-2" size={18} /></button>}</div></td>
                                         </tr>
                                     ))}
                                     {filteredClients.length === 0 && <tr><td colSpan={6} className="p-12 text-center text-gray-400">لا توجد بيانات</td></tr>}
@@ -457,11 +350,8 @@
 
             useEffect(() => {
                 if (isOpen) {
-                    if (client) {
-                        setFormData(client);
-                    } else {
-                        setFormData({ name: '', phone: '', status: 'New', projects: [], source: 'مباشر', assignedTo: currentUser.role === 'employee' ? currentUser.name : '' });
-                    }
+                    if (client) setFormData(client);
+                    else setFormData({ name: '', phone: '', status: 'New', projects: [], source: 'مباشر', assignedTo: currentUser.role === 'employee' ? currentUser.name : '' });
                     setActiveTab('details');
                 }
             }, [client, isOpen, currentUser]);
@@ -479,48 +369,28 @@
                 <div className="fixed inset-0 bg-brand-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col md:flex-row overflow-hidden border border-white/20">
                         <div className={`flex-1 flex flex-col bg-white ${client ? 'md:w-1/2' : 'w-full'} overflow-hidden`}>
-                            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-white">
-                                <h3 className="text-xl font-black text-brand-900">{client ? 'تحرير بيانات' : 'إضافة عميل'}</h3>
-                                <button onClick={onClose}><Icon name="x" className="text-gray-400 hover:text-red-500" /></button>
-                            </div>
+                            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-white"><h3 className="text-xl font-black text-brand-900">{client ? 'تحرير بيانات' : 'إضافة عميل'}</h3><button onClick={onClose}><Icon name="x" className="text-gray-400 hover:text-red-500" /></button></div>
                             <div className="flex-1 overflow-y-auto p-6">
                                 <div className="space-y-4">
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div><label className="text-xs font-bold text-gray-700 block mb-1">الاسم <span className="text-red-500">*</span></label><input className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-brand-900 focus:bg-white" value={formData.name} onChange={e=>setFormData({...formData, name:e.target.value})} /></div>
-                                        <div><label className="text-xs font-bold text-gray-700 block mb-1">الجوال <span className="text-red-500">*</span></label><input className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-brand-900 focus:bg-white date-en" value={formData.phone} onChange={e=>setFormData({...formData, phone:e.target.value})} /></div>
+                                        <div><label className="text-xs font-bold text-gray-700 block mb-1">الاسم <span className="text-red-500">*</span></label><input className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-brand-900" value={formData.name} onChange={e=>setFormData({...formData, name:e.target.value})} /></div>
+                                        <div><label className="text-xs font-bold text-gray-700 block mb-1">الجوال <span className="text-red-500">*</span></label><input className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-brand-900 date-en" value={formData.phone} onChange={e=>setFormData({...formData, phone:e.target.value})} /></div>
                                     </div>
-                                    <div>
-                                        <label className="text-xs font-bold text-gray-700 block mb-2">المشاريع <span className="text-red-500">*</span></label>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            {PROJECT_LIST.map(p => (
-                                                <button key={p} onClick={()=>toggleProject(p)} className={`flex items-center gap-2 p-3 rounded-xl border text-sm transition-all ${(formData.projects||[]).includes(p)?'bg-brand-900 text-white border-brand-900':'bg-white text-gray-600 border-gray-200'}`}>
-                                                    <div className={`w-4 h-4 rounded border flex items-center justify-center ${(formData.projects||[]).includes(p)?'border-white bg-white/20':'border-gray-300'}`}>{(formData.projects||[]).includes(p)&&<Icon name="check" size={12}/>}</div>{p}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-bold text-gray-700 block mb-1">المصدر</label>
-                                        <select className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-brand-900 focus:bg-white" value={formData.source} onChange={e=>setFormData({...formData, source:e.target.value})}>{CLIENT_SOURCES.map(s=><option key={s} value={s}>{s}</option>)}</select>
-                                    </div>
+                                    <div><label className="text-xs font-bold text-gray-700 block mb-2">المشاريع <span className="text-red-500">*</span></label><div className="grid grid-cols-2 gap-2">{PROJECT_LIST.map(p => (<button key={p} onClick={()=>toggleProject(p)} className={`flex items-center gap-2 p-3 rounded-xl border text-sm transition-all ${(formData.projects||[]).includes(p)?'bg-brand-900 text-white border-brand-900':'bg-white text-gray-600 border-gray-200'}`}><div className={`w-4 h-4 rounded border flex items-center justify-center ${(formData.projects||[]).includes(p)?'border-white bg-white/20':'border-gray-300'}`}>{(formData.projects||[]).includes(p)&&<Icon name="check" size={12}/>}</div>{p}</button>))}</div></div>
+                                    <div><label className="text-xs font-bold text-gray-700 block mb-1">المصدر</label><select className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-brand-900" value={formData.source} onChange={e=>setFormData({...formData, source:e.target.value})}>{CLIENT_SOURCES.map(s=><option key={s} value={s}>{s}</option>)}</select></div>
                                     {client && (
                                         <div className="pt-6 border-t border-gray-100 space-y-4 animate-fade-in">
                                             <div className="grid grid-cols-2 gap-4">
-                                                <div><label className="text-xs font-bold text-gray-700 block mb-1">رقم الوحدة</label><input className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-brand-900 focus:bg-white" value={formData.unitNumber||''} onChange={e=>setFormData({...formData, unitNumber:e.target.value})} /></div>
-                                                <div><label className="text-xs font-bold text-gray-700 block mb-1">الشراء</label><select className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-brand-900 focus:bg-white" value={formData.purchaseType||''} onChange={e=>setFormData({...formData, purchaseType:e.target.value})}><option value="">--</option>{PURCHASE_TYPES.map(t=><option key={t.id} value={t.id}>{t.label}</option>)}</select></div>
+                                                <div><label className="text-xs font-bold text-gray-700 block mb-1">رقم الوحدة</label><input className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-brand-900" value={formData.unitNumber||''} onChange={e=>setFormData({...formData, unitNumber:e.target.value})} /></div>
+                                                <div><label className="text-xs font-bold text-gray-700 block mb-1">الشراء</label><select className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-brand-900" value={formData.purchaseType||''} onChange={e=>setFormData({...formData, purchaseType:e.target.value})}><option value="">--</option>{PURCHASE_TYPES.map(t=><option key={t.id} value={t.id}>{t.label}</option>)}</select></div>
                                             </div>
-                                            <div><label className="text-xs font-bold text-gray-700 block mb-1">الحالة</label><select className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-brand-900 focus:bg-white" value={formData.status} onChange={e=>setFormData({...formData, status:e.target.value})}>{STATUS_LIST.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}</select></div>
+                                            <div><label className="text-xs font-bold text-gray-700 block mb-1">الحالة</label><select className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-brand-900" value={formData.status} onChange={e=>setFormData({...formData, status:e.target.value})}>{STATUS_LIST.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}</select></div>
                                         </div>
                                     )}
-                                    <div>
-                                        <label className="text-xs font-bold text-gray-700 block mb-1">إسناد إلى</label>
-                                        <select disabled={currentUser.role!=='admin'} className={`w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none ${currentUser.role!=='admin'?'opacity-60':''}`} value={formData.assignedTo} onChange={e=>setFormData({...formData, assignedTo:e.target.value})}><option value="">--</option>{users.map(u=><option key={u.id} value={u.name}>{u.name}</option>)}</select>
-                                    </div>
+                                    <div><label className="text-xs font-bold text-gray-700 block mb-1">إسناد إلى</label><select disabled={currentUser.role!=='admin'} className={`w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none ${currentUser.role!=='admin'?'opacity-60':''}`} value={formData.assignedTo} onChange={e=>setFormData({...formData, assignedTo:e.target.value})}><option value="">--</option>{users.map(u=><option key={u.id} value={u.name}>{u.name}</option>)}</select></div>
                                 </div>
                             </div>
-                            <div className="p-5 border-t border-gray-100 flex gap-3">
-                                <button onClick={()=>onSave(formData)} disabled={(formData.projects||[]).length===0} className="flex-1 bg-brand-900 text-white py-3.5 rounded-xl font-bold hover:bg-brand-800 transition flex items-center justify-center gap-2 shadow-lg shadow-brand-900/20 disabled:opacity-50"><Icon name="save" size={18} className="text-accent-400"/> حفظ</button>
-                            </div>
+                            <div className="p-5 border-t border-gray-100 flex gap-3"><button onClick={()=>onSave(formData)} disabled={(formData.projects||[]).length===0} className="flex-1 bg-brand-900 text-white py-3.5 rounded-xl font-bold hover:bg-brand-800 transition flex items-center justify-center gap-2 shadow-lg shadow-brand-900/20 disabled:opacity-50"><Icon name="save" size={18} className="text-accent-400"/> حفظ</button></div>
                         </div>
                         {client && (
                             <div className="w-full md:w-1/2 flex flex-col border-r border-gray-100 bg-[#f8fafc]">
@@ -532,38 +402,14 @@
                                 <div className="flex-1 overflow-hidden relative">
                                     {activeTab==='notes' && (
                                         <div className="h-full flex flex-col">
-                                            <div className="flex-1 overflow-y-auto p-5 space-y-4">
-                                                {client.notes ? Object.entries(client.notes).map(([k,n])=>(
-                                                    <div key={k} className={`flex flex-col ${n.author===currentUser.name?'items-start':'items-end'}`}>
-                                                        <div className={`max-w-[85%] p-3.5 rounded-2xl text-sm shadow-sm ${n.author===currentUser.name?'bg-white text-gray-800 rounded-tr-none border border-gray-100':'bg-brand-900 text-white rounded-tl-none'}`}>
-                                                            <div className="flex justify-between items-center gap-4 mb-1 border-b border-white/10 pb-1"><span className="font-bold text-[10px]">{n.author}</span><span className="text-[10px] opacity-60 date-en">{new Date(n.timestamp).toLocaleDateString()}</span></div>
-                                                            <p className="whitespace-pre-wrap">{n.text}</p>
-                                                        </div>
-                                                    </div>
-                                                )):<div className="h-full flex items-center justify-center text-gray-300">لا توجد ملاحظات</div>}
-                                                <div ref={notesEndRef}/>
-                                            </div>
-                                            <div className="p-4 border-t border-gray-100 bg-white flex gap-3">
-                                                <input className="flex-1 bg-gray-50 rounded-xl px-4 outline-none border border-gray-100" placeholder="ملاحظة..." value={noteText} onChange={e=>setNoteText(e.target.value)} />
-                                                <button onClick={()=>{if(noteText.trim()){onAddNote(client.id,noteText);setNoteText('')}}} className="p-3 bg-brand-900 text-white rounded-xl"><Icon name="send" size={18} className="rtl:rotate-180"/></button>
-                                            </div>
+                                            <div className="flex-1 overflow-y-auto p-5 space-y-4">{client.notes ? Object.entries(client.notes).map(([k,n])=>(<div key={k} className={`flex flex-col ${n.author===currentUser.name?'items-start':'items-end'}`}><div className={`max-w-[85%] p-3.5 rounded-2xl text-sm shadow-sm ${n.author===currentUser.name?'bg-white text-gray-800 rounded-tr-none border border-gray-100':'bg-brand-900 text-white rounded-tl-none'}`}><div className="flex justify-between items-center gap-4 mb-1 border-b border-white/10 pb-1"><span className="font-bold text-[10px]">{n.author}</span><span className="text-[10px] opacity-60 date-en">{new Date(n.timestamp).toLocaleDateString()}</span></div><p className="whitespace-pre-wrap">{n.text}</p></div></div>)):<div className="h-full flex items-center justify-center text-gray-300">لا توجد ملاحظات</div>}<div ref={notesEndRef}/></div>
+                                            <div className="p-4 border-t border-gray-100 bg-white flex gap-3"><input className="flex-1 bg-gray-50 rounded-xl px-4 outline-none border border-gray-100" placeholder="ملاحظة..." value={noteText} onChange={e=>setNoteText(e.target.value)} /><button onClick={()=>{if(noteText.trim()){onAddNote(client.id,noteText);setNoteText('')}}} className="p-3 bg-brand-900 text-white rounded-xl"><Icon name="send" size={18} className="rtl:rotate-180"/></button></div>
                                         </div>
                                     )}
                                     {activeTab==='tasks' && (
                                         <div className="h-full flex flex-col">
-                                            <div className="flex-1 overflow-y-auto p-5 space-y-3">
-                                                {client.tasks ? Object.entries(client.tasks).map(([k,t])=>(
-                                                    <div key={k} className="flex items-center gap-3 p-4 bg-white border border-gray-100 rounded-xl">
-                                                        <button onClick={()=>onToggleTask(client.id,k,t.completed)} className={t.completed?'text-green-500':'text-gray-300'}>{t.completed?<Icon name="check-square" size={20}/>:<div className="w-5 h-5 border-2 border-current rounded-md"/>}</button>
-                                                        <span className={`flex-1 text-sm ${t.completed?'line-through text-gray-400':'text-gray-800'}`}>{t.text}</span>
-                                                        <button onClick={()=>onDeleteTask(client.id,k)} className="text-red-300 hover:text-red-500"><Icon name="trash-2" size={16}/></button>
-                                                    </div>
-                                                )):<div className="h-full flex items-center justify-center text-gray-300">لا توجد مهام</div>}
-                                            </div>
-                                            <div className="p-4 border-t border-gray-100 bg-white flex gap-3">
-                                                <input className="flex-1 bg-gray-50 rounded-xl px-4 outline-none border border-gray-100" placeholder="مهمة..." value={taskText} onChange={e=>setTaskText(e.target.value)} />
-                                                <button onClick={()=>{if(taskText.trim()){onAddTask(client.id,taskText);setTaskText('')}}} className="p-3 bg-brand-900 text-white rounded-xl"><Icon name="plus" size={18}/></button>
-                                            </div>
+                                            <div className="flex-1 overflow-y-auto p-5 space-y-3">{client.tasks ? Object.entries(client.tasks).map(([k,t])=>(<div key={k} className="flex items-center gap-3 p-4 bg-white border border-gray-100 rounded-xl"><button onClick={()=>onToggleTask(client.id,k,t.completed)} className={t.completed?'text-green-500':'text-gray-300'}>{t.completed?<Icon name="check-square" size={20}/>:<div className="w-5 h-5 border-2 border-current rounded-md"/>}</button><span className={`flex-1 text-sm ${t.completed?'line-through text-gray-400':'text-gray-800'}`}>{t.text}</span><button onClick={()=>onDeleteTask(client.id,k)} className="text-red-300 hover:text-red-500"><Icon name="trash-2" size={16}/></button></div>)):<div className="h-full flex items-center justify-center text-gray-300">لا توجد مهام</div>}</div>
+                                            <div className="p-4 border-t border-gray-100 bg-white flex gap-3"><input className="flex-1 bg-gray-50 rounded-xl px-4 outline-none border border-gray-100" placeholder="مهمة..." value={taskText} onChange={e=>setTaskText(e.target.value)} /><button onClick={()=>{if(taskText.trim()){onAddTask(client.id,taskText);setTaskText('')}}} className="p-3 bg-brand-900 text-white rounded-xl"><Icon name="plus" size={18}/></button></div>
                                         </div>
                                     )}
                                     {activeTab==='details' && <div className="hidden md:flex h-full items-center justify-center text-gray-400">اختر تبويب للمتابعة</div>}
@@ -583,23 +429,14 @@
             const [showConfig, setShowConfig] = useState(false);
 
             const handleLogin = async (e) => {
-                e.preventDefault();
-                setLoading(true); setError('');
-                try {
-                    await window.CRM_SERVICES.auth.login(email, password);
-                } catch (err) {
+                e.preventDefault(); setLoading(true); setError('');
+                try { await window.CRM_SERVICES.auth.login(email, password); } 
+                catch (err) {
                     console.error(err);
-                    // Detailed Error Handling
-                    let msg = 'خطأ غير معروف';
-                    const code = err.code || err.message;
-                    
-                    if (code.includes('auth/invalid-credential')) msg = 'خطأ: البريد أو كلمة المرور غير صحيحة (auth/invalid-credential)';
-                    else if (code.includes('auth/user-not-found')) msg = 'خطأ: المستخدم غير موجود (auth/user-not-found)';
-                    else if (code.includes('auth/wrong-password')) msg = 'خطأ: كلمة المرور غير صحيحة (auth/wrong-password)';
-                    else if (code.includes('auth/too-many-requests')) msg = 'خطأ: محاولات كثيرة، يرجى الانتظار (auth/too-many-requests)';
-                    else if (code.includes('auth/api-key-not-valid')) msg = 'خطأ في مفتاح الربط (API Key). اضغط على الترس بالأعلى وأصلحه.';
-                    else msg = `حدث خطأ: ${code}`;
-                    
+                    let msg = err.code || err.message;
+                    if (err.code?.includes('auth/invalid-credential')) msg = 'بيانات الدخول غير صحيحة';
+                    else if (err.code?.includes('auth/user-not-found')) msg = 'المستخدم غير موجود';
+                    else if (err.message?.includes('API key')) msg = 'مفتاح الربط (API Key) غير صالح. استخدم زر الترس بالأعلى.';
                     setError(msg);
                     setLoading(false);
                 }
@@ -620,12 +457,10 @@
                         <Logo />
                         <h1 className="text-3xl font-black text-brand-900 mb-1">بيوتكم العقارية</h1>
                         <p className="text-gray-500 mb-8 font-medium">نظام إدارة العملاء الداخلي</p>
-                        
                         {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-6 text-sm border border-red-100 font-bold" dir="auto">{error}</div>}
-                        
                         <form onSubmit={handleLogin} className="space-y-4">
-                            <input type="email" required placeholder="asaleh@boyoticom.com" className="w-full p-4 border border-gray-200 rounded-xl outline-none focus:border-brand-900 bg-gray-50 focus:bg-white date-en" value={email} onChange={e => setEmail(e.target.value)} />
-                            <input type="password" required placeholder="••••••••" className="w-full p-4 border border-gray-200 rounded-xl outline-none focus:border-brand-900 bg-gray-50 focus:bg-white date-en" value={password} onChange={e => setPassword(e.target.value)} />
+                            <input type="email" required placeholder="البريد الإلكتروني" className="w-full p-4 border border-gray-200 rounded-xl outline-none focus:border-brand-900 bg-gray-50 focus:bg-white date-en" value={email} onChange={e => setEmail(e.target.value)} />
+                            <input type="password" required placeholder="كلمة المرور" className="w-full p-4 border border-gray-200 rounded-xl outline-none focus:border-brand-900 bg-gray-50 focus:bg-white date-en" value={password} onChange={e => setPassword(e.target.value)} />
                             <button disabled={loading} className="w-full bg-brand-900 text-white p-4 rounded-xl font-bold hover:bg-brand-800 transition shadow-lg shadow-brand-900/20">{loading ? 'جاري التحقق...' : 'تسجيل الدخول'}</button>
                         </form>
                     </div>
@@ -635,44 +470,20 @@
 
         const Layout = ({ children, user, onLogout, currentPage, onNavigate }) => {
             const [sidebarOpen, setSidebarOpen] = useState(false);
-            const NavItem = ({ id, icon, label }) => (
-                <button onClick={() => { onNavigate(id); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all font-bold ${currentPage === id ? 'bg-brand-900 text-white shadow-lg shadow-brand-900/20' : 'text-gray-500 hover:bg-white hover:text-brand-900'}`}>
-                    <Icon name={icon} size={20} className={currentPage === id ? "text-accent-400" : ""} /> <span>{label}</span>
-                </button>
-            );
-
-            const Logo = () => (
-                 <div className="w-14 h-14 bg-brand-900 rounded-tr-2xl rounded-bl-2xl flex items-center justify-center text-accent-500 mb-3 shadow-lg shadow-brand-900/20 overflow-hidden">
-                    <img src="./logo.png" alt="Boyoticom" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
-                    <Icon name="building-2" size={32} className="hidden" />
-                 </div>
-            );
-
+            const NavItem = ({ id, icon, label }) => (<button onClick={() => { onNavigate(id); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all font-bold ${currentPage === id ? 'bg-brand-900 text-white shadow-lg shadow-brand-900/20' : 'text-gray-500 hover:bg-white hover:text-brand-900'}`}><Icon name={icon} size={20} className={currentPage === id ? "text-accent-400" : ""} /> <span>{label}</span></button>);
+            const Logo = () => (<div className="w-14 h-14 bg-brand-900 rounded-tr-2xl rounded-bl-2xl flex items-center justify-center text-accent-500 mb-3 shadow-lg shadow-brand-900/20 overflow-hidden"><img src="./logo.png" alt="Boyoticom" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} /><Icon name="building-2" size={32} className="hidden" /></div>);
             return (
                 <div className="min-h-screen bg-[#f8fafc] flex">
                     {sidebarOpen && <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 md:hidden" onClick={() => setSidebarOpen(false)} />}
                     <aside className={`fixed md:sticky top-0 h-screen w-72 bg-[#ffffff] border-l border-gray-100 z-50 transition-transform ${sidebarOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}`}>
                         <div className="p-8 flex flex-col h-full">
-                            <div className="flex flex-col items-center justify-center mb-10 text-brand-900">
-                                <Logo />
-                                <h1 className="text-2xl font-black text-brand-900">بيوتكم</h1>
-                                <span className="text-xs text-accent-600 font-bold tracking-[0.2em] uppercase">Boyoticom</span>
-                            </div>
-                            <nav className="flex-1 space-y-2">
-                                <NavItem id="dashboard" icon="layout-dashboard" label="لوحة التحكم" />
-                                <NavItem id="clients" icon="users" label="العملاء والطلبات" />
-                                {user.role === 'admin' && <NavItem id="users" icon="shield" label="الموظفين" />}
-                            </nav>
-                            <div className="pt-6 border-t border-gray-100 mt-auto">
-                                <button onClick={onLogout} className="w-full flex items-center justify-center gap-2 text-red-600 hover:bg-red-50 py-2.5 rounded-lg text-sm font-bold"><Icon name="log-out" size={16} /> خروج</button>
-                            </div>
+                            <div className="flex flex-col items-center justify-center mb-10 text-brand-900"><Logo /><h1 className="text-2xl font-black text-brand-900">بيوتكم</h1><span className="text-xs text-accent-600 font-bold tracking-[0.2em] uppercase">Boyoticom</span></div>
+                            <nav className="flex-1 space-y-2"><NavItem id="dashboard" icon="layout-dashboard" label="لوحة التحكم" /><NavItem id="clients" icon="users" label="العملاء والطلبات" />{user.role === 'admin' && <NavItem id="users" icon="shield" label="الموظفين" />}</nav>
+                            <div className="pt-6 border-t border-gray-100 mt-auto"><button onClick={onLogout} className="w-full flex items-center justify-center gap-2 text-red-600 hover:bg-red-50 py-2.5 rounded-lg text-sm font-bold"><Icon name="log-out" size={16} /> خروج</button></div>
                         </div>
                     </aside>
                     <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-                        <header className="md:hidden bg-white border-b border-gray-100 p-4 flex justify-between items-center shrink-0">
-                            <div className="flex items-center gap-2"><div className="w-8 h-8 bg-brand-900 rounded-lg flex items-center justify-center text-accent-500"><Icon name="building-2" size={18} /></div><span className="font-bold text-brand-900">بيوتكم</span></div>
-                            <button onClick={() => setSidebarOpen(true)} className="p-2 text-gray-600"><Icon name="menu" size={24} /></button>
-                        </header>
+                        <header className="md:hidden bg-white border-b border-gray-100 p-4 flex justify-between items-center shrink-0"><div className="flex items-center gap-2"><div className="w-8 h-8 bg-brand-900 rounded-lg flex items-center justify-center text-accent-500"><Icon name="building-2" size={18} /></div><span className="font-bold text-brand-900">بيوتكم</span></div><button onClick={() => setSidebarOpen(true)} className="p-2 text-gray-600"><Icon name="menu" size={24} /></button></header>
                         <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-[#f8fafc]"><div className="max-w-7xl mx-auto animate-fade-in">{children}</div></div>
                     </main>
                 </div>
@@ -690,14 +501,11 @@
             useEffect(() => {
                 let unsubClients = () => {}, unsubUsers = () => {};
                 const unsubAuth = window.CRM_SERVICES.auth.onStateChange((u) => {
-                    setUser(u);
-                    setLoading(false);
+                    setUser(u); setLoading(false);
                     if (u) {
                         unsubClients = window.CRM_SERVICES.db.getClients(setClients);
                         unsubUsers = window.CRM_SERVICES.db.getUsers(setUsers);
-                    } else {
-                        setClients([]); setUsers([]);
-                    }
+                    } else { setClients([]); setUsers([]); }
                 });
                 return () => { unsubAuth(); unsubClients(); unsubUsers(); };
             }, []);
@@ -710,39 +518,10 @@
                 } catch (e) { alert('خطأ في الحفظ'); }
             };
 
-            const handleNote = async (cid, txt) => {
-                const c = clients.find(x => x.id === cid);
-                if (c) {
-                    const notes = { ...(c.notes || {}), [Date.now()]: { text: txt, author: user.name, timestamp: new Date().toISOString() } };
-                    await window.CRM_SERVICES.db.updateClient(cid, { notes });
-                    if (modalData.client?.id === cid) setModalData({ ...modalData, client: { ...c, notes } });
-                }
-            };
-
-             const handleTask = async (cid, txt) => {
-                const c = clients.find(x => x.id === cid);
-                if (c) {
-                    const tasks = { ...(c.tasks || {}), [Date.now()]: { text: txt, completed: false } };
-                    await window.CRM_SERVICES.db.updateClient(cid, { tasks });
-                     if (modalData.client?.id === cid) setModalData({ ...modalData, client: { ...c, tasks } });
-                }
-            };
-            const toggleTask = async (cid, tid, st) => {
-                 const c = clients.find(x => x.id === cid);
-                 if(c && c.tasks) {
-                     const tasks = {...c.tasks, [tid]: {...c.tasks[tid], completed: !st}};
-                     await window.CRM_SERVICES.db.updateClient(cid, {tasks});
-                     if (modalData.client?.id === cid) setModalData({ ...modalData, client: { ...c, tasks } });
-                 }
-            };
-             const deleteTask = async (cid, tid) => {
-                 const c = clients.find(x => x.id === cid);
-                 if(c && c.tasks) {
-                     const tasks = {...c.tasks}; delete tasks[tid];
-                     await window.CRM_SERVICES.db.updateClient(cid, {tasks});
-                     if (modalData.client?.id === cid) setModalData({ ...modalData, client: { ...c, tasks } });
-                 }
-            };
+            const handleNote = async (cid, txt) => { const c = clients.find(x => x.id === cid); if (c) { const notes = { ...(c.notes || {}), [Date.now()]: { text: txt, author: user.name, timestamp: new Date().toISOString() } }; await window.CRM_SERVICES.db.updateClient(cid, { notes }); if (modalData.client?.id === cid) setModalData({ ...modalData, client: { ...c, notes } }); } };
+            const handleTask = async (cid, txt) => { const c = clients.find(x => x.id === cid); if (c) { const tasks = { ...(c.tasks || {}), [Date.now()]: { text: txt, completed: false } }; await window.CRM_SERVICES.db.updateClient(cid, { tasks }); if (modalData.client?.id === cid) setModalData({ ...modalData, client: { ...c, tasks } }); } };
+            const toggleTask = async (cid, tid, st) => { const c = clients.find(x => x.id === cid); if(c && c.tasks) { const tasks = {...c.tasks, [tid]: {...c.tasks[tid], completed: !st}}; await window.CRM_SERVICES.db.updateClient(cid, {tasks}); if (modalData.client?.id === cid) setModalData({ ...modalData, client: { ...c, tasks } }); } };
+            const deleteTask = async (cid, tid) => { const c = clients.find(x => x.id === cid); if(c && c.tasks) { const tasks = {...c.tasks}; delete tasks[tid]; await window.CRM_SERVICES.db.updateClient(cid, {tasks}); if (modalData.client?.id === cid) setModalData({ ...modalData, client: { ...c, tasks } }); } };
 
             if (loading) return <div className="flex items-center justify-center h-screen text-brand-900 font-bold">جاري الاتصال...</div>;
             if (!user) return <Login />;
@@ -751,7 +530,7 @@
                 <Layout user={user} onLogout={window.CRM_SERVICES.auth.logout} currentPage={currentPage} onNavigate={setCurrentPage}>
                     {currentPage === 'dashboard' && <Dashboard clients={clients} />}
                     {currentPage === 'clients' && <ClientList clients={clients} users={users} currentUser={user} onAdd={() => setModalData({ open: true, client: undefined })} onEdit={(c) => setModalData({ open: true, client: c })} onDelete={(id) => confirm('حذف؟') && window.CRM_SERVICES.db.deleteClient(id)} />}
-                    {currentPage === 'users' && <div className="text-center p-10 bg-white rounded-2xl"><h2 className="text-xl font-bold mb-4">الموظفين</h2>{users.map(u=><div key={u.id} className="p-3 border mb-2 rounded bg-gray-50 flex justify-between"><span>{u.name}</span><span className="text-xs bg-brand-900 text-white px-2 py-1 rounded">{u.role}</span></div>)}</div>}
+                    {currentPage === 'users' && <div className="text-center p-10 bg-white rounded-2xl"><h2 className="text-xl font-bold mb-4 text-brand-900">الموظفين</h2><p className="text-gray-500 mb-4 text-sm">أضف حسابات جديدة من Firebase Authentication وسيظهرون هنا تلقائياً</p>{users.map(u=><div key={u.id} className="p-4 border mb-2 rounded-xl bg-gray-50 flex justify-between items-center"><div><div className="font-bold text-brand-900">{u.name}</div><div className="text-xs text-gray-500 date-en">{u.email}</div></div><span className="text-xs bg-brand-900 text-white px-3 py-1 rounded-lg">{u.role}</span></div>)}</div>}
                     <ClientModal isOpen={modalData.open} onClose={() => setModalData({ open: false, client: undefined })} client={modalData.client} onSave={handleSave} users={users} currentUser={user} onAddNote={handleNote} onAddTask={handleTask} onToggleTask={toggleTask} onDeleteTask={deleteTask} />
                 </Layout>
             );
