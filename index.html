@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -26,9 +25,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
     
     <!-- React & Libraries (UMD) -->
+    <!-- React 18 is robust for this setup -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel Standalone -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Icons & Charts -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://unpkg.com/recharts@2.12.0/umd/Recharts.min.js"></script>
     <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
@@ -45,18 +49,6 @@
       ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
       ::-webkit-scrollbar-thumb:hover { background: #999; }
     </style>
-<script type="importmap">
-{
-  "imports": {
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
-    "recharts": "https://aistudiocdn.com/recharts@^3.5.0",
-    "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/"
-  }
-}
-</script>
 </head>
 <body>
     <div id="root"></div>
@@ -64,14 +56,18 @@
     <!-- Global Error Handler -->
     <script>
         window.onerror = function(msg, url, line, col, error) {
+            // Ignore ResizeObserver errors commonly caused by Recharts/Browsers
             if (msg && msg.includes('ResizeObserver')) return false;
             console.error("Global Error:", msg, error);
             return false; 
         };
     </script>
 
-    <!-- Firebase SDK & App Logic -->
-    <script type="text/babel">
+    <!-- 
+      FIXED: Added data-type="module" to prevent "require is not defined" error.
+      This tells Babel to treat imports as ES Modules.
+    -->
+    <script type="text/babel" data-type="module">
         // --- FIREBASE CONFIGURATION (Boyoticom-15c4b) ---
         const firebaseConfig = {
           apiKey: "AIzaSyAOMnl9ikDMngZZH-eSa3ldqtDCh6qsy_U",
@@ -84,6 +80,7 @@
         };
 
         // --- IMPORTS ---
+        // These imports now work because of data-type="module"
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getDatabase, ref, set, push, onValue, update, remove, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
@@ -109,7 +106,8 @@
         };
 
         // --- REACT COMPONENTS ---
-        const { useState, useEffect, useMemo, Component } = React;
+        // Access React from global window object (loaded via UMD scripts)
+        const { useState, useEffect, useMemo, Component } = window.React;
         const Recharts = window.Recharts || {};
         const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip: RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } = Recharts;
 
@@ -475,7 +473,7 @@
             );
         };
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
+        const root = window.ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
 </body>
