@@ -83,7 +83,7 @@
         import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getDatabase, ref, set, push, onValue, update, remove, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-        // Boyoticom Config
+        // Boyoticom Config - Default
         const defaultConfig = {
           apiKey: "AIzaSyDn_cf5IxRvjViXDJhK2Q5M-g5yqsfWwHk",
           authDomain: "boyoticom-crm.firebaseapp.com",
@@ -114,16 +114,21 @@
                 saveConfig: (configString) => {
                     try {
                         let jsonStr = configString;
+                        // Try to clean up JS object notation if user pasted raw JS
                         if (jsonStr.includes('=')) {
                             jsonStr = jsonStr.substring(jsonStr.indexOf('=') + 1).trim();
                         }
                         if (jsonStr.endsWith(';')) {
                             jsonStr = jsonStr.slice(0, -1);
                         }
+                        // Simple fix for unquoted keys if pasted from JS
+                        // This is a basic attempt, proper JSON is best
+                        if (!jsonStr.trim().startsWith('{')) throw new Error();
+
                         localStorage.setItem('boyoticom_firebase_config', jsonStr);
                         window.location.reload();
                     } catch (e) {
-                        alert("صيغة الكود غير صحيحة. تأكد من نسخ الكود بشكل صحيح.");
+                        alert("صيغة الكود غير صحيحة. يرجى نسخ كود JSON الصحيح من Firebase Console.");
                     }
                 },
                 resetConfig: () => {
@@ -177,7 +182,7 @@
     <script type="text/babel">
         const { useState, useEffect, useRef, useMemo } = React;
         
-        // Safely access Recharts to prevent crash if it fails to load
+        // Safely access Recharts
         const Recharts = window.Recharts || {};
         const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip: RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } = Recharts;
         const ChartsAvailable = !!window.Recharts;
@@ -584,7 +589,18 @@
                     await window.CRM_SERVICES.auth.login(email, password);
                 } catch (err) {
                     console.error(err);
-                    setError('خطأ في تسجيل الدخول. تأكد من البريد وكلمة المرور.');
+                    // Detailed Error Handling
+                    let msg = 'خطأ غير معروف';
+                    const code = err.code || err.message;
+                    
+                    if (code.includes('auth/invalid-credential')) msg = 'خطأ: البريد أو كلمة المرور غير صحيحة (auth/invalid-credential)';
+                    else if (code.includes('auth/user-not-found')) msg = 'خطأ: المستخدم غير موجود (auth/user-not-found)';
+                    else if (code.includes('auth/wrong-password')) msg = 'خطأ: كلمة المرور غير صحيحة (auth/wrong-password)';
+                    else if (code.includes('auth/too-many-requests')) msg = 'خطأ: محاولات كثيرة، يرجى الانتظار (auth/too-many-requests)';
+                    else if (code.includes('auth/api-key-not-valid')) msg = 'خطأ في مفتاح الربط (API Key). اضغط على الترس بالأعلى وأصلحه.';
+                    else msg = `حدث خطأ: ${code}`;
+                    
+                    setError(msg);
                     setLoading(false);
                 }
             };
@@ -604,7 +620,9 @@
                         <Logo />
                         <h1 className="text-3xl font-black text-brand-900 mb-1">بيوتكم العقارية</h1>
                         <p className="text-gray-500 mb-8 font-medium">نظام إدارة العملاء الداخلي</p>
-                        {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-6 text-sm border border-red-100 font-bold">{error}</div>}
+                        
+                        {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-6 text-sm border border-red-100 font-bold" dir="auto">{error}</div>}
+                        
                         <form onSubmit={handleLogin} className="space-y-4">
                             <input type="email" required placeholder="asaleh@boyoticom.com" className="w-full p-4 border border-gray-200 rounded-xl outline-none focus:border-brand-900 bg-gray-50 focus:bg-white date-en" value={email} onChange={e => setEmail(e.target.value)} />
                             <input type="password" required placeholder="••••••••" className="w-full p-4 border border-gray-200 rounded-xl outline-none focus:border-brand-900 bg-gray-50 focus:bg-white date-en" value={password} onChange={e => setPassword(e.target.value)} />
