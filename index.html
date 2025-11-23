@@ -169,10 +169,56 @@
 
     <!-- React Application -->
     <script type="text/babel">
-        const { useState, useEffect, useRef, useMemo } = React;
+        const { useState, useEffect, useRef, useMemo, Component } = React;
         const Recharts = window.Recharts || {};
         const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip: RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } = Recharts;
         const ChartsAvailable = !!window.Recharts;
+
+        // --- Error Boundary (The Safety Net) ---
+        class ErrorBoundary extends Component {
+            constructor(props) {
+                super(props);
+                this.state = { hasError: false, error: null };
+            }
+            static getDerivedStateFromError(error) {
+                return { hasError: true, error };
+            }
+            componentDidCatch(error, errorInfo) {
+                console.error("React Error:", error, errorInfo);
+            }
+            render() {
+                if (this.state.hasError) {
+                    return (
+                        <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gray-50 text-center dir-rtl">
+                            <div className="bg-white p-8 rounded-2xl shadow-xl max-w-lg w-full border border-red-100">
+                                <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <i data-lucide="alert-triangle" width="32" height="32"></i>
+                                </div>
+                                <h1 className="text-xl font-bold text-brand-900 mb-2">حدث خطأ غير متوقع</h1>
+                                <p className="text-gray-500 mb-6 text-sm">نعتذر عن ذلك. يرجى تحديث الصفحة أو التواصل مع الدعم الفني.</p>
+                                <pre className="text-[10px] bg-gray-100 p-3 rounded text-left dir-ltr overflow-auto mb-4 text-gray-600 border border-gray-200 max-h-32">
+                                    {this.state.error && this.state.error.toString()}
+                                </pre>
+                                <button onClick={() => window.location.reload()} className="w-full bg-brand-900 text-white py-3 rounded-xl font-bold hover:bg-brand-800 transition">
+                                    تحديث الصفحة
+                                </button>
+                            </div>
+                        </div>
+                    );
+                }
+                return this.props.children;
+            }
+        }
+
+        // --- Helpers for Safe Rendering ---
+        // Helper to safely convert any value to string for rendering to prevent Error #130
+        const safeStr = (val) => {
+            if (val === null || val === undefined) return '';
+            if (typeof val === 'object') return ''; // Prevent rendering objects
+            return String(val);
+        };
+        
+        const safeArr = (val) => Array.isArray(val) ? val : [];
 
         // --- Data Constants ---
         const STATUS_LIST = [
@@ -235,7 +281,9 @@
 
             const projectStats = {};
             clients.forEach(c => {
-                (c.projects || []).forEach(p => { projectStats[p] = (projectStats[p] || 0) + 1; });
+                safeArr(c.projects).forEach(p => { 
+                    if (typeof p === 'string') projectStats[p] = (projectStats[p] || 0) + 1; 
+                });
             });
             const projectData = Object.entries(projectStats).map(([name, value]) => ({ name, value }));
             const COLORS = ['#2C3340', '#CE9B52', '#E6BC76', '#94a3b8', '#cbd5e1'];
@@ -290,15 +338,16 @@
                     accessible = clients.filter(c => c.addedBy === currentUser.email || c.assignedTo === currentUser.name);
                 }
                 return accessible.filter(c => {
-                    const matchSearch = c.name.toLowerCase().includes(search.toLowerCase()) || c.phone.includes(search);
+                    const nameMatch = safeStr(c.name).toLowerCase().includes(search.toLowerCase());
+                    const phoneMatch = safeStr(c.phone).includes(search);
                     const matchStatus = filterStatus ? c.status === filterStatus : true;
                     const matchUser = filterUser ? c.assignedTo === filterUser : true;
-                    return matchSearch && matchStatus && matchUser;
+                    return (nameMatch || phoneMatch) && matchStatus && matchUser;
                 });
             }, [clients, search, filterStatus, filterUser, currentUser]);
 
             const openWhatsApp = (phone) => {
-                let clean = phone.replace(/\D/g, '');
+                let clean = safeStr(phone).replace(/\D/g, '');
                 if (clean.startsWith('0')) clean = '966' + clean.substring(1);
                 window.open(`https://wa.me/${clean}`, '_blank');
             };
@@ -317,7 +366,7 @@
                     <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4">
                         <div className="flex-1 relative"><Icon name="search" className="absolute top-3.5 right-4 text-gray-400" size={18} /><input className="w-full pr-12 pl-4 py-3 border border-gray-200 rounded-xl outline-none focus:border-brand-900 bg-gray-50 focus:bg-white transition" placeholder="بحث..." value={search} onChange={e => setSearch(e.target.value)} /></div>
                         <select className="px-4 py-3 border border-gray-200 rounded-xl outline-none bg-gray-50 focus:bg-white focus:border-brand-900" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}><option value="">كل الحالات</option>{STATUS_LIST.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}</select>
-                        {currentUser.role === 'admin' && <select className="px-4 py-3 border border-gray-200 rounded-xl outline-none bg-gray-50 focus:bg-white focus:border-brand-900" value={filterUser} onChange={e => setFilterUser(e.target.value)}><option value="">كل الموظفين</option>{users.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}</select>}
+                        {currentUser.role === 'admin' && <select className="px-4 py-3 border border-gray-200 rounded-xl outline-none bg-gray-50 focus:bg-white focus:border-brand-900" value={filterUser} onChange={e => setFilterUser(e.target.value)}><option value="">كل الموظفين</option>{users.map(u => <option key={u.id} value={u.name}>{safeStr(u.name)}</option>)}</select>}
                     </div>
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                         <div className="overflow-x-auto">
@@ -326,10 +375,10 @@
                                 <tbody className="divide-y divide-gray-50">
                                     {filteredClients.map(client => (
                                         <tr key={client.id} className="hover:bg-gray-50 transition-colors group">
-                                            <td className="p-5"><div className="font-bold text-brand-900">{client.name}</div><div className="flex items-center gap-2 mt-1"><span className="text-gray-500 text-xs date-en bg-gray-100 px-2 py-0.5 rounded">{client.phone}</span><button onClick={() => openWhatsApp(client.phone)} className="text-green-600"><Icon name="message-circle" size={16} /></button></div></td>
-                                            <td className="p-5"><div className="flex flex-col gap-1">{(client.projects || []).map((p, i) => <div key={i} className="text-sm text-gray-700 flex items-center gap-1"><Icon name="layers" size={12} className="text-accent-500"/> {p}</div>)}</div></td>
+                                            <td className="p-5"><div className="font-bold text-brand-900">{safeStr(client.name)}</div><div className="flex items-center gap-2 mt-1"><span className="text-gray-500 text-xs date-en bg-gray-100 px-2 py-0.5 rounded">{safeStr(client.phone)}</span><button onClick={() => openWhatsApp(client.phone)} className="text-green-600"><Icon name="message-circle" size={16} /></button></div></td>
+                                            <td className="p-5"><div className="flex flex-col gap-1">{safeArr(client.projects).map((p, i) => <div key={i} className="text-sm text-gray-700 flex items-center gap-1"><Icon name="layers" size={12} className="text-accent-500"/> {safeStr(p)}</div>)}</div></td>
                                             <td className="p-5"><StatusBadge statusKey={client.status} /></td>
-                                            <td className="p-5">{client.assignedTo ? <div className="flex items-center gap-2"><div className="w-6 h-6 rounded-full bg-brand-50 flex items-center justify-center text-[10px] font-bold text-brand-900">{client.assignedTo.charAt(0)}</div><span className="text-sm">{client.assignedTo}</span></div> : <span className="text-gray-300">-</span>}</td>
+                                            <td className="p-5">{client.assignedTo ? <div className="flex items-center gap-2"><div className="w-6 h-6 rounded-full bg-brand-50 flex items-center justify-center text-[10px] font-bold text-brand-900">{safeStr(client.assignedTo).charAt(0)}</div><span className="text-sm">{safeStr(client.assignedTo)}</span></div> : <span className="text-gray-300">-</span>}</td>
                                             <td className="p-5 text-sm text-gray-500 date-en">{new Date(client.dateAdded).toLocaleDateString('en-GB')}</td>
                                             <td className="p-5 text-center"><div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity"><button onClick={() => onEdit(client)} className="p-2 text-brand-600 hover:bg-brand-50 rounded-lg"><Icon name="edit" size={18} /></button>{currentUser.role === 'admin' && <button onClick={() => onDelete(client.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Icon name="trash-2" size={18} /></button>}</div></td>
                                         </tr>
@@ -405,13 +454,13 @@
                                 <div className="flex-1 overflow-hidden relative">
                                     {activeTab==='notes' && (
                                         <div className="h-full flex flex-col">
-                                            <div className="flex-1 overflow-y-auto p-5 space-y-4">{client.notes ? Object.entries(client.notes).map(([k,n])=>(<div key={k} className={`flex flex-col ${n.author===currentUser.name?'items-start':'items-end'}`}><div className={`max-w-[85%] p-3.5 rounded-2xl text-sm shadow-sm ${n.author===currentUser.name?'bg-white text-gray-800 rounded-tr-none border border-gray-100':'bg-brand-900 text-white rounded-tl-none'}`}><div className="flex justify-between items-center gap-4 mb-1 border-b border-white/10 pb-1"><span className="font-bold text-[10px]">{n.author}</span><span className="text-[10px] opacity-60 date-en">{new Date(n.timestamp).toLocaleDateString()}</span></div><p className="whitespace-pre-wrap">{n.text}</p></div></div>)):<div className="h-full flex items-center justify-center text-gray-300">لا توجد ملاحظات</div>}<div ref={notesEndRef}/></div>
+                                            <div className="flex-1 overflow-y-auto p-5 space-y-4">{client.notes ? Object.entries(client.notes).map(([k,n])=>(<div key={k} className={`flex flex-col ${n.author===currentUser.name?'items-start':'items-end'}`}><div className={`max-w-[85%] p-3.5 rounded-2xl text-sm shadow-sm ${n.author===currentUser.name?'bg-white text-gray-800 rounded-tr-none border border-gray-100':'bg-brand-900 text-white rounded-tl-none'}`}><div className="flex justify-between items-center gap-4 mb-1 border-b border-white/10 pb-1"><span className="font-bold text-[10px]">{safeStr(n.author)}</span><span className="text-[10px] opacity-60 date-en">{new Date(n.timestamp).toLocaleDateString()}</span></div><p className="whitespace-pre-wrap">{safeStr(n.text)}</p></div></div>)):<div className="h-full flex items-center justify-center text-gray-300">لا توجد ملاحظات</div>}<div ref={notesEndRef}/></div>
                                             <div className="p-4 border-t border-gray-100 bg-white flex gap-3"><input className="flex-1 bg-gray-50 rounded-xl px-4 outline-none border border-gray-100" placeholder="ملاحظة..." value={noteText} onChange={e=>setNoteText(e.target.value)} /><button onClick={()=>{if(noteText.trim()){onAddNote(client.id,noteText);setNoteText('')}}} className="p-3 bg-brand-900 text-white rounded-xl"><Icon name="send" size={18} className="rtl:rotate-180"/></button></div>
                                         </div>
                                     )}
                                     {activeTab==='tasks' && (
                                         <div className="h-full flex flex-col">
-                                            <div className="flex-1 overflow-y-auto p-5 space-y-3">{client.tasks ? Object.entries(client.tasks).map(([k,t])=>(<div key={k} className="flex items-center gap-3 p-4 bg-white border border-gray-100 rounded-xl"><button onClick={()=>onToggleTask(client.id,k,t.completed)} className={t.completed?'text-green-500':'text-gray-300'}>{t.completed?<Icon name="check-square" size={20}/>:<div className="w-5 h-5 border-2 border-current rounded-md"/>}</button><span className={`flex-1 text-sm ${t.completed?'line-through text-gray-400':'text-gray-800'}`}>{t.text}</span><button onClick={()=>onDeleteTask(client.id,k)} className="text-red-300 hover:text-red-500"><Icon name="trash-2" size={16}/></button></div>)):<div className="h-full flex items-center justify-center text-gray-300">لا توجد مهام</div>}</div>
+                                            <div className="flex-1 overflow-y-auto p-5 space-y-3">{client.tasks ? Object.entries(client.tasks).map(([k,t])=>(<div key={k} className="flex items-center gap-3 p-4 bg-white border border-gray-100 rounded-xl"><button onClick={()=>onToggleTask(client.id,k,t.completed)} className={t.completed?'text-green-500':'text-gray-300'}>{t.completed?<Icon name="check-square" size={20}/>:<div className="w-5 h-5 border-2 border-current rounded-md"/>}</button><span className={`flex-1 text-sm ${t.completed?'line-through text-gray-400':'text-gray-800'}`}>{safeStr(t.text)}</span><button onClick={()=>onDeleteTask(client.id,k)} className="text-red-300 hover:text-red-500"><Icon name="trash-2" size={16}/></button></div>)):<div className="h-full flex items-center justify-center text-gray-300">لا توجد مهام</div>}</div>
                                             <div className="p-4 border-t border-gray-100 bg-white flex gap-3"><input className="flex-1 bg-gray-50 rounded-xl px-4 outline-none border border-gray-100" placeholder="مهمة..." value={taskText} onChange={e=>setTaskText(e.target.value)} /><button onClick={()=>{if(taskText.trim()){onAddTask(client.id,taskText);setTaskText('')}}} className="p-3 bg-brand-900 text-white rounded-xl"><Icon name="plus" size={18}/></button></div>
                                         </div>
                                     )}
@@ -547,10 +596,12 @@
 
             return (
                 <Layout user={user} onLogout={window.CRM_SERVICES.auth.logout} currentPage={currentPage} onNavigate={setCurrentPage}>
-                    {currentPage === 'dashboard' && <Dashboard clients={clients} />}
-                    {currentPage === 'clients' && <ClientList clients={clients} users={users} currentUser={user} onAdd={() => setModalData({ open: true, client: undefined })} onEdit={(c) => setModalData({ open: true, client: c })} onDelete={(id) => confirm('حذف؟') && window.CRM_SERVICES.db.deleteClient(id)} />}
-                    {currentPage === 'users' && <div className="text-center p-10 bg-white rounded-2xl"><h2 className="text-xl font-bold mb-4 text-brand-900">الموظفين</h2><p className="text-gray-500 mb-4 text-sm">أضف حسابات جديدة من Firebase Authentication وسيظهرون هنا تلقائياً</p>{users.map(u=><div key={u.id} className="p-4 border mb-2 rounded-xl bg-gray-50 flex justify-between items-center"><div><div className="font-bold text-brand-900">{u.name}</div><div className="text-xs text-gray-500 date-en">{u.email}</div></div><span className="text-xs bg-brand-900 text-white px-3 py-1 rounded-lg">{u.role}</span></div>)}</div>}
-                    <ClientModal isOpen={modalData.open} onClose={() => setModalData({ open: false, client: undefined })} client={modalData.client} onSave={handleSave} users={users} currentUser={user} onAddNote={handleNote} onAddTask={handleTask} onToggleTask={toggleTask} onDeleteTask={deleteTask} />
+                    <ErrorBoundary>
+                        {currentPage === 'dashboard' && <Dashboard clients={clients} />}
+                        {currentPage === 'clients' && <ClientList clients={clients} users={users} currentUser={user} onAdd={() => setModalData({ open: true, client: undefined })} onEdit={(c) => setModalData({ open: true, client: c })} onDelete={(id) => confirm('حذف؟') && window.CRM_SERVICES.db.deleteClient(id)} />}
+                        {currentPage === 'users' && <div className="text-center p-10 bg-white rounded-2xl"><h2 className="text-xl font-bold mb-4 text-brand-900">الموظفين</h2><p className="text-gray-500 mb-4 text-sm">أضف حسابات جديدة من Firebase Authentication وسيظهرون هنا تلقائياً</p>{users.map(u=><div key={u.id} className="p-4 border mb-2 rounded-xl bg-gray-50 flex justify-between items-center"><div><div className="font-bold text-brand-900">{safeStr(u.name)}</div><div className="text-xs text-gray-500 date-en">{u.email}</div></div><span className="text-xs bg-brand-900 text-white px-3 py-1 rounded-lg">{u.role}</span></div>)}</div>}
+                        <ClientModal isOpen={modalData.open} onClose={() => setModalData({ open: false, client: undefined })} client={modalData.client} onSave={handleSave} users={users} currentUser={user} onAddNote={handleNote} onAddTask={handleTask} onToggleTask={toggleTask} onDeleteTask={deleteTask} />
+                    </ErrorBoundary>
                 </Layout>
             );
         };
@@ -560,4 +611,3 @@
     </script>
 </body>
 </html>
-  
