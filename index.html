@@ -58,6 +58,7 @@
       .animate-fade-in { animation: fadeIn 0.4s ease-out; }
       @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
       
+      /* Global Error Overlay */
       #global-error {
         display: none;
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -81,30 +82,23 @@
 </head>
 <body>
     <div id="global-error">
-        <div style="color: #e11d48; margin-bottom: 10px;">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="12" y1="8" x2="12" y2="12"></line>
-                <line x1="12" y1="16" x2="12.01" y2="16"></line>
-            </svg>
-        </div>
-        <h2 style="color: #2C3340; font-size: 24px; font-weight: bold; margin-bottom: 10px;">عذراً، حدث خطأ في التشغيل</h2>
-        <p id="error-msg" style="color: #666; margin-bottom: 20px; direction: ltr; background: #f1f5f9; padding: 10px; rounded: 8px; font-family: monospace; font-size: 12px; max-width: 90%; overflow: auto;"></p>
-        <button onclick="window.location.reload()" style="background: #2C3340; color: white; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold;">تحديث الصفحة</button>
+        <h2 style="color: #2C3340; font-size: 24px; font-weight: bold; margin-bottom: 10px;">حدث خطأ غير متوقع</h2>
+        <p id="error-msg" style="color: #666; margin-bottom: 20px; background: #f1f5f9; padding: 10px; rounded: 8px; font-family: monospace; font-size: 12px; direction: ltr;"></p>
+        <button onclick="window.location.reload()" style="background: #2C3340; color: white; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer;">تحديث الصفحة</button>
     </div>
 
     <div id="root"></div>
 
+    <!-- Error Handler Script -->
     <script>
         window.onerror = function(msg, url, line, col, error) {
             if (msg && typeof msg === 'string' && msg.includes('ResizeObserver')) return;
-            document.getElementById('global-error').style.display = 'flex';
-            document.getElementById('error-msg').innerText = msg + '\nLine: ' + line;
+            const errDiv = document.getElementById('global-error');
+            if(errDiv) {
+                errDiv.style.display = 'flex';
+                document.getElementById('error-msg').innerText = msg || 'Unknown Error';
+            }
             return false;
-        };
-        window.onunhandledrejection = function(event) {
-             document.getElementById('global-error').style.display = 'flex';
-             document.getElementById('error-msg').innerText = 'Promise Rejection: ' + event.reason;
         };
     </script>
 
@@ -114,6 +108,7 @@
         import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getDatabase, ref, set, push, onValue, update, remove, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
+        // المفاتيح الصحيحة لمشروع Boyoticom-15c4b
         const defaultConfig = {
           apiKey: "AIzaSyAOMnl9ikDMngZZH-eSa3ldqtDCh6qsy_U",
           authDomain: "boyoticom-15c4b.firebaseapp.com",
@@ -125,12 +120,11 @@
         };
 
         let firebaseConfig = defaultConfig;
+        // Allow overriding via LocalStorage for emergency fixes
         try {
             const savedConfig = localStorage.getItem('boyoticom_firebase_config');
-            if (savedConfig) {
-                firebaseConfig = JSON.parse(savedConfig);
-            }
-        } catch(e) { console.error("Error loading config", e); }
+            if (savedConfig) firebaseConfig = JSON.parse(savedConfig);
+        } catch(e) { console.error(e); }
 
         try {
             const app = initializeApp(firebaseConfig);
@@ -146,9 +140,7 @@
                         JSON.parse(jsonStr); 
                         localStorage.setItem('boyoticom_firebase_config', jsonStr);
                         window.location.reload();
-                    } catch (e) {
-                        alert("تنسيق الكود غير صحيح.");
-                    }
+                    } catch (e) { alert("تنسيق الكود غير صحيح."); }
                 },
                 resetConfig: () => {
                     localStorage.removeItem('boyoticom_firebase_config');
@@ -156,24 +148,18 @@
                 },
                 auth: {
                     login: async (email, password) => {
-                        try {
-                            const cred = await signInWithEmailAndPassword(auth, email, password);
-                            const userSnap = await get(ref(db, `users/${cred.user.uid}`));
-                            let userData = userSnap.exists() ? userSnap.val() : null;
-                            
-                            if (!userData) {
-                                const role = email.toLowerCase().includes('asaleh') ? 'admin' : 'employee';
-                                userData = { name: email.split('@')[0], email, role };
-                                await set(ref(db, `users/${cred.user.uid}`), userData);
-                            }
-                            return { id: cred.user.uid, email: cred.user.email, ...userData };
-                        } catch (error) {
-                            console.error("Login error:", error);
-                            throw error;
+                        const cred = await signInWithEmailAndPassword(auth, email, password);
+                        const userSnap = await get(ref(db, `users/${cred.user.uid}`));
+                        let userData = userSnap.exists() ? userSnap.val() : null;
+                        if (!userData) {
+                            const role = email.toLowerCase().includes('asaleh') ? 'admin' : 'employee';
+                            userData = { name: email.split('@')[0], email, role };
+                            await set(ref(db, `users/${cred.user.uid}`), userData);
                         }
+                        return { id: cred.user.uid, email: cred.user.email, ...userData };
                     },
                     logout: () => signOut(auth),
-                    onStateChange: (cb) => onAuthStateChanged(auth, async (u) => {
+                    onStateChange: (cb) => onAuthStateChanged(auth, (u) => {
                         if (u) {
                             onValue(ref(db, `users/${u.uid}`), (s) => {
                                 const d = s.val();
@@ -193,27 +179,24 @@
                     updateUserRole: (id, role) => update(ref(db, `users/${id}`), { role })
                 }
             };
-            window.dispatchEvent(new Event('firebase-ready'));
-        } catch (e) {
-            console.error("Init Error", e);
-        }
+            // Signal ready
+            setTimeout(() => window.dispatchEvent(new Event('firebase-ready')), 100);
+        } catch (e) { console.error("Firebase Init Error", e); }
     </script>
 
     <!-- React Application -->
     <script type="text/babel">
-        const { useState, useEffect, useRef, useMemo, Component } = React;
+        const { useState, useEffect, useRef, Component } = React;
         const Recharts = window.Recharts || {};
         const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip: RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } = Recharts;
         
-        // --- DATA SANITIZER (THE FIX FOR ERROR #130) ---
+        // --- DATA SANITIZERS (CRITICAL FOR FIXING ERROR #130) ---
+        // This function guarantees that ONLY a string is returned. No objects, no nulls.
         const safeStr = (val) => {
             if (val === null || val === undefined) return '';
             if (typeof val === 'string') return val;
             if (typeof val === 'number') return String(val);
-            if (typeof val === 'boolean') return val ? 'Yes' : 'No';
-            // If object, try to get common name fields or return empty
-            if (typeof val === 'object') return ''; 
-            return ''; 
+            return ''; // If it's an object or array, return empty string to prevent crash
         };
         
         const safeArr = (val) => {
@@ -225,19 +208,16 @@
 
         // --- Error Boundary ---
         class ErrorBoundary extends Component {
-            constructor(props) { super(props); this.state = { hasError: false, error: null }; }
-            static getDerivedStateFromError(error) { return { hasError: true, error }; }
+            constructor(props) { super(props); this.state = { hasError: false }; }
+            static getDerivedStateFromError(error) { return { hasError: true }; }
+            componentDidCatch(error, errorInfo) { console.error("React Error:", error, errorInfo); }
             render() {
                 if (this.state.hasError) {
                     return (
                         <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 text-center p-4">
-                            <div className="bg-white p-8 rounded-2xl shadow-lg border border-red-100 max-w-lg w-full">
-                                <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
-                                    <Icon name="alert-triangle" size={32} />
-                                </div>
-                                <h1 className="text-xl font-bold text-brand-900 mb-2">حدث خطأ غير متوقع</h1>
-                                <p className="text-gray-500 text-sm mb-4">نعتذر عن ذلك، يرجى تحديث الصفحة.</p>
-                                <button onClick={() => window.location.reload()} className="bg-brand-900 text-white px-6 py-3 rounded-xl w-full font-bold">تحديث الصفحة</button>
+                            <div className="bg-white p-8 rounded-2xl shadow-lg border border-red-100">
+                                <h1 className="text-xl font-bold text-brand-900 mb-2">حدث خطأ بسيط</h1>
+                                <button onClick={() => window.location.reload()} className="bg-brand-900 text-white px-6 py-2 rounded-lg">تحديث الصفحة</button>
                             </div>
                         </div>
                     );
@@ -293,9 +273,7 @@
             const [editingClient, setEditingClient] = useState(null);
             const [showConfig, setShowConfig] = useState(false);
             const [loginError, setLoginError] = useState('');
-            const [loginLoading, setLoginLoading] = useState(false);
             const [sidebarOpen, setSidebarOpen] = useState(false);
-
             const [email, setEmail] = useState('');
             const [password, setPassword] = useState('');
 
@@ -321,16 +299,11 @@
 
             const handleLogin = async (e) => {
                 e.preventDefault();
-                setLoginLoading(true);
                 setLoginError('');
                 try {
                     await window.CRM_SERVICES.auth.login(email, password);
                 } catch (err) {
-                    console.error(err);
-                    let msg = 'خطأ في البريد أو كلمة المرور';
-                    if (err.code) msg += ` (${err.code})`;
-                    setLoginError(msg);
-                    setLoginLoading(false);
+                    setLoginError('خطأ في تسجيل الدخول. تأكد من البيانات.');
                 }
             };
 
@@ -375,7 +348,7 @@
                             <form onSubmit={handleLogin} className="space-y-4">
                                 <input type="email" required placeholder="البريد الإلكتروني" className="w-full p-4 border rounded-xl outline-none focus:border-brand-900 bg-gray-50 focus:bg-white text-right date-en" value={email} onChange={e=>setEmail(e.target.value)} />
                                 <input type="password" required placeholder="كلمة المرور" className="w-full p-4 border rounded-xl outline-none focus:border-brand-900 bg-gray-50 focus:bg-white text-right date-en" value={password} onChange={e=>setPassword(e.target.value)} />
-                                <button disabled={loginLoading} className="w-full bg-brand-900 text-white p-4 rounded-xl font-bold hover:bg-brand-800 transition shadow-lg disabled:opacity-50">{loginLoading ? 'جاري الدخول...' : 'تسجيل الدخول'}</button>
+                                <button className="w-full bg-brand-900 text-white p-4 rounded-xl font-bold hover:bg-brand-800 transition shadow-lg">تسجيل الدخول</button>
                             </form>
                         </div>
                     </div>
@@ -427,7 +400,9 @@
                                 {page === 'clients' && <ClientList clients={clients} users={users} currentUser={user} onAdd={()=>{setEditingClient(null);setIsModalOpen(true)}} onEdit={(c)=>{setEditingClient(c);setIsModalOpen(true)}} />}
                                 {page === 'users' && (
                                     <div className="space-y-6">
-                                        <h2 className="text-2xl font-bold text-brand-900">الموظفين</h2>
+                                        <div className="flex justify-between items-center">
+                                            <h2 className="text-2xl font-bold text-brand-900">الموظفين</h2>
+                                        </div>
                                         <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
                                             {users.map(u => (
                                                 <div key={u.id} className="flex justify-between items-center p-4 border-b last:border-0 hover:bg-gray-50 transition">
@@ -456,7 +431,7 @@
                                                 </div>
                                             ))}
                                         </div>
-                                        <p className="text-center text-sm text-gray-400 mt-4">لإضافة موظف جديد، قم بإنشاء حساب له في Firebase Authentication، وسيظهر هنا تلقائياً عند تسجيل دخوله.</p>
+                                        <p className="text-center text-sm text-gray-400 mt-4">لإضافة موظف جديد، قم بإنشاء حساب له في Firebase Authentication.</p>
                                     </div>
                                 )}
                             </div>
@@ -664,4 +639,3 @@
     </script>
 </body>
 </html>
-    
