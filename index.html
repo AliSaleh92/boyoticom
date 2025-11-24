@@ -86,7 +86,6 @@
         const formatTime = (isoString) => new Date(isoString).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
         const formatDate = (isoString) => new Date(isoString).toLocaleDateString('en-GB');
         
-        // --- LOGO COMPONENT ---
         const Logo = ({ size = 40 }) => {
             const [imgError, setImgError] = useState(false);
             const logoPath = "/logo.png"; 
@@ -131,37 +130,105 @@
             );
         };
 
-        // --- SEPARATE COMPONENTS TO FIX RENDERING CRASH ---
+        // --- SEPARATED COMPONENTS TO FIX WHITE SCREEN ISSUE ---
         
+        // 1. Add User Form Component
+        const AddUserForm = ({ onSave }) => {
+            const [newUser, setNewUser] = useState({ name: '', email: '', uid: '' });
+            return (
+                <div className="space-y-4 animate-in fade-in">
+                    <div className="bg-yellow-50 p-3 rounded-lg text-xs text-yellow-700 mb-4"><strong>تنبيه:</strong> أنشئ المستخدم في Firebase Authentication أولاً وانسخ الـ UID.</div>
+                    <input className="w-full bg-gray-50 border rounded-lg p-3" value={newUser.name} onChange={e=>setNewUser({...newUser, name:e.target.value})} placeholder="الاسم" />
+                    <input className="w-full bg-gray-50 border rounded-lg p-3 text-right date-en" value={newUser.email} onChange={e=>setNewUser({...newUser, email:e.target.value})} placeholder="البريد" />
+                    <input className="w-full bg-gray-50 border rounded-lg p-3 text-right date-en font-mono" value={newUser.uid} onChange={e=>setNewUser({...newUser, uid:e.target.value})} placeholder="UID" />
+                    <button onClick={() => onSave(newUser)} className="w-full bg-brand-900 text-white py-3 rounded-xl font-bold mt-4">حفظ ومتابعة للصلاحيات</button>
+                </div>
+            );
+        };
+
+        // 2. User List Component
+        const UserListComponent = ({ users, onAddClick, onEditClick, currentUserId }) => {
+            // FIX: Show ALL users except ME (the current logged in admin)
+            const displayUsers = users.filter(u => u.id !== currentUserId);
+
+            return (
+                <div className="space-y-4 animate-in fade-in">
+                    <button onClick={onAddClick} className="w-full bg-brand-900 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow"><Icon name="user-plus"/> إضافة موظف جديد</button>
+                    <div className="space-y-2 mt-4">
+                        {displayUsers.map(u => (
+                            <div key={u.id} className="flex justify-between items-center p-4 bg-white border rounded-xl hover:shadow-md transition cursor-pointer" onClick={()=>onEditClick(u)}>
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white ${u.role==='supervisor'?'bg-accent-500':'bg-gray-400'}`}>{safeStr(u.name).charAt(0)}</div>
+                                    <div><div className="font-bold text-brand-900">{u.name}</div><div className="text-xs text-gray-500">{u.email}</div></div>
+                                </div>
+                                <div className="flex items-center gap-2 text-xs text-gray-400"><span className="bg-gray-100 px-2 py-1 rounded">{u.role==='supervisor'?'مشرف':'موظف'}</span><Icon name="chevron-left" size={16}/></div>
+                            </div>
+                        ))}
+                        {displayUsers.length === 0 && <div className="text-center py-10 text-gray-400">لا يوجد موظفين آخرين.</div>}
+                    </div>
+                </div>
+            );
+        };
+
+        // 3. Role Editor Component
         const RoleEditor = ({ user, onSave }) => {
             const [role, setRole] = useState(user.role || 'employee');
-            const [accessCRM, setAccessCRM] = useState(user.allowedApps?.includes('crm') ?? true);
-            const [accessAtt, setAccessAtt] = useState(user.allowedApps?.includes('attendance') ?? true);
+            // Permissions State
+            const p = user.permissions || {};
+            const [perms, setPerms] = useState({
+                crm_access: p.crm_access || false,
+                crm_reports: p.crm_reports || false,
+                crm_delete: p.crm_delete || false,
+                crm_export: p.crm_export || false,
+                att_access: p.att_access || false,
+                att_reports: p.att_reports || false,
+                att_zones: p.att_zones || false
+            });
+
+            const toggle = (key) => setPerms(prev => ({...prev, [key]: !prev[key]}));
 
             const handleSave = () => {
+                // Sync allowedApps array for backward compatibility
                 const apps = [];
-                if(accessCRM) apps.push('crm');
-                if(accessAtt) apps.push('attendance');
-                onSave(user.id, role, apps);
+                if(perms.crm_access) apps.push('crm');
+                if(perms.att_access) apps.push('attendance');
+                onSave(user.id, role, apps, perms);
             };
 
             return (
                 <div className="space-y-6 animate-in fade-in">
+                    {/* Role Selector */}
                     <div className="bg-gray-50 p-4 rounded-xl border">
-                        <h4 className="font-bold text-brand-900 mb-4">المستوى الوظيفي</h4>
+                        <h4 className="font-bold text-brand-900 mb-4">المسمى الوظيفي</h4>
                         <div className="grid grid-cols-2 gap-3">
                             <button onClick={()=>setRole('supervisor')} className={`p-3 rounded-xl border-2 font-bold transition ${role==='supervisor'?'border-accent-500 bg-accent-50 text-accent-700':'border-transparent bg-white text-gray-500'}`}>مشرف</button>
                             <button onClick={()=>setRole('employee')} className={`p-3 rounded-xl border-2 font-bold transition ${role==='employee'?'border-brand-900 bg-brand-50 text-brand-900':'border-transparent bg-white text-gray-500'}`}>موظف</button>
                         </div>
-                        <p className="text-xs text-gray-400 mt-2">
-                            {role==='supervisor' ? 'المشرف: صلاحيات كاملة في العملاء (إضافة، تعديل، حذف)، مشاهدة التقارير، ومتابعة الموظفين. (لا يمكنه التصدير/الاستيراد)' : 'الموظف: يرى فقط بياناته، يضيف ويعدل عملائه فقط. لا يحذف ولا يرى التقارير.'}
-                        </p>
                     </div>
 
-                    <div className="bg-gray-50 p-4 rounded-xl border">
-                        <h4 className="font-bold text-brand-900 mb-4">أنظمة الدخول</h4>
-                        <label className="flex items-center gap-3 p-2 cursor-pointer"><input type="checkbox" checked={accessCRM} onChange={()=>setAccessCRM(!accessCRM)} className="w-5 h-5 accent-brand-900"/><span className="font-bold">نظام CRM</span></label>
-                        <label className="flex items-center gap-3 p-2 cursor-pointer"><input type="checkbox" checked={accessAtt} onChange={()=>setAccessAtt(!accessAtt)} className="w-5 h-5 accent-brand-900"/><span className="font-bold">نظام الحضور</span></label>
+                    {/* CRM Permissions */}
+                    <div className="bg-crm-500/5 border border-crm-100 p-4 rounded-xl">
+                        <div className="flex items-center gap-2 mb-4 border-b border-crm-100 pb-2"><Icon name="layout-grid" className="text-crm-600"/><h4 className="font-bold text-crm-600">نظام CRM</h4></div>
+                        <label className="flex items-center gap-3 p-2 cursor-pointer"><input type="checkbox" checked={perms.crm_access} onChange={()=>toggle('crm_access')} className="w-5 h-5 accent-crm-600"/><span className="font-bold text-sm">دخول النظام</span></label>
+                        {perms.crm_access && (
+                            <div className="mr-8 mt-2 space-y-2 border-r-2 border-gray-200 pr-4">
+                                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={perms.crm_reports} onChange={()=>toggle('crm_reports')} className="w-4 h-4 accent-crm-600"/><span className="text-sm">مشاهدة التقارير</span></label>
+                                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={perms.crm_export} onChange={()=>toggle('crm_export')} className="w-4 h-4 accent-crm-600"/><span className="text-sm">تصدير (Excel)</span></label>
+                                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={perms.crm_delete} onChange={()=>toggle('crm_delete')} className="w-4 h-4 accent-red-500"/><span className="text-sm text-red-600">حذف العملاء</span></label>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Attendance Permissions */}
+                    <div className="bg-accent-500/5 border border-accent-100 p-4 rounded-xl">
+                        <div className="flex items-center gap-2 mb-4 border-b border-accent-100 pb-2"><Icon name="clock" className="text-accent-600"/><h4 className="font-bold text-accent-600">نظام الحضور</h4></div>
+                        <label className="flex items-center gap-3 p-2 cursor-pointer"><input type="checkbox" checked={perms.att_access} onChange={()=>toggle('att_access')} className="w-5 h-5 accent-accent-600"/><span className="font-bold text-sm">دخول النظام (تسجيل)</span></label>
+                        {perms.att_access && (
+                            <div className="mr-8 mt-2 space-y-2 border-r-2 border-gray-200 pr-4">
+                                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={perms.att_reports} onChange={()=>toggle('att_reports')} className="w-4 h-4 accent-accent-600"/><span className="text-sm">تقارير الموظفين</span></label>
+                                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={perms.att_zones} onChange={()=>toggle('att_zones')} className="w-4 h-4 accent-accent-600"/><span className="text-sm">إدارة المواقع</span></label>
+                            </div>
+                        )}
                     </div>
 
                     <button onClick={handleSave} className="w-full bg-brand-900 text-white py-3 rounded-xl font-bold">حفظ التغييرات</button>
@@ -169,32 +236,25 @@
             );
         };
 
-        // --- 2. ADMIN USER MANAGER ---
-        const PortalUserManager = ({ users, onClose }) => {
+        // --- ADMIN MANAGER CONTAINER ---
+        const PortalUserManager = ({ users, currentUser, onClose }) => {
             const [view, setView] = useState('list'); 
             const [editingUser, setEditingUser] = useState(null);
-            const [newUser, setNewUser] = useState({ name: '', email: '', uid: '' });
 
-            const startAddUser = () => { setNewUser({ name: '', email: '', uid: '' }); setView('add'); };
-            
-            const startEditUser = (u) => { 
-                setEditingUser(u); 
-                setView('permissions'); 
+            const handleSaveNewUser = (userData) => {
+                if(!userData.uid || !userData.name || !userData.email) return alert('جميع الحقول مطلوبة');
+                const initialPerms = { crm_access: true, att_access: true }; // Default basics
+                set(ref(db, `users/${userData.uid}`), { ...userData, role: 'employee', allowedApps: ['crm', 'attendance'], permissions: initialPerms }).then(() => {
+                    // Automatically open permissions editor for new user
+                    setEditingUser({ ...userData, id: userData.uid, role: 'employee', permissions: initialPerms });
+                    setView('permissions');
+                });
             };
 
-            const handleSavePermissions = (uid, role, apps) => {
-                update(ref(db, `users/${uid}`), { role: role, allowedApps: apps });
+            const handleSavePermissions = (uid, role, apps, perms) => {
+                update(ref(db, `users/${uid}`), { role: role, allowedApps: apps, permissions: perms });
                 setEditingUser(null);
                 setView('list');
-                alert("تم حفظ الصلاحيات بنجاح");
-            };
-
-            const saveNewUser = () => {
-                if(!newUser.uid || !newUser.name || !newUser.email) return alert('جميع الحقول مطلوبة');
-                set(ref(db, `users/${newUser.uid}`), { ...newUser, role: 'employee', allowedApps: ['crm', 'attendance'] }).then(() => {
-                    alert('تم إضافة الموظف. يمكنك الآن تعديل صلاحياته.');
-                    setView('list');
-                });
             };
 
             return (
@@ -209,35 +269,12 @@
                             <button onClick={onClose} className="bg-gray-100 p-2 rounded-full hover:bg-gray-200"><Icon name="x"/></button>
                         </div>
 
-                        {view === 'list' && (
-                            <div className="space-y-4 animate-in fade-in">
-                                <button onClick={startAddUser} className="w-full bg-brand-900 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow"><Icon name="user-plus"/> إضافة موظف جديد</button>
-                                <div className="space-y-2 mt-4">
-                                    {users.filter(u => u.role !== 'admin').map(u => (
-                                        <div key={u.id} className="flex justify-between items-center p-4 bg-white border rounded-xl hover:shadow-md transition cursor-pointer" onClick={()=>startEditUser(u)}>
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white ${u.role==='supervisor'?'bg-accent-500':'bg-gray-400'}`}>{safeStr(u.name).charAt(0)}</div>
-                                                <div><div className="font-bold text-brand-900">{u.name}</div><div className="text-xs text-gray-500">{u.email}</div></div>
-                                            </div>
-                                            <div className="flex items-center gap-2 text-xs text-gray-400"><span className="bg-gray-100 px-2 py-1 rounded">{u.role==='supervisor'?'مشرف':'موظف'}</span><Icon name="chevron-left" size={16}/></div>
-                                        </div>
-                                    ))}
-                                    {users.filter(u => u.role !== 'admin').length === 0 && <div className="text-center py-10 text-gray-400">لا يوجد موظفين. أضفهم باستخدام الزر أعلاه.</div>}
-                                </div>
-                            </div>
-                        )}
-
-                        {view === 'add' && (
-                            <div className="space-y-4 animate-in fade-in">
-                                <div className="bg-yellow-50 p-3 rounded-lg text-xs text-yellow-700 mb-4"><strong>تنبيه:</strong> أنشئ المستخدم في Firebase Authentication أولاً وانسخ الـ UID.</div>
-                                <input className="w-full bg-gray-50 border rounded-lg p-3" value={newUser.name} onChange={e=>setNewUser({...newUser, name:e.target.value})} placeholder="الاسم" />
-                                <input className="w-full bg-gray-50 border rounded-lg p-3 text-right date-en" value={newUser.email} onChange={e=>setNewUser({...newUser, email:e.target.value})} placeholder="البريد" />
-                                <input className="w-full bg-gray-50 border rounded-lg p-3 text-right date-en font-mono" value={newUser.uid} onChange={e=>setNewUser({...newUser, uid:e.target.value})} placeholder="UID" />
-                                <button onClick={saveNewUser} className="w-full bg-brand-900 text-white py-3 rounded-xl font-bold mt-4">حفظ</button>
-                            </div>
-                        )}
-
-                        {view === 'permissions' && editingUser && <RoleEditor user={editingUser} onSave={handleSavePermissions} />}
+                        {/* Using Key to force re-render and prevent white screen crashes */}
+                        <div key={view}>
+                            {view === 'list' && <UserListComponent users={users} currentUserId={currentUser.id} onAddClick={()=>setView('add')} onEditClick={(u)=>{setEditingUser(u);setView('permissions')}} />}
+                            {view === 'add' && <AddUserForm onSave={handleSaveNewUser} />}
+                            {view === 'permissions' && editingUser && <RoleEditor user={editingUser} onSave={handleSavePermissions} />}
+                        </div>
                     </div>
                 </div>
             );
@@ -247,9 +284,11 @@
         const Portal = ({ user, users, onSelectApp }) => {
             const [showUserManager, setShowUserManager] = useState(false);
             const isAdmin = user.role === 'admin';
-            const userApps = safeArr(user.allowedApps);
-            const canAccessCRM = isAdmin || userApps.includes('crm');
-            const canAccessAttendance = isAdmin || userApps.includes('attendance');
+            // Permissions Check
+            const p = user.permissions || {};
+            // Fallback for backward compatibility (if permissions obj doesn't exist yet)
+            const canAccessCRM = isAdmin || p.crm_access || (user.allowedApps && user.allowedApps.includes('crm'));
+            const canAccessAttendance = isAdmin || p.att_access || (user.allowedApps && user.allowedApps.includes('attendance'));
 
             return (
                 <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 relative">
@@ -272,7 +311,7 @@
                             ) : ( <div className="bg-gray-50 p-10 rounded-[2rem] border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-center opacity-60 grayscale cursor-not-allowed"><Icon name="lock" size={48} className="text-gray-400 mb-4"/><h2 className="text-2xl font-bold text-gray-500">الحضور والانصراف</h2><p className="text-gray-400 mt-2">غير مصرح لك بالدخول</p></div> )}
                         </div>
                     </div>
-                    {showUserManager && <PortalUserManager users={users} onClose={()=>setShowUserManager(false)} />}
+                    {showUserManager && <PortalUserManager users={users} currentUser={user} onClose={()=>setShowUserManager(false)} />}
                 </div>
             );
         };
@@ -300,40 +339,22 @@
 
         const CRMReports = ({ clients, users }) => {
             const [startDate, setStartDate] = useState(''); const [endDate, setEndDate] = useState(''); 
-            
             // Filter based on DATE ONLY
-            const filteredClients = clients.filter(c => { 
-                const d = c.dateAdded ? c.dateAdded.slice(0, 10) : ''; 
-                return (startDate ? d >= startDate : true) && (endDate ? d <= endDate : true); 
-            }); 
-            
+            const filteredClients = clients.filter(c => { const d = c.dateAdded ? c.dateAdded.slice(0, 10) : ''; return (startDate ? d >= startDate : true) && (endDate ? d <= endDate : true); }); 
             // Calculate stats based on ASSIGNED EMPLOYEE
-            const reportData = users.map(u => { 
-                const userClients = filteredClients.filter(c => c.assignedTo === u.name); 
-                return { 
-                    id: u.id, name: u.name, 
-                    total: userClients.length, 
-                    sold: userClients.filter(c => c.status === 'Sold').length, 
-                    deposit: userClients.filter(c => c.status === 'Deposit').length, 
-                    inProgress: userClients.filter(c => ['New','Contacted1','Contacted2','Contacted3'].includes(c.status)).length 
-                }; 
-            });
-            
+            const reportData = users.map(u => { const userClients = filteredClients.filter(c => c.assignedTo === u.name); return { id: u.id, name: u.name, total: userClients.length, sold: userClients.filter(c => c.status === 'Sold').length, deposit: userClients.filter(c => c.status === 'Deposit').length, inProgress: userClients.filter(c => ['New','Contacted1','Contacted2','Contacted3'].includes(c.status)).length }; });
             return ( <div className="space-y-6"><div className="bg-white p-4 rounded-xl shadow-sm border flex flex-wrap items-center gap-4"><div className="flex items-center gap-2"><span className="text-sm font-bold text-gray-500">من:</span><input type="date" className="bg-gray-50 border rounded-lg px-3 py-2 outline-none text-sm date-en" value={startDate} onChange={e=>setStartDate(e.target.value)} /></div><div className="flex items-center gap-2"><span className="text-sm font-bold text-gray-500">إلى:</span><input type="date" className="bg-gray-50 border rounded-lg px-3 py-2 outline-none text-sm date-en" value={endDate} onChange={e=>setEndDate(e.target.value)} /></div>{(startDate||endDate)&&<button onClick={()=>{setStartDate('');setEndDate('')}} className="text-xs text-red-500 hover:underline font-bold">إلغاء</button>}</div><div className="bg-white rounded-xl shadow-sm border overflow-hidden"><table className="w-full text-right"><thead className="bg-gray-50 text-sm font-bold text-brand-900"><tr><th className="p-4">الموظف</th><th className="p-4 text-center">إجمالي العملاء</th><th className="p-4 text-center text-emerald-600">تم البيع</th><th className="p-4 text-center text-amber-600">عربون</th><th className="p-4 text-center text-blue-600">قيد المتابعة</th></tr></thead><tbody className="divide-y">{reportData.map(r=><tr key={r.id} className="hover:bg-gray-50"><td className="p-4"><div className="font-bold text-brand-900">{r.name}</div></td><td className="p-4 text-center font-bold">{r.total}</td><td className="p-4 text-center font-bold text-emerald-600">{r.sold}</td><td className="p-4 text-center font-bold text-amber-600">{r.deposit}</td><td className="p-4 text-center font-bold text-blue-600">{r.inProgress}</td></tr>)}</tbody></table></div></div> );
         };
 
         const CRMClientList = ({ clients, users, currentUser, onAdd, onEdit, onImport }) => {
             const [search, setSearch] = useState(''); const [filterStatus, setFilterStatus] = useState(''); const [filterAssignee, setFilterAssignee] = useState(''); const [itemsPerPage, setItemsPerPage] = useState(10); const [currentPage, setCurrentPage] = useState(1); const [deleteId, setDeleteId] = useState(null); const assignees = useMemo(() => [...new Set(clients.map(c => c.assignedTo).filter(Boolean))], [clients]);
-            
             // 1. FILTER LOGIC
             const filtered = clients.filter(c => { 
-                // Employee sees only their own clients
+                // Employee sees only their own clients (added or assigned)
                 if(currentUser.role === 'employee' && c.assignedTo !== currentUser.name && c.addedBy !== currentUser.email) return false;
-                
                 const s = safeStr(search).toLowerCase(); 
                 return (safeStr(c.name).toLowerCase().includes(s) || safeStr(c.phone).includes(s)) && (filterStatus ? c.status === filterStatus : true) && (filterAssignee ? c.assignedTo === filterAssignee : true); 
             });
-
             useEffect(() => { setCurrentPage(1); }, [search, filterStatus, filterAssignee, itemsPerPage]); 
             const displayedClients = itemsPerPage === 'All' ? filtered : filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage); 
             
@@ -341,9 +362,11 @@
             const isAdmin = currentUser.role === 'admin';
             const isSupervisor = currentUser.role === 'supervisor';
             const isEmployee = currentUser.role === 'employee';
-
-            const canDelete = isAdmin || isSupervisor;
-            const canExport = isAdmin; // Only Admin (User asked: "Supervisor... except export")
+            
+            // Check custom permissions object (if present) or fall back to role
+            const p = currentUser.permissions || {};
+            const canDelete = isAdmin || p.crm_delete || (isSupervisor && p.crm_delete !== false);
+            const canExport = isAdmin || p.crm_export; 
             
             const handleExport = () => { const excelData = filtered.map(c => ({ 'الاسم': c.name, 'رقم الهاتف': c.phone, 'المشاريع': safeArr(c.projects).join(', '), 'الحالة': STATUS_LIST.find(s=>s.key===c.status)?.label||c.status, 'الموظف': c.assignedTo||'-', 'المنشئ': c.addedBy||'-', 'تاريخ الإضافة': c.dateAdded ? new Date(c.dateAdded).toLocaleDateString('en-GB') : '-' })); exportToExcel(excelData, "Clients"); }; 
             const handleImportFile = (e) => { const file = e.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = (evt) => { const bstr = evt.target.result; const wb = XLSX.read(bstr, {type:'binary'}); const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]); onImport(data); }; reader.readAsBinaryString(file); }; 
@@ -353,10 +376,7 @@
                 <div className="space-y-4">
                     <div className="flex justify-between items-center flex-wrap gap-4">
                         <div className="flex gap-2 flex-wrap mr-auto">
-                            {/* EXPORT/IMPORT BUTTONS: Only Admin */}
                             {canExport && (<><div className="relative overflow-hidden"><button className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2"><Icon name="upload" size={18}/> استيراد</button><input type="file" accept=".xlsx" onChange={handleImportFile} className="absolute inset-0 opacity-0 cursor-pointer"/></div><button onClick={handleExport} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2"><Icon name="file-spreadsheet" size={18}/> تصدير</button></>)}
-                            
-                            {/* ADD BUTTON: Everyone */}
                             <button onClick={onAdd} className="bg-brand-900 hover:bg-brand-800 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2"><Icon name="plus" size={18}/> إضافة عميل</button>
                         </div>
                     </div>
@@ -390,12 +410,9 @@
             const isSupervisor = user.role === 'supervisor';
             
             // PERMISSIONS:
-            // Reports: Admin & Supervisor
-            const canSeeReports = isAdmin || isSupervisor;
-            // Settings/Backup: Admin Only
+            const p = user.permissions || {};
+            const canSeeReports = isAdmin || p.crm_reports || isSupervisor;
             const canBackup = isAdmin; 
-            // User Management: Removed (Handled in Portal)
-            const canManageUsers = false; 
 
             return (
                 <div className="flex min-h-screen bg-slate-50">
