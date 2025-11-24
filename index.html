@@ -88,7 +88,7 @@
         const Logo = ({ size = 40 }) => (<div className="bg-brand-900 rounded-xl flex items-center justify-center text-accent-500" style={{ width: size, height: size }}><Icon name="box" size={size * 0.6} /></div>);
         const exportToExcel = (data, fileName) => { const worksheet = XLSX.utils.json_to_sheet(data); const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1"); XLSX.writeFile(workbook, `${fileName}.xlsx`); };
 
-        // --- CONSTANTS (FROM CRM) ---
+        // --- CONSTANTS ---
         const STATUS_LIST = [ { key: 'New', label: 'عميل جديد', color: 'bg-blue-50 text-blue-700 border-blue-200' }, { key: 'Contacted1', label: 'تم التواصل 1', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' }, { key: 'Contacted2', label: 'تم التواصل 2', color: 'bg-purple-50 text-purple-700 border-purple-200' }, { key: 'Contacted3', label: 'تم التواصل 3', color: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200' }, { key: 'Deposit', label: 'دفع عربون', color: 'bg-amber-50 text-amber-700 border-amber-200' }, { key: 'Sold', label: 'تم البيع', color: 'bg-emerald-100 text-emerald-800 border-emerald-200' }, { key: 'Cancelled', label: 'ملغي', color: 'bg-red-50 text-red-700 border-red-200' }, ];
         const PROJECT_LIST = ["بيوتكم 10", "بيوتكم 11", "بيوتكم 12", "بيوتكم 13", "بيوتكم 14"];
         const CLIENT_SOURCES = ["مباشر", "عقار", "اعلانات رقمية", "توصية صديق"];
@@ -115,40 +115,161 @@
             );
         };
 
-        // --- 2. PORTAL (LANDING) ---
-        const Portal = ({ user, onSelectApp }) => {
-            return (
-                <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-                    <div className="max-w-4xl w-full">
-                        <div className="flex justify-between items-center mb-10">
-                            <div className="flex items-center gap-4">
-                                <div className="w-16 h-16 bg-brand-900 rounded-full text-white flex items-center justify-center text-2xl font-bold">{safeStr(user.name).charAt(0)}</div>
-                                <div><h1 className="text-2xl font-black text-brand-900">مرحباً، {user.name} 👋</h1><p className="text-gray-500">اختر النظام للمتابعة</p></div>
+        // --- 2. ADMIN USER MANAGER (PORTAL ADMIN) ---
+        const PortalUserManager = ({ users, onClose }) => {
+            const [editingUser, setEditingUser] = useState(null);
+            
+            const handleUpdatePermissions = (uid, apps) => {
+                update(ref(db, `users/${uid}`), { allowedApps: apps });
+                setEditingUser(null);
+            };
+
+            const UserRow = ({ u }) => {
+                const allowed = safeArr(u.allowedApps);
+                const isCrm = allowed.includes('crm');
+                const isAtt = allowed.includes('attendance');
+                
+                if(editingUser === u.id) {
+                    const [localApps, setLocalApps] = useState(allowed);
+                    const toggle = (app) => setLocalApps(prev => prev.includes(app) ? prev.filter(x=>x!==app) : [...prev, app]);
+                    
+                    return (
+                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-200 mb-2 animate-in fade-in">
+                            <div className="flex justify-between items-start mb-3">
+                                <h4 className="font-bold text-brand-900">{u.name}</h4>
+                                <button onClick={()=>setEditingUser(null)}><Icon name="x" size={16}/></button>
                             </div>
-                            <button onClick={()=>signOut(auth)} className="text-red-500 hover:bg-red-50 px-4 py-2 rounded-lg font-bold flex items-center gap-2"><Icon name="log-out"/> تسجيل خروج</button>
+                            <div className="space-y-2 mb-4">
+                                <label className="flex items-center gap-2 cursor-pointer bg-white p-2 rounded border">
+                                    <input type="checkbox" checked={localApps.includes('crm')} onChange={()=>toggle('crm')} className="w-4 h-4 accent-brand-900"/>
+                                    <span className="text-sm">إدارة العملاء (CRM)</span>
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer bg-white p-2 rounded border">
+                                    <input type="checkbox" checked={localApps.includes('attendance')} onChange={()=>toggle('attendance')} className="w-4 h-4 accent-brand-900"/>
+                                    <span className="text-sm">الحضور والانصراف</span>
+                                </label>
+                            </div>
+                            <button onClick={()=>handleUpdatePermissions(u.id, localApps)} className="w-full bg-brand-900 text-white py-2 rounded-lg text-sm font-bold">حفظ الصلاحيات</button>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div onClick={() => onSelectApp('crm')} className="portal-card bg-white p-8 rounded-3xl shadow-lg border-2 border-transparent hover:border-crm-500 cursor-pointer group">
-                                <div className="w-20 h-20 bg-crm-500 text-white rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-crm-500/30 group-hover:scale-110"><Icon name="layout-grid" size={40} /></div>
-                                <h2 className="text-2xl font-bold text-gray-800 mb-2">إدارة العملاء (CRM)</h2>
-                                <p className="text-gray-500 leading-relaxed">نظامك المتكامل لإدارة العملاء والصفقات والتقارير.</p>
-                                <div className="mt-6 flex items-center text-crm-600 font-bold">الدخول للنظام <Icon name="arrow-left" className="mr-2"/></div>
+                    );
+                }
+
+                return (
+                    <div className="flex justify-between items-center p-4 bg-white border rounded-xl mb-2 hover:shadow-sm">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 font-bold">{safeStr(u.name).charAt(0)}</div>
+                            <div>
+                                <div className="font-bold text-brand-900 text-sm">{u.name}</div>
+                                <div className="text-xs text-gray-500">{u.email}</div>
                             </div>
-                            <div onClick={() => onSelectApp('attendance')} className="portal-card bg-white p-8 rounded-3xl shadow-lg border-2 border-transparent hover:border-accent-500 cursor-pointer group">
-                                <div className="w-20 h-20 bg-accent-500 text-white rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-accent-500/30 group-hover:scale-110"><Icon name="clock" size={40} /></div>
-                                <h2 className="text-2xl font-bold text-gray-800 mb-2">الحضور والانصراف</h2>
-                                <p className="text-gray-500 leading-relaxed">تسجيل الحضور اليومي وتتبع ساعات العمل.</p>
-                                <div className="mt-6 flex items-center text-accent-600 font-bold">الدخول للنظام <Icon name="arrow-left" className="mr-2"/></div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="flex gap-1">
+                                {isCrm && <span className="text-[10px] bg-crm-500 text-white px-2 py-0.5 rounded">CRM</span>}
+                                {isAtt && <span className="text-[10px] bg-accent-500 text-white px-2 py-0.5 rounded">حضور</span>}
+                                {!isCrm && !isAtt && <span className="text-[10px] bg-gray-200 text-gray-500 px-2 py-0.5 rounded">لا يوجد</span>}
                             </div>
+                            <button onClick={()=>setEditingUser(u.id)} className="p-2 hover:bg-gray-100 rounded-lg text-gray-500"><Icon name="settings" size={16}/></button>
+                        </div>
+                    </div>
+                );
+            };
+
+            return (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white w-full max-w-lg rounded-2xl p-6 shadow-2xl max-h-[85vh] overflow-y-auto">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-black text-brand-900 flex items-center gap-2"><Icon name="shield-check"/> إدارة صلاحيات الموظفين</h3>
+                            <button onClick={onClose} className="bg-gray-100 p-2 rounded-full hover:bg-gray-200"><Icon name="x"/></button>
+                        </div>
+                        <div className="space-y-2">
+                            {users.filter(u => u.role !== 'admin').map(u => <UserRow key={u.id} u={u} />)}
+                            {users.filter(u => u.role !== 'admin').length === 0 && <p className="text-center text-gray-400 py-4">لا يوجد موظفين لإدارتهم</p>}
                         </div>
                     </div>
                 </div>
             );
         };
 
-        // --- 3. CRM SYSTEM COMPONENTS (EXACTLY AS REQUESTED) ---
-        
-        // CRM Header with Notifications
+        // --- 3. PORTAL (LANDING) ---
+        const Portal = ({ user, users, onSelectApp }) => {
+            const [showUserManager, setShowUserManager] = useState(false);
+
+            // Logic for Access
+            const isAdmin = user.role === 'admin';
+            // If allowedApps is undefined (old data), assume access to everything if employee, or strict. 
+            // Let's default: Admin sees all. Employee sees only what's in allowedApps array.
+            const userApps = safeArr(user.allowedApps);
+            
+            const canAccessCRM = isAdmin || userApps.includes('crm');
+            const canAccessAttendance = isAdmin || userApps.includes('attendance');
+
+            return (
+                <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 relative">
+                    {/* Admin Toolbar */}
+                    {isAdmin && (
+                        <div className="absolute top-6 right-6 flex gap-2">
+                            <button onClick={()=>setShowUserManager(true)} className="bg-brand-900 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 shadow-lg hover:bg-brand-800 transition">
+                                <Icon name="users" size={18}/> إدارة الموظفين والصلاحيات
+                            </button>
+                        </div>
+                    )}
+
+                    <div className="max-w-4xl w-full">
+                        <div className="flex justify-between items-center mb-10">
+                            <div className="flex items-center gap-4">
+                                <div className="w-16 h-16 bg-brand-900 rounded-full text-white flex items-center justify-center text-2xl font-bold">{safeStr(user.name).charAt(0)}</div>
+                                <div>
+                                    <h1 className="text-2xl font-black text-brand-900">مرحباً، {user.name} 👋</h1>
+                                    <p className="text-gray-500">
+                                        {isAdmin ? 'لوحة تحكم المدير العام' : 'اختر النظام للمتابعة'}
+                                    </p>
+                                </div>
+                            </div>
+                            <button onClick={()=>signOut(auth)} className="text-red-500 hover:bg-red-50 px-4 py-2 rounded-lg font-bold flex items-center gap-2"><Icon name="log-out"/> تسجيل خروج</button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            {/* CRM Card */}
+                            {canAccessCRM ? (
+                                <div onClick={() => onSelectApp('crm')} className="portal-card bg-white p-8 rounded-3xl shadow-lg border-2 border-transparent hover:border-crm-500 cursor-pointer group">
+                                    <div className="w-20 h-20 bg-crm-500 text-white rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-crm-500/30 group-hover:scale-110"><Icon name="layout-grid" size={40} /></div>
+                                    <h2 className="text-2xl font-bold text-gray-800 mb-2">إدارة العملاء (CRM)</h2>
+                                    <p className="text-gray-500 leading-relaxed">نظامك المتكامل لإدارة العملاء والصفقات والتقارير.</p>
+                                    <div className="mt-6 flex items-center text-crm-600 font-bold">الدخول للنظام <Icon name="arrow-left" className="mr-2"/></div>
+                                </div>
+                            ) : (
+                                <div className="bg-gray-100 p-8 rounded-3xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-center opacity-70 grayscale">
+                                    <Icon name="lock" size={40} className="text-gray-400 mb-4"/>
+                                    <h2 className="text-xl font-bold text-gray-500">إدارة العملاء</h2>
+                                    <p className="text-sm text-gray-400 mt-2">ليس لديك صلاحية الوصول لهذا النظام</p>
+                                </div>
+                            )}
+
+                            {/* Attendance Card */}
+                            {canAccessAttendance ? (
+                                <div onClick={() => onSelectApp('attendance')} className="portal-card bg-white p-8 rounded-3xl shadow-lg border-2 border-transparent hover:border-accent-500 cursor-pointer group">
+                                    <div className="w-20 h-20 bg-accent-500 text-white rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-accent-500/30 group-hover:scale-110"><Icon name="clock" size={40} /></div>
+                                    <h2 className="text-2xl font-bold text-gray-800 mb-2">الحضور والانصراف</h2>
+                                    <p className="text-gray-500 leading-relaxed">تسجيل الحضور اليومي وتتبع ساعات العمل.</p>
+                                    <div className="mt-6 flex items-center text-accent-600 font-bold">الدخول للنظام <Icon name="arrow-left" className="mr-2"/></div>
+                                </div>
+                            ) : (
+                                <div className="bg-gray-100 p-8 rounded-3xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-center opacity-70 grayscale">
+                                    <Icon name="lock" size={40} className="text-gray-400 mb-4"/>
+                                    <h2 className="text-xl font-bold text-gray-500">الحضور والانصراف</h2>
+                                    <p className="text-sm text-gray-400 mt-2">ليس لديك صلاحية الوصول لهذا النظام</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {showUserManager && <PortalUserManager users={users} onClose={()=>setShowUserManager(false)} />}
+                </div>
+            );
+        };
+
+        // --- 4. CRM SYSTEM COMPONENTS ---
         const CRMHeader = ({ title, clients, onToggleSidebar }) => {
             const [showNotifs, setShowNotifs] = useState(false);
             const today = new Date().toISOString().slice(0,10);
@@ -259,7 +380,7 @@
         };
         const CRMBackup = ({ clients, users }) => ( <div className="bg-white p-6 rounded-xl shadow-sm border"><button onClick={() => { const data = { clients, users, date: new Date().toISOString() }; const blob = new Blob([JSON.stringify(data)], { type: "application/json" }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = "backup.json"; link.click(); }} className="w-full bg-brand-900 text-white p-3 rounded-lg flex justify-center gap-2"><Icon name="download" /> تحميل نسخة احتياطية</button></div> );
 
-        // --- 4. CRM APP CONTAINER ---
+        // --- 5. CRM APP CONTAINER ---
         const CRMApp = ({ user, clients, users, onSaveClient, onImport, onBack }) => {
             const [page, setPage] = useState('dashboard'); const [modalOpen, setModalOpen] = useState(false); const [editClient, setEditClient] = useState(null); const [sidebarOpen, setSidebarOpen] = useState(false);
             const getPageTitle = () => { switch(page) { case 'dashboard': return 'لوحة التحكم'; case 'clients': return 'العملاء والطلبات'; case 'reports': return 'التقارير'; case 'users': return 'الموظفين'; case 'backup': return 'الإعدادات'; default: return ''; }};
@@ -294,7 +415,7 @@
             );
         };
 
-        // --- 5. ATTENDANCE SYSTEM (PRESERVED) ---
+        // --- 6. ATTENDANCE SYSTEM (PRESERVED) ---
         const MapZoneEditor = ({ center, radius, onChange }) => {
             const mapRef = useRef(null); const mapObj = useRef(null); const markerObj = useRef(null); const circleObj = useRef(null);
             useEffect(() => {
@@ -354,7 +475,7 @@
             );
         };
 
-        // --- 6. MAIN ORCHESTRATOR ---
+        // --- 7. MAIN ORCHESTRATOR ---
         const App = () => {
             const [user, setUser] = useState(null); const [dbUser, setDbUser] = useState(null); const [currentApp, setCurrentApp] = useState('portal');
             const [clients, setClients] = useState([]); const [users, setUsers] = useState([]); const [zones, setZones] = useState([]); const [logs, setLogs] = useState([]); const [loading, setLoading] = useState(true);
@@ -387,7 +508,7 @@
 
             if (currentApp === 'crm') return <CRMApp user={dbUser} clients={clients} users={users} onSaveClient={handleSaveClient} onImport={handleImport} onBack={() => setCurrentApp('portal')} />;
             if (currentApp === 'attendance') return <AttendanceApp user={dbUser} zones={zones} usersList={users} logs={logs} onBack={() => setCurrentApp('portal')} />;
-            return <Portal user={dbUser} onSelectApp={setCurrentApp} />;
+            return <Portal user={dbUser} users={users} onSelectApp={setCurrentApp} />;
         };
 
         const root = window.ReactDOM.createRoot(document.getElementById('root'));
