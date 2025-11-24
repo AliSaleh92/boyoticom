@@ -215,10 +215,8 @@
         };
 
         // --- DASHBOARD COMPONENT ---
-        const Dashboard = ({ clients }) => {
+        const Dashboard = ({ clients, currentUser }) => {
             const totalClients = clients.length;
-            
-            // Calculate Today's Reminders
             const today = new Date().toISOString().slice(0,10);
             const reminders = clients.filter(c => c.nextFollowUp === today);
 
@@ -247,7 +245,6 @@
                             </div>
                             <div className="bg-white/10 p-4 rounded-full"><Icon name="users" size={32} /></div>
                         </div>
-                        {/* Today's Reminders Widget */}
                         <div className="bg-white p-6 rounded-2xl shadow-lg border border-amber-100 md:col-span-2 overflow-hidden relative">
                             <div className="absolute top-0 left-0 w-full h-1 bg-amber-400"></div>
                             <div className="flex justify-between items-start mb-4">
@@ -304,7 +301,7 @@
             );
         };
 
-        // --- REPORTS COMPONENT (NEW) ---
+        // --- REPORTS COMPONENT ---
         const Reports = ({ clients, users }) => {
             const reportData = users.map(u => {
                 const userClients = clients.filter(c => c.addedBy === u.email || c.assignedTo === u.name);
@@ -358,38 +355,27 @@
             const [search, setSearch] = useState('');
             const [filterStatus, setFilterStatus] = useState('');
             const [filterCreator, setFilterCreator] = useState('');
-            const [filterDate, setFilterDate] = useState(''); // New Date Filter
-            const [itemsPerPage, setItemsPerPage] = useState(10); // Pagination Limit
-            const [currentPage, setCurrentPage] = useState(1); // Current Page
+            const [filterDate, setFilterDate] = useState('');
+            const [itemsPerPage, setItemsPerPage] = useState(10);
+            const [currentPage, setCurrentPage] = useState(1);
             const [deleteId, setDeleteId] = useState(null);
             
             const creators = useMemo(() => [...new Set(clients.map(c => c.addedBy).filter(Boolean))], [clients]);
 
-            // Filter Logic
             const filtered = clients.filter(c => {
                 if(currentUser.role !== 'admin' && c.assignedTo !== currentUser.name && c.addedBy !== currentUser.email) return false;
                 const s = safeStr(search).toLowerCase();
                 const matchesSearch = safeStr(c.name).toLowerCase().includes(s) || safeStr(c.phone).includes(s);
                 const matchesStatus = filterStatus ? c.status === filterStatus : true;
                 const matchesCreator = filterCreator ? c.addedBy === filterCreator : true;
-                
-                // Date Filter Logic: Checks if dateAdded string starts with the selected YYYY-MM-DD
-                // dateAdded is ISO string (e.g., 2023-11-24T12:00:00.000Z)
                 const matchesDate = filterDate ? (c.dateAdded && c.dateAdded.startsWith(filterDate)) : true;
-
                 return matchesSearch && matchesStatus && matchesCreator && matchesDate;
             });
 
-            // Reset to page 1 when filters change
-            useEffect(() => {
-                setCurrentPage(1);
-            }, [search, filterStatus, filterCreator, filterDate, itemsPerPage]);
+            useEffect(() => { setCurrentPage(1); }, [search, filterStatus, filterCreator, filterDate, itemsPerPage]);
 
-            // Pagination Calculations
             const totalPages = itemsPerPage === 'All' ? 1 : Math.ceil(filtered.length / itemsPerPage);
-            const displayedClients = itemsPerPage === 'All' 
-                ? filtered 
-                : filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+            const displayedClients = itemsPerPage === 'All' ? filtered : filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
             const handleExport = () => {
                 const excelData = filtered.map(c => ({
@@ -405,7 +391,6 @@
                 exportToExcel(excelData, `Boyoticom_Clients_${new Date().toISOString().slice(0,10)}`);
             };
 
-            // Handle Excel Import (Admin Only)
             const handleImport = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
@@ -442,60 +427,26 @@
                              {currentUser.role === 'admin' && (
                                 <>
                                     <div className="relative overflow-hidden">
-                                        <button className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2">
-                                            <Icon name="upload" size={18}/> استيراد Excel
-                                        </button>
+                                        <button className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2"><Icon name="upload" size={18}/> استيراد Excel</button>
                                         <input type="file" accept=".xlsx, .xls" onChange={handleImport} className="absolute inset-0 opacity-0 cursor-pointer" title="رفع ملف إكسل" />
                                     </div>
-                                    <button onClick={handleExport} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2">
-                                        <Icon name="file-spreadsheet" size={18}/> تصدير Excel
-                                    </button>
+                                    <button onClick={handleExport} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2"><Icon name="file-spreadsheet" size={18}/> تصدير Excel</button>
                                 </>
                              )}
-                            <button onClick={onAdd} className="bg-brand-900 hover:bg-brand-800 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2">
-                                <Icon name="plus" size={18}/> إضافة عميل
-                            </button>
+                            <button onClick={onAdd} className="bg-brand-900 hover:bg-brand-800 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2"><Icon name="plus" size={18}/> إضافة عميل</button>
                         </div>
                     </div>
                     
-                    {/* FILTERS BAR */}
                     <div className="bg-white p-3 rounded-xl shadow-sm border flex flex-wrap gap-2 items-center">
                         <input className="flex-1 bg-gray-50 rounded-lg px-3 py-2 outline-none min-w-[150px] text-sm" placeholder="بحث..." value={search} onChange={e=>setSearch(e.target.value)} />
-                        
-                        {/* Date Filter */}
-                        <input 
-                            type="date" 
-                            className="bg-gray-50 rounded-lg px-3 py-2 outline-none text-sm date-en" 
-                            value={filterDate} 
-                            onChange={e=>setFilterDate(e.target.value)} 
-                            title="فلتر بتاريخ الإضافة"
-                        />
-
-                        <select className="bg-gray-50 rounded-lg px-3 py-2 outline-none text-sm" value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}>
-                            <option value="">كل الحالات</option>
-                            {STATUS_LIST.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}
-                        </select>
-                        
+                        <input type="date" className="bg-gray-50 rounded-lg px-3 py-2 outline-none text-sm date-en" value={filterDate} onChange={e=>setFilterDate(e.target.value)} title="فلتر بتاريخ الإضافة"/>
+                        <select className="bg-gray-50 rounded-lg px-3 py-2 outline-none text-sm" value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}><option value="">كل الحالات</option>{STATUS_LIST.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}</select>
                         {currentUser.role === 'admin' && (
-                            <select className="bg-gray-50 rounded-lg px-3 py-2 outline-none text-sm" value={filterCreator} onChange={e=>setFilterCreator(e.target.value)}>
-                                <option value="">كل المنشئين</option>
-                                {creators.map(c=><option key={c} value={c}>{c}</option>)}
-                            </select>
+                            <select className="bg-gray-50 rounded-lg px-3 py-2 outline-none text-sm" value={filterCreator} onChange={e=>setFilterCreator(e.target.value)}><option value="">كل المنشئين</option>{creators.map(c=><option key={c} value={c}>{c}</option>)}</select>
                         )}
-
-                        {/* Items Per Page Selector */}
                         <div className="flex items-center gap-1 bg-gray-50 rounded-lg px-2 border border-gray-100">
                             <span className="text-xs text-gray-500">عرض:</span>
-                            <select 
-                                className="bg-transparent py-2 outline-none text-sm font-bold" 
-                                value={itemsPerPage} 
-                                onChange={e => setItemsPerPage(e.target.value === 'All' ? 'All' : Number(e.target.value))}
-                            >
-                                <option value={10}>10</option>
-                                <option value={50}>50</option>
-                                <option value={100}>100</option>
-                                <option value="All">الكل</option>
-                            </select>
+                            <select className="bg-transparent py-2 outline-none text-sm font-bold" value={itemsPerPage} onChange={e => setItemsPerPage(e.target.value === 'All' ? 'All' : Number(e.target.value))}><option value={10}>10</option><option value={50}>50</option><option value={100}>100</option><option value="All">الكل</option></select>
                         </div>
                     </div>
 
@@ -524,63 +475,39 @@
                                                     <a href={getWhatsAppLink(c.phone)} target="_blank" rel="noreferrer" className="bg-green-50 text-green-600 hover:bg-green-100 p-1.5 rounded-full transition" title="واتساب"><Icon name="message-circle" size={14} /></a>
                                                 </div>
                                             </td>
-                                            <td className="p-4 text-sm text-gray-600">
-                                                {safeArr(c.projects).map((p,i)=><div key={i}>• {safeStr(p)}</div>)}
-                                            </td>
-                                            <td className="p-4 text-xs text-gray-500 date-en">
-                                                {c.dateAdded ? new Date(c.dateAdded).toLocaleDateString('en-GB') : '-'}
-                                            </td>
+                                            <td className="p-4 text-sm text-gray-600">{safeArr(c.projects).map((p,i)=><div key={i}>• {safeStr(p)}</div>)}</td>
+                                            <td className="p-4 text-xs text-gray-500 date-en">{c.dateAdded ? new Date(c.dateAdded).toLocaleDateString('en-GB') : '-'}</td>
                                             <td className="p-4"><span className={`px-2 py-1 rounded text-xs border ${STATUS_LIST.find(s=>s.key===c.status)?.color}`}>{STATUS_LIST.find(s=>s.key===c.status)?.label}</span></td>
                                             <td className="p-4 text-sm text-gray-600 date-en">{safeStr(c.addedBy)}</td>
                                             <td className="p-4 text-xs text-amber-600 font-bold date-en">{c.nextFollowUp || '-'}</td>
                                             <td className="p-4 flex items-center gap-2">
                                                 <button onClick={()=>onEdit(c)} className="text-brand-900 hover:bg-gray-100 p-2 rounded"><Icon name="edit" size={16}/></button>
-                                                {currentUser.role === 'admin' && (
-                                                    <button onClick={()=>setDeleteId(c.id)} className="text-red-500 hover:bg-red-50 p-2 rounded"><Icon name="trash-2" size={16}/></button>
-                                                )}
+                                                {currentUser.role === 'admin' && (<button onClick={()=>setDeleteId(c.id)} className="text-red-500 hover:bg-red-50 p-2 rounded"><Icon name="trash-2" size={16}/></button>)}
                                             </td>
                                         </tr>
-                                    )) : (
-                                        <tr><td colSpan="7" className="p-8 text-center text-gray-400">لا توجد نتائج مطابقة</td></tr>
-                                    )}
+                                    )) : (<tr><td colSpan="7" className="p-8 text-center text-gray-400">لا توجد نتائج مطابقة</td></tr>)}
                                 </tbody>
                             </table>
                         </div>
                         
-                        {/* PAGINATION CONTROLS */}
                         {totalPages > 1 && (
                             <div className="flex justify-between items-center p-4 bg-gray-50 border-t">
-                                <div className="text-xs text-gray-500">
-                                    عرض {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, filtered.length)} من {filtered.length}
-                                </div>
+                                <div className="text-xs text-gray-500">عرض {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, filtered.length)} من {filtered.length}</div>
                                 <div className="flex gap-2">
-                                    <button 
-                                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))} 
-                                        disabled={currentPage === 1}
-                                        className="px-3 py-1 rounded border bg-white hover:bg-gray-100 disabled:opacity-50 text-sm"
-                                    >
-                                        السابق
-                                    </button>
+                                    <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-3 py-1 rounded border bg-white hover:bg-gray-100 disabled:opacity-50 text-sm">السابق</button>
                                     <span className="px-3 py-1 text-sm font-bold flex items-center">{currentPage} / {totalPages}</span>
-                                    <button 
-                                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} 
-                                        disabled={currentPage === totalPages}
-                                        className="px-3 py-1 rounded border bg-white hover:bg-gray-100 disabled:opacity-50 text-sm"
-                                    >
-                                        التالي
-                                    </button>
+                                    <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-3 py-1 rounded border bg-white hover:bg-gray-100 disabled:opacity-50 text-sm">التالي</button>
                                 </div>
                             </div>
                         )}
                     </div>
 
-                    {/* Delete Confirmation Modal */}
                     {deleteId && (
                         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                             <div className="bg-white p-6 rounded-xl shadow-lg max-w-sm w-full text-center">
                                 <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4"><Icon name="trash-2" size={32}/></div>
                                 <h3 className="text-lg font-bold mb-2">هل أنت متأكد؟</h3>
-                                <p className="text-gray-500 mb-6">سيتم حذف هذا العميل نهائياً. لا يمكن التراجع عن هذا الإجراء.</p>
+                                <p className="text-gray-500 mb-6">سيتم حذف هذا العميل نهائياً.</p>
                                 <div className="flex gap-3 justify-center">
                                     <button onClick={confirmDelete} className="bg-red-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-700">نعم، حذف</button>
                                     <button onClick={()=>setDeleteId(null)} className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-bold hover:bg-gray-300">إلغاء</button>
@@ -623,9 +550,7 @@
                     <div className="flex justify-between items-center">
                         <h2 className="text-2xl font-bold text-brand-900">الموظفين</h2>
                         {currentUser.role === 'admin' && (
-                            <button onClick={()=>setShowAdd(true)} className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-bold flex items-center gap-2">
-                                <Icon name="user-plus" size={16}/> ربط حساب يدوياً
-                            </button>
+                            <button onClick={()=>setShowAdd(true)} className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-bold flex items-center gap-2"><Icon name="user-plus" size={16}/> ربط حساب يدوياً</button>
                         )}
                     </div>
                     
@@ -647,46 +572,24 @@
                             <div key={u.id} className="flex justify-between items-center p-4 border-b last:border-0 hover:bg-gray-50">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-500">{safeStr(u.name).charAt(0)}</div>
-                                    <div>
-                                        <div className="font-bold text-brand-900">{safeStr(u.name)}</div>
-                                        <div className="text-xs text-gray-500 date-en">{safeStr(u.email)}</div>
-                                    </div>
+                                    <div><div className="font-bold text-brand-900">{safeStr(u.name)}</div><div className="text-xs text-gray-500 date-en">{safeStr(u.email)}</div></div>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <span className={`px-3 py-1 rounded text-xs font-bold ${u.role==='admin' ? 'bg-brand-900 text-white' : 'bg-gray-100 text-gray-700'}`}>
-                                        {u.role === 'admin' ? 'مسؤول' : 'موظف مبيعات'}
-                                    </span>
-                                    {currentUser.role === 'admin' && u.email !== SUPER_ADMIN_EMAIL && (
-                                        <button onClick={()=>setEditingUser(u)} className="p-2 text-gray-400 hover:text-brand-900 hover:bg-gray-200 rounded transition" title="تعديل الموظف">
-                                            <Icon name="pencil" size={16} />
-                                        </button>
-                                    )}
+                                    <span className={`px-3 py-1 rounded text-xs font-bold ${u.role==='admin' ? 'bg-brand-900 text-white' : 'bg-gray-100 text-gray-700'}`}>{u.role === 'admin' ? 'مسؤول' : 'موظف مبيعات'}</span>
+                                    {currentUser.role === 'admin' && u.email !== SUPER_ADMIN_EMAIL && (<button onClick={()=>setEditingUser(u)} className="p-2 text-gray-400 hover:text-brand-900 hover:bg-gray-200 rounded transition" title="تعديل الموظف"><Icon name="pencil" size={16} /></button>)}
                                     {u.email === SUPER_ADMIN_EMAIL && <span className="p-2 text-gray-300" title="محمي"><Icon name="lock" size={16} /></span>}
                                 </div>
                             </div>
                         ))}
                     </div>
 
-                    {/* UNIFIED EDIT MODAL */}
                     {editingUser && (
                         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                             <div className="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl">
-                                <div className="flex justify-between mb-6">
-                                    <h3 className="font-bold text-lg text-brand-900">تعديل بيانات الموظف</h3>
-                                    <button onClick={()=>setEditingUser(null)}><Icon name="x"/></button>
-                                </div>
+                                <div className="flex justify-between mb-6"><h3 className="font-bold text-lg text-brand-900">تعديل بيانات الموظف</h3><button onClick={()=>setEditingUser(null)}><Icon name="x"/></button></div>
                                 <div className="space-y-4">
-                                    <div>
-                                        <label className="text-xs font-bold text-gray-500 block mb-1">الاسم</label>
-                                        <input className="w-full bg-gray-50 border rounded-lg p-3" value={editingUser.name} onChange={e=>setEditingUser({...editingUser, name:e.target.value})} />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-bold text-gray-500 block mb-1">الصلاحية</label>
-                                        <select className="w-full bg-gray-50 border rounded-lg p-3" value={editingUser.role} onChange={e=>setEditingUser({...editingUser, role:e.target.value})} disabled={currentUser.id === editingUser.id}>
-                                            <option value="employee">موظف مبيعات</option>
-                                            <option value="admin">مسؤول</option>
-                                        </select>
-                                    </div>
+                                    <div><label className="text-xs font-bold text-gray-500 block mb-1">الاسم</label><input className="w-full bg-gray-50 border rounded-lg p-3" value={editingUser.name} onChange={e=>setEditingUser({...editingUser, name:e.target.value})} /></div>
+                                    <div><label className="text-xs font-bold text-gray-500 block mb-1">الصلاحية</label><select className="w-full bg-gray-50 border rounded-lg p-3" value={editingUser.role} onChange={e=>setEditingUser({...editingUser, role:e.target.value})} disabled={currentUser.id === editingUser.id}><option value="employee">موظف مبيعات</option><option value="admin">مسؤول</option></select></div>
                                     <button onClick={handleUpdateUser} className="w-full bg-brand-900 text-white py-3 rounded-lg font-bold hover:bg-brand-800 transition">حفظ التغييرات</button>
                                 </div>
                             </div>
@@ -696,100 +599,53 @@
             );
         };
 
-        // --- CLIENT MODAL WITH NOTES & REMINDERS (UPDATED) ---
+        // --- CLIENT MODAL ---
         const ClientModal = ({ isOpen, onClose, client, onSave, users, currentUser }) => {
             const [d, setD] = useState({ name: '', phone: '', projects: [], status: 'New', assignedTo: currentUser.role==='employee'?currentUser.name:'', source: 'مباشر', nextFollowUp: '' });
             const [newNote, setNewNote] = useState('');
             const [notes, setNotes] = useState([]);
 
             useEffect(() => { 
-                if(client) {
-                    setD(client);
-                    setNotes(client.notes ? Object.values(client.notes) : []);
-                } else {
-                    setD({ name: '', phone: '', projects: [], status: 'New', assignedTo: currentUser.role==='employee'?currentUser.name:'', source: 'مباشر', nextFollowUp: '' });
-                    setNotes([]);
-                }
+                if(client) { setD(client); setNotes(client.notes ? Object.values(client.notes) : []); } 
+                else { setD({ name: '', phone: '', projects: [], status: 'New', assignedTo: currentUser.role==='employee'?currentUser.name:'', source: 'مباشر', nextFollowUp: '' }); setNotes([]); }
             }, [client]);
 
             const toggleProject = (p) => { const curr = safeArr(d.projects); setD({ ...d, projects: curr.includes(p) ? curr.filter(x=>x!==p) : [...curr, p] }); };
 
             const handleAddNote = () => {
                 if(!newNote.trim()) return;
-                const noteData = {
-                    text: newNote,
-                    date: new Date().toISOString(),
-                    author: currentUser.name
-                };
-                // Optimistic update
+                const noteData = { text: newNote, date: new Date().toISOString(), author: currentUser.name };
                 const updatedNotes = [...notes, noteData];
                 setNotes(updatedNotes);
-                // If client exists, save note immediately to DB as well
-                if(client) {
-                    push(ref(db, `clients/${client.id}/notes`), noteData);
-                } else {
-                    // If new client, we save notes along with client data onSave
-                    setD({...d, notes: updatedNotes});
-                }
+                if(client) push(ref(db, `clients/${client.id}/notes`), noteData);
+                else setD({...d, notes: updatedNotes});
                 setNewNote('');
             };
 
-            const handleSave = () => {
-                // If new client, attach current notes state
-                const finalData = client ? d : { ...d, notes: notes };
-                onSave(finalData);
-            }
+            const handleSave = () => { onSave(client ? d : { ...d, notes: notes }); }
 
             return (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                     <div className="bg-white w-full max-w-2xl rounded-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Left Column: Client Info */}
                         <div className="space-y-4">
                             <div className="flex justify-between mb-2"><h3 className="font-bold text-lg">{client?'تعديل العميل':'إضافة عميل'}</h3></div>
                             <input className="w-full bg-gray-50 border rounded-lg p-3" placeholder="الاسم" value={safeStr(d.name)} onChange={e=>setD({...d, name:e.target.value})} />
                             <input className="w-full bg-gray-50 border rounded-lg p-3 date-en text-right" placeholder="05xxxxxxxx" value={safeStr(d.phone)} onChange={e=>setD({...d, phone:e.target.value})} />
-                            <div>
-                                <label className="text-xs font-bold block mb-2">المشاريع</label>
-                                <div className="grid grid-cols-2 gap-2">{PROJECT_LIST.map(p => (<button key={p} onClick={()=>toggleProject(p)} className={`p-2 rounded text-xs border ${safeArr(d.projects).includes(p)?'bg-brand-900 text-white':'bg-white'}`}>{p}</button>))}</div>
-                            </div>
+                            <div><label className="text-xs font-bold block mb-2">المشاريع</label><div className="grid grid-cols-2 gap-2">{PROJECT_LIST.map(p => (<button key={p} onClick={()=>toggleProject(p)} className={`p-2 rounded text-xs border ${safeArr(d.projects).includes(p)?'bg-brand-900 text-white':'bg-white'}`}>{p}</button>))}</div></div>
                             <select className="w-full bg-gray-50 border rounded-lg p-3" value={safeStr(d.source)} onChange={e=>setD({...d, source:e.target.value})}>{CLIENT_SOURCES.map(s=><option key={s} value={s}>{s}</option>)}</select>
-                            
                             <input className="w-full bg-gray-50 border rounded-lg p-3" placeholder="رقم الوحدة" value={safeStr(d.unitNumber)} onChange={e=>setD({...d, unitNumber:e.target.value})} />
                             <select className="w-full bg-gray-50 border rounded-lg p-3" value={safeStr(d.status)} onChange={e=>setD({...d, status:e.target.value})}>{STATUS_LIST.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}</select>
-                            
                             <select className="w-full bg-gray-50 border rounded-lg p-3 disabled:opacity-50" value={safeStr(d.assignedTo)} onChange={e=>setD({...d, assignedTo:e.target.value})} disabled={currentUser.role!=='admin'}><option value="">بدون إسناد</option>{users.map(u=><option key={u.id} value={u.name}>{u.name}</option>)}</select>
-                            
-                            {/* Follow Up Date */}
-                            <div>
-                                <label className="text-xs font-bold block mb-1 text-amber-600">تاريخ المتابعة القادم</label>
-                                <input type="date" className="w-full bg-amber-50 border border-amber-200 rounded-lg p-3 date-en" value={d.nextFollowUp || ''} onChange={e=>setD({...d, nextFollowUp:e.target.value})} />
-                            </div>
+                            <div><label className="text-xs font-bold block mb-1 text-amber-600">تاريخ المتابعة القادم</label><input type="date" className="w-full bg-amber-50 border border-amber-200 rounded-lg p-3 date-en" value={d.nextFollowUp || ''} onChange={e=>setD({...d, nextFollowUp:e.target.value})} /></div>
                         </div>
-
-                        {/* Right Column: Notes & Actions */}
                         <div className="flex flex-col h-full">
                             <div className="flex justify-between mb-2"><h3 className="font-bold text-lg flex items-center gap-2"><Icon name="notebook-pen" size={18}/> الملاحظات</h3><button onClick={onClose} className="md:hidden"><Icon name="x"/></button></div>
                             <div className="flex-1 bg-gray-50 border rounded-xl p-4 mb-4 overflow-y-auto max-h-[400px] space-y-3">
                                 {notes.length === 0 && <div className="text-center text-gray-400 text-sm mt-10">لا توجد ملاحظات بعد</div>}
-                                {notes.map((n, i) => (
-                                    <div key={i} className="bg-white p-3 rounded-lg border shadow-sm text-sm">
-                                        <p className="text-gray-800 mb-2">{n.text}</p>
-                                        <div className="flex justify-between text-xs text-gray-400">
-                                            <span>{n.author}</span>
-                                            <span className="date-en">{new Date(n.date).toLocaleDateString('en-GB')}</span>
-                                        </div>
-                                    </div>
-                                ))}
+                                {notes.map((n, i) => (<div key={i} className="bg-white p-3 rounded-lg border shadow-sm text-sm"><p className="text-gray-800 mb-2">{n.text}</p><div className="flex justify-between text-xs text-gray-400"><span>{n.author}</span><span className="date-en">{new Date(n.date).toLocaleDateString('en-GB')}</span></div></div>))}
                             </div>
-                            <div className="flex gap-2 mb-6">
-                                <input className="flex-1 border rounded-lg p-2 text-sm" placeholder="اكتب ملاحظة..." value={newNote} onChange={e=>setNewNote(e.target.value)} onKeyPress={e=>e.key==='Enter'&&handleAddNote()} />
-                                <button onClick={handleAddNote} className="bg-gray-200 hover:bg-gray-300 p-2 rounded-lg"><Icon name="send" size={16}/></button>
-                            </div>
-                            
-                            <div className="mt-auto flex gap-3">
-                                <button onClick={onClose} className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-200">إلغاء</button>
-                                <button onClick={handleSave} className="flex-1 bg-brand-900 text-white py-3 rounded-lg font-bold hover:bg-brand-800 shadow-lg">حفظ البيانات</button>
-                            </div>
+                            <div className="flex gap-2 mb-6"><input className="flex-1 border rounded-lg p-2 text-sm" placeholder="اكتب ملاحظة..." value={newNote} onChange={e=>setNewNote(e.target.value)} onKeyPress={e=>e.key==='Enter'&&handleAddNote()} /><button onClick={handleAddNote} className="bg-gray-200 hover:bg-gray-300 p-2 rounded-lg"><Icon name="send" size={16}/></button></div>
+                            <div className="mt-auto flex gap-3"><button onClick={onClose} className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-200">إلغاء</button><button onClick={handleSave} className="flex-1 bg-brand-900 text-white py-3 rounded-lg font-bold hover:bg-brand-800 shadow-lg">حفظ البيانات</button></div>
                         </div>
                     </div>
                 </div>
@@ -797,29 +653,7 @@
         };
 
         // --- BACKUP & RESTORE ---
-        const BackupSettings = ({ clients, users }) => {
-            const [importing, setImporting] = useState(false);
-            const handleBackup = () => {
-                const data = { clients, users, backupDate: new Date().toISOString() };
-                const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                link.href = url;
-                link.download = `Boyoticom_Backup_${new Date().toISOString().slice(0,10)}.json`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            };
-            const handleRestore = (e) => { /* Same as before */ }; 
-            return (
-                <div className="space-y-6">
-                    <h2 className="text-2xl font-bold text-brand-900">الإعدادات والنسخ الاحتياطي</h2>
-                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                        <button onClick={handleBackup} className="w-full bg-brand-900 text-white p-3 rounded-lg font-bold flex justify-center gap-2"><Icon name="download" /> تحميل نسخة احتياطية</button>
-                    </div>
-                </div>
-            );
-        };
+        const BackupSettings = ({ clients, users }) => { /* ... Same code ... */ return (<div className="space-y-6"><h2 className="text-2xl font-bold text-brand-900">الإعدادات والنسخ الاحتياطي</h2><div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><button onClick={() => { const data = { clients, users, backupDate: new Date().toISOString() }; const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = `Boyoticom_Backup_${new Date().toISOString().slice(0,10)}.json`; document.body.appendChild(link); link.click(); document.body.removeChild(link); }} className="w-full bg-brand-900 text-white p-3 rounded-lg font-bold flex justify-center gap-2"><Icon name="download" /> تحميل نسخة احتياطية</button></div></div>); };
 
         // --- MAIN APP COMPONENT ---
         const App = () => {
@@ -832,15 +666,11 @@
             const [modalOpen, setModalOpen] = useState(false);
             const [editClient, setEditClient] = useState(null);
 
-            // Auth Listener
             useEffect(() => {
                 return onAuthStateChanged(auth, async (u) => {
-                    if (u) {
+                    if (u && !u.isAnonymous) {
                         const userRef = ref(db, `users/${u.uid}`);
-                        try {
-                            const snapshot = await get(userRef);
-                            if (!snapshot.exists()) await set(userRef, { name: 'مستخدم جديد', email: u.email, role: 'employee', createdAt: new Date().toISOString() });
-                        } catch (err) { console.error(err); }
+                        try { const snapshot = await get(userRef); if (!snapshot.exists()) await set(userRef, { name: 'مستخدم جديد', email: u.email, role: 'employee', createdAt: new Date().toISOString() }); } catch (err) { console.error(err); }
                         onValue(userRef, (s) => { const d = s.val(); setUser(d ? { id: u.uid, email: u.email, ...d } : { id: u.uid, email: u.email, name: 'User', role: 'employee' }); setLoading(false); });
                         onValue(ref(db, 'clients'), s => { try { setClients(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})).reverse() : []) } catch(e) { setClients([]) } });
                         onValue(ref(db, 'users'), s => { try { setUsers(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})) : []) } catch(e) { setUsers([]) } });
@@ -858,20 +688,20 @@
             const handleImport = (data) => {
                 if(!confirm(`سيتم استيراد ${data.length} عميل. هل أنت متأكد؟`)) return;
                 data.forEach(row => {
-                    const newClient = {
+                    push(ref(db, 'clients'), {
                         name: row['الاسم'] || row['Name'] || 'No Name',
                         phone: row['رقم الهاتف'] || row['Phone'] || '',
                         projects: [row['المشروع'] || ''],
                         status: 'New',
                         addedBy: user.email,
                         dateAdded: new Date().toISOString()
-                    };
-                    push(ref(db, 'clients'), newClient);
+                    });
                 });
                 alert('تم الاستيراد بنجاح!');
             };
 
             if (loading) return <div className="h-screen flex items-center justify-center"><div className="loader"></div></div>;
+            
             if (!user) return <Login />;
 
             return (
@@ -891,27 +721,18 @@
                                 )}
                             </nav>
                             <div className="border-t pt-4 mt-auto">
-                                <div className="flex items-center gap-2 mb-4">
-                                    <div className="w-8 h-8 rounded-full bg-brand-900 text-white flex items-center justify-center text-xs">{safeStr(user.name).charAt(0)}</div>
-                                    <div>
-                                        <div className="text-sm font-bold text-brand-900">{safeStr(user.name)}</div>
-                                        <div className="text-xs text-gray-500">{user.role==='admin'?'مسؤول':'موظف مبيعات'}</div>
-                                    </div>
-                                </div>
+                                <div className="flex items-center gap-2 mb-4"><div className="w-8 h-8 rounded-full bg-brand-900 text-white flex items-center justify-center text-xs">{safeStr(user.name).charAt(0)}</div><div><div className="text-sm font-bold text-brand-900">{safeStr(user.name)}</div><div className="text-xs text-gray-500">{user.role==='admin'?'مسؤول':'موظف مبيعات'}</div></div></div>
                                 <button onClick={()=>signOut(auth)} className="text-red-500 text-sm flex items-center gap-2 font-bold"><Icon name="log-out" size={16}/> خروج</button>
                             </div>
                         </div>
                     </aside>
                     
                     <main className="flex-1 flex flex-col h-screen overflow-hidden">
-                        <header className="md:hidden bg-white border-b p-4 flex justify-between items-center">
-                            <div className="flex items-center gap-2 font-bold text-brand-900"><Logo size={32} /> بيوتكم</div>
-                            <button onClick={()=>setSidebarOpen(true)}><Icon name="menu"/></button>
-                        </header>
+                        <header className="md:hidden bg-white border-b p-4 flex justify-between items-center"><div className="flex items-center gap-2 font-bold text-brand-900"><Logo size={32} /> بيوتكم</div><button onClick={()=>setSidebarOpen(true)}><Icon name="menu"/></button></header>
                         <div className="flex-1 overflow-y-auto p-6">
                             <div className="max-w-5xl mx-auto">
                                 <ErrorBoundary>
-                                    {page === 'dashboard' && <Dashboard clients={clients} />}
+                                    {page === 'dashboard' && <Dashboard clients={clients} currentUser={user} />}
                                     {page === 'clients' && <ClientList clients={clients} users={users} currentUser={user} onAdd={()=>{setEditClient(null);setModalOpen(true)}} onEdit={(c)=>{setEditClient(c);setModalOpen(true)}} onImport={handleImport} />}
                                     {page === 'reports' && <Reports clients={clients} users={users} />}
                                     {page === 'users' && <UsersList users={users} currentUser={user} />}
