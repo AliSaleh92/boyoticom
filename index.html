@@ -125,7 +125,7 @@
         // --- REACT COMPONENTS ---
         const { useState, useEffect, useMemo, Component } = window.React;
         const Recharts = window.Recharts || {};
-        const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip: RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } = Recharts;
+        const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip: RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } = Recharts;
 
         const Icon = ({ name, size = 20, className = "" }) => {
             useEffect(() => { if (window.lucide) window.lucide.createIcons(); }, [name]);
@@ -183,7 +183,7 @@
           { key: 'Sold', label: 'تم البيع', color: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
           { key: 'Cancelled', label: 'ملغي', color: 'bg-red-50 text-red-700 border-red-200' },
         ];
-        const PROJECT_LIST = ["مشروع العارض", "مشروع النرجس", "بيوتكم 1", "بيوتكم 2", "فلل الياسمين", "أراضي الخير"];
+        const PROJECT_LIST = ["بيوتكم 10", "بيوتكم 11", "بيوتكم 12", "بيوتكم 13", "بيوتكم 14"];
         const CLIENT_SOURCES = ["مباشر", "عقار", "اعلانات رقمية", "توصية صديق"];
 
         // --- LOGIN COMPONENT ---
@@ -213,7 +213,6 @@
                 <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4">
                     <div className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md text-center">
                         <div className="mx-auto flex items-center justify-center mb-6">
-                            {/* INCREASED LOGO SIZE */}
                             <Logo size={120} />
                         </div>
                         <h1 className="text-3xl font-black text-brand-900 mb-2">بيوتكم العقارية</h1>
@@ -232,46 +231,81 @@
             );
         };
 
-        // --- DASHBOARD COMPONENT ---
+        // --- DASHBOARD COMPONENT (UPDATED) ---
         const Dashboard = ({ clients }) => {
-            const statusData = STATUS_LIST.map(s => ({name: s.label, count: clients.filter(c => c.status === s.key).length})).filter(d=>d.count>0);
+            // Stats Calculations
+            const totalClients = clients.length;
+            
+            const statusData = STATUS_LIST.map(s => ({
+                name: s.label, 
+                count: clients.filter(c => c.status === s.key).length,
+                key: s.key,
+                color: s.color
+            }));
+
             const projectStats = {};
             clients.forEach(c => safeArr(c.projects).forEach(p => { const n = safeStr(p); if(n) projectStats[n] = (projectStats[n]||0)+1; }));
             const projectData = Object.entries(projectStats).map(([name, value]) => ({ name, value }));
-            const COLORS = ['#2C3340', '#CE9B52', '#E6BC76', '#94a3b8'];
+
+            const sourceStats = {};
+            clients.forEach(c => { const s = safeStr(c.source) || 'غير محدد'; sourceStats[s] = (sourceStats[s]||0)+1; });
+            const sourceData = Object.entries(sourceStats).map(([name, value]) => ({ name, value }));
+
+            const COLORS = ['#2C3340', '#CE9B52', '#E6BC76', '#94a3b8', '#475569', '#64748b'];
 
             return (
                 <div className="space-y-6">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-                            <div className="text-gray-500 text-xs font-bold mb-1">العملاء</div>
-                            <div className="text-2xl font-black text-brand-900">{clients.length}</div>
+                    {/* Top Row: Total Clients Card */}
+                    <div className="bg-gradient-to-r from-brand-900 to-brand-800 text-white p-6 rounded-2xl shadow-lg flex justify-between items-center">
+                        <div>
+                            <h2 className="text-lg font-bold opacity-80 mb-1">إجمالي العملاء</h2>
+                            <div className="text-4xl font-black">{totalClients}</div>
                         </div>
-                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-                            <div className="text-gray-500 text-xs font-bold mb-1">جديد</div>
-                            <div className="text-2xl font-black text-blue-600">{clients.filter(c=>c.status==='New').length}</div>
-                        </div>
-                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-                            <div className="text-gray-500 text-xs font-bold mb-1">تم البيع</div>
-                            <div className="text-2xl font-black text-emerald-600">{clients.filter(c=>c.status==='Sold').length}</div>
-                        </div>
-                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-                            <div className="text-gray-500 text-xs font-bold mb-1">ملغي</div>
-                            <div className="text-2xl font-black text-red-500">{clients.filter(c=>c.status==='Cancelled').length}</div>
+                        <div className="bg-white/10 p-4 rounded-full">
+                            <Icon name="users" size={32} />
                         </div>
                     </div>
+
+                    {/* Middle Row: All Status Cards */}
+                    <div>
+                        <h3 className="font-bold text-brand-900 mb-4 flex items-center gap-2"><Icon name="activity" size={18}/> حالة العملاء</h3>
+                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                            {statusData.map(s => (
+                                <div key={s.key} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-md transition">
+                                    <div className="text-xs text-gray-500 font-bold mb-2">{s.name}</div>
+                                    <div className="flex justify-between items-end">
+                                        <div className="text-2xl font-black text-brand-900">{s.count}</div>
+                                        <div className={`w-2 h-2 rounded-full ${s.color.split(' ')[0].replace('bg-', 'bg-')}`}></div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Bottom Row: Charts */}
                     {window.Recharts && (
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 lg:col-span-2">
-                                <h3 className="font-bold text-brand-900 mb-4">تحليل الحالات</h3>
+                            {/* Status Chart */}
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 lg:col-span-1">
+                                <h3 className="font-bold text-brand-900 mb-4 text-sm">توزيع المشاريع</h3>
                                 <div className="h-64" dir="ltr">
-                                    <ResponsiveContainer><BarChart data={statusData}><CartesianGrid strokeDasharray="3 3" vertical={false}/><XAxis dataKey="name"/><YAxis/><RechartsTooltip/><Bar dataKey="count" fill="#2C3340" radius={[4,4,0,0]} barSize={40}/></BarChart></ResponsiveContainer>
+                                    <ResponsiveContainer><PieChart><Pie data={projectData} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={5} dataKey="value">{projectData.map((e,i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}</Pie><Tooltip/><Legend/></PieChart></ResponsiveContainer>
                                 </div>
                             </div>
-                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                                <h3 className="font-bold text-brand-900 mb-4">توزيع المشاريع</h3>
+
+                            {/* Sources Chart (NEW) */}
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 lg:col-span-1">
+                                <h3 className="font-bold text-brand-900 mb-4 text-sm">مصادر العملاء</h3>
                                 <div className="h-64" dir="ltr">
-                                    <ResponsiveContainer><PieChart><Pie data={projectData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">{projectData.map((e,i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}</Pie><RechartsTooltip/></PieChart></ResponsiveContainer>
+                                    <ResponsiveContainer><PieChart><Pie data={sourceData} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={5} dataKey="value">{sourceData.map((e,i)=><Cell key={i} fill={COLORS[(i+2)%COLORS.length]}/>)}</Pie><Tooltip/><Legend/></PieChart></ResponsiveContainer>
+                                </div>
+                            </div>
+
+                            {/* Bar Chart */}
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 lg:col-span-1">
+                                <h3 className="font-bold text-brand-900 mb-4 text-sm">نظرة عامة</h3>
+                                <div className="h-64" dir="ltr">
+                                    <ResponsiveContainer><BarChart data={statusData}><CartesianGrid strokeDasharray="3 3" vertical={false}/><XAxis dataKey="name" hide/><YAxis/><Tooltip/><Bar dataKey="count" fill="#2C3340" radius={[4,4,0,0]} barSize={30}/></BarChart></ResponsiveContainer>
                                 </div>
                             </div>
                         </div>
@@ -295,7 +329,6 @@
 
             // Handle Excel Export
             const handleExport = () => {
-                // Formatting data for Excel
                 const excelData = filtered.map(c => ({
                     'الاسم': c.name,
                     'رقم الهاتف': c.phone,
@@ -309,14 +342,25 @@
                 exportToExcel(excelData, `Boyoticom_Clients_${new Date().toISOString().slice(0,10)}`);
             };
 
+            // Helper to create WhatsApp Link
+            const getWhatsAppLink = (phone) => {
+                let p = safeStr(phone).trim();
+                // Basic Saudi formatting: Remove leading 0, add 966
+                if(p.startsWith('0')) p = p.substring(1);
+                return `https://wa.me/966${p}`;
+            };
+
             return (
                 <div className="space-y-4">
                     <div className="flex justify-between items-center">
                         <h2 className="text-2xl font-bold text-brand-900">العملاء</h2>
                         <div className="flex gap-2">
-                             <button onClick={handleExport} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2">
-                                <Icon name="file-spreadsheet" size={18}/> تصدير Excel
-                            </button>
+                             {/* RESTRICT EXPORT TO ADMIN ONLY */}
+                             {currentUser.role === 'admin' && (
+                                <button onClick={handleExport} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2">
+                                    <Icon name="file-spreadsheet" size={18}/> تصدير Excel
+                                </button>
+                             )}
                             <button onClick={onAdd} className="bg-brand-900 hover:bg-brand-800 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2">
                                 <Icon name="plus" size={18}/> إضافة عميل
                             </button>
@@ -331,16 +375,41 @@
                     </div>
                     <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
                         <table className="w-full text-right">
-                            <thead className="bg-gray-50 text-sm font-bold text-brand-900"><tr><th className="p-4">الاسم</th><th className="p-4">المشاريع</th><th className="p-4">الحالة</th><th className="p-4">المسؤول</th><th className="p-4"></th></tr></thead>
+                            <thead className="bg-gray-50 text-sm font-bold text-brand-900">
+                                <tr>
+                                    <th className="p-4">الاسم</th>
+                                    <th className="p-4">المشاريع</th>
+                                    <th className="p-4">تاريخ الإضافة</th> 
+                                    <th className="p-4">الحالة</th>
+                                    <th className="p-4">المسؤول</th>
+                                    <th className="p-4"></th>
+                                </tr>
+                            </thead>
                             <tbody className="divide-y">
                                 {filtered.map(c => (
                                     <tr key={c.id} className="hover:bg-gray-50 group">
                                         <td className="p-4">
                                             <div className="font-bold text-brand-900">{safeStr(c.name)}</div>
-                                            <div className="text-xs text-gray-500 date-en">{safeStr(c.phone)}</div>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className="text-xs text-gray-500 date-en">{safeStr(c.phone)}</span>
+                                                
+                                                {/* Call Button */}
+                                                <a href={`tel:${safeStr(c.phone)}`} className="bg-blue-50 text-blue-600 hover:bg-blue-100 p-1.5 rounded-full transition" title="اتصال">
+                                                    <Icon name="phone" size={14} />
+                                                </a>
+
+                                                {/* WhatsApp Button */}
+                                                <a href={getWhatsAppLink(c.phone)} target="_blank" rel="noreferrer" className="bg-green-50 text-green-600 hover:bg-green-100 p-1.5 rounded-full transition" title="واتساب">
+                                                    <Icon name="message-circle" size={14} />
+                                                </a>
+                                            </div>
                                         </td>
                                         <td className="p-4 text-sm text-gray-600">
                                             {safeArr(c.projects).map((p,i)=><div key={i}>• {safeStr(p)}</div>)}
+                                        </td>
+                                        {/* Date Added Cell */}
+                                        <td className="p-4 text-xs text-gray-500">
+                                            {c.dateAdded ? new Date(c.dateAdded).toLocaleDateString('ar-SA') : '-'}
                                         </td>
                                         <td className="p-4"><span className={`px-2 py-1 rounded text-xs border ${STATUS_LIST.find(s=>s.key===c.status)?.color}`}>{STATUS_LIST.find(s=>s.key===c.status)?.label}</span></td>
                                         <td className="p-4 text-sm">{safeStr(c.assignedTo) || '-'}</td>
@@ -386,7 +455,6 @@
                     try {
                         const data = JSON.parse(event.target.result);
                         if (data.clients) {
-                            // Loop and update/add clients
                             for (const c of data.clients) {
                                 if (c.id) {
                                     await update(ref(db, `clients/${c.id}`), c);
@@ -619,7 +687,6 @@
                     <aside className={`fixed md:sticky top-0 h-screen w-72 bg-white border-l z-50 transition-transform ${sidebarOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}`}>
                         <div className="p-6 h-full flex flex-col">
                             <div className="flex items-center gap-2 mb-8 text-brand-900 font-black text-xl">
-                                {/* INCREASED LOGO SIZE IN SIDEBAR */}
                                 <Logo size={40} />
                                 بيوتكم
                             </div>
