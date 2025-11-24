@@ -109,6 +109,30 @@
             return <i data-lucide={name} width={size} height={size} className={className}></i>;
         };
 
+        // --- LOGO COMPONENT (Handles Image or Icon Fallback) ---
+        const Logo = ({ size = 40, className = "" }) => {
+            const [imgError, setImgError] = useState(false);
+
+            if (imgError) {
+                // Fallback Icon if image fails
+                return (
+                    <div className={`bg-brand-900 rounded-2xl flex items-center justify-center text-accent-500 ${className}`} style={{ width: size, height: size }}>
+                        <Icon name="building-2" size={size * 0.6} />
+                    </div>
+                );
+            }
+
+            return (
+                <img 
+                    src="logo.png" 
+                    alt="Boyoticom" 
+                    className={`object-contain ${className}`} 
+                    style={{ width: size, height: size }}
+                    onError={() => setImgError(true)}
+                />
+            );
+        };
+
         // --- ERROR BOUNDARY ---
         class ErrorBoundary extends Component {
             constructor(props) { super(props); this.state = { hasError: false }; }
@@ -166,8 +190,8 @@
             return (
                 <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4">
                     <div className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md text-center">
-                        <div className="w-20 h-20 bg-brand-900 rounded-2xl mx-auto flex items-center justify-center text-accent-500 mb-6">
-                            <Icon name="building-2" size={40} />
+                        <div className="mx-auto flex items-center justify-center mb-6">
+                            <Logo size={80} />
                         </div>
                         <h1 className="text-3xl font-black text-brand-900 mb-2">بيوتكم العقارية</h1>
                         <p className="text-gray-500 mb-8">نظام إدارة العملاء الداخلي</p>
@@ -474,7 +498,10 @@
                 <div className="min-h-screen flex">
                     <aside className={`fixed md:sticky top-0 h-screen w-72 bg-white border-l z-50 transition-transform ${sidebarOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}`}>
                         <div className="p-6 h-full flex flex-col">
-                            <div className="flex items-center gap-2 mb-8 text-brand-900 font-black text-xl"><Icon name="building-2" /> بيوتكم</div>
+                            <div className="flex items-center gap-2 mb-8 text-brand-900 font-black text-xl">
+                                <Logo size={32} />
+                                بيوتكم
+                            </div>
                             <nav className="flex-1 space-y-1">
                                 <button onClick={()=>{setPage('dashboard');setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='dashboard'?'bg-brand-900 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="layout-dashboard"/> لوحة التحكم</button>
                                 <button onClick={()=>{setPage('clients');setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='clients'?'bg-brand-900 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="users"/> العملاء والطلبات</button>
@@ -495,7 +522,10 @@
                     
                     <main className="flex-1 flex flex-col h-screen overflow-hidden">
                         <header className="md:hidden bg-white border-b p-4 flex justify-between items-center">
-                            <div className="font-bold text-brand-900">بيوتكم</div>
+                            <div className="flex items-center gap-2 font-bold text-brand-900">
+                                <Logo size={24} />
+                                بيوتكم
+                            </div>
                             <button onClick={()=>setSidebarOpen(true)}><Icon name="menu"/></button>
                         </header>
                         <div className="flex-1 overflow-y-auto p-6">
