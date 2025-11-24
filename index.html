@@ -36,6 +36,9 @@
     <script src="https://unpkg.com/recharts@2.12.0/umd/Recharts.min.js"></script>
     <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
 
+    <!-- SheetJS for Excel Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
     <style>
       body { font-family: 'Cairo', sans-serif; background-color: #f8fafc; color: #2C3340; }
       .date-en { font-family: sans-serif; direction: ltr; display: inline-block; }
@@ -99,6 +102,26 @@
             return [];
         };
 
+        // --- EXCEL EXPORT FUNCTION ---
+        const exportToExcel = (data, fileName) => {
+            const worksheet = XLSX.utils.json_to_sheet(data);
+            const workbook = XLSX.utils.book_new();
+            
+            // Adjust column widths (Optional but good for Arabic)
+            const wscols = [
+                {wch: 20}, // A
+                {wch: 15}, // B
+                {wch: 20}, // C
+                {wch: 15}, // D
+                {wch: 20}, // E
+                {wch: 20}, // F
+            ];
+            worksheet['!cols'] = wscols;
+
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Clients");
+            XLSX.writeFile(workbook, `${fileName}.xlsx`);
+        };
+
         // --- REACT COMPONENTS ---
         const { useState, useEffect, useMemo, Component } = window.React;
         const Recharts = window.Recharts || {};
@@ -109,12 +132,11 @@
             return <i data-lucide={name} width={size} height={size} className={className}></i>;
         };
 
-        // --- LOGO COMPONENT (Handles Image or Icon Fallback) ---
+        // --- LOGO COMPONENT ---
         const Logo = ({ size = 40, className = "" }) => {
             const [imgError, setImgError] = useState(false);
 
             if (imgError) {
-                // Fallback Icon if image fails
                 return (
                     <div className={`bg-brand-900 rounded-2xl flex items-center justify-center text-accent-500 ${className}`} style={{ width: size, height: size }}>
                         <Icon name="building-2" size={size * 0.6} />
@@ -191,7 +213,8 @@
                 <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4">
                     <div className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md text-center">
                         <div className="mx-auto flex items-center justify-center mb-6">
-                            <Logo size={80} />
+                            {/* INCREASED LOGO SIZE */}
+                            <Logo size={120} />
                         </div>
                         <h1 className="text-3xl font-black text-brand-900 mb-2">بيوتكم العقارية</h1>
                         <p className="text-gray-500 mb-8">نظام إدارة العملاء الداخلي</p>
@@ -270,11 +293,34 @@
                 return matchesSearch && matchesStatus;
             });
 
+            // Handle Excel Export
+            const handleExport = () => {
+                // Formatting data for Excel
+                const excelData = filtered.map(c => ({
+                    'الاسم': c.name,
+                    'رقم الهاتف': c.phone,
+                    'المشاريع': safeArr(c.projects).join(', '),
+                    'الحالة': STATUS_LIST.find(s=>s.key===c.status)?.label || c.status,
+                    'المسؤول': c.assignedTo || 'غير مسند',
+                    'المصدر': c.source || '-',
+                    'رقم الوحدة': c.unitNumber || '-',
+                    'تاريخ الإضافة': c.dateAdded ? new Date(c.dateAdded).toLocaleDateString('ar-SA') : '-'
+                }));
+                exportToExcel(excelData, `Boyoticom_Clients_${new Date().toISOString().slice(0,10)}`);
+            };
+
             return (
                 <div className="space-y-4">
                     <div className="flex justify-between items-center">
                         <h2 className="text-2xl font-bold text-brand-900">العملاء</h2>
-                        <button onClick={onAdd} className="bg-brand-900 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2"><Icon name="plus" size={18}/> إضافة</button>
+                        <div className="flex gap-2">
+                             <button onClick={handleExport} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2">
+                                <Icon name="file-spreadsheet" size={18}/> تصدير Excel
+                            </button>
+                            <button onClick={onAdd} className="bg-brand-900 hover:bg-brand-800 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2">
+                                <Icon name="plus" size={18}/> إضافة عميل
+                            </button>
+                        </div>
                     </div>
                     <div className="bg-white p-3 rounded-xl shadow-sm border flex gap-2">
                         <input className="flex-1 bg-gray-50 rounded-lg px-3 py-2 outline-none" placeholder="بحث..." value={search} onChange={e=>setSearch(e.target.value)} />
@@ -308,11 +354,115 @@
             );
         };
 
-        // --- USERS COMPONENT (Updated with Edit Name) ---
+        // --- BACKUP & RESTORE COMPONENT ---
+        const BackupSettings = ({ clients, users }) => {
+            const [importing, setImporting] = useState(false);
+
+            const handleBackup = () => {
+                const data = {
+                    clients: clients,
+                    users: users,
+                    backupDate: new Date().toISOString()
+                };
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = `Boyoticom_Backup_${new Date().toISOString().slice(0,10)}.json`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+
+            const handleRestore = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                if (!confirm("تحذير: استعادة النسخة الاحتياطية ستقوم بدمج البيانات. هل أنت متأكد؟")) return;
+
+                const reader = new FileReader();
+                reader.onload = async (event) => {
+                    setImporting(true);
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        if (data.clients) {
+                            // Loop and update/add clients
+                            for (const c of data.clients) {
+                                if (c.id) {
+                                    await update(ref(db, `clients/${c.id}`), c);
+                                }
+                            }
+                        }
+                        if (data.users) {
+                            for (const u of data.users) {
+                                if (u.id) {
+                                    await update(ref(db, `users/${u.id}`), u);
+                                }
+                            }
+                        }
+                        alert("تمت استعادة البيانات بنجاح!");
+                    } catch (error) {
+                        console.error(error);
+                        alert("حدث خطأ أثناء استعادة الملف. تأكد من صحة الملف.");
+                    }
+                    setImporting(false);
+                };
+                reader.readAsText(file);
+            };
+
+            return (
+                <div className="space-y-6">
+                    <h2 className="text-2xl font-bold text-brand-900">الإعدادات والنسخ الاحتياطي</h2>
+                    
+                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                        <div className="flex items-center gap-4 mb-4">
+                            <div className="bg-blue-100 p-3 rounded-full text-blue-600"><Icon name="database" size={24}/></div>
+                            <div>
+                                <h3 className="font-bold text-lg text-brand-900">النسخ الاحتياطي للبيانات</h3>
+                                <p className="text-gray-500 text-sm">قم بتحميل نسخة كاملة من بيانات النظام (العملاء والموظفين) لحفظها بأمان.</p>
+                            </div>
+                        </div>
+                        <button onClick={handleBackup} className="w-full bg-brand-900 hover:bg-brand-800 text-white p-3 rounded-lg font-bold flex justify-center gap-2">
+                            <Icon name="download" /> تحميل نسخة احتياطية (JSON)
+                        </button>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                        <div className="flex items-center gap-4 mb-4">
+                            <div className="bg-amber-100 p-3 rounded-full text-amber-600"><Icon name="upload-cloud" size={24}/></div>
+                            <div>
+                                <h3 className="font-bold text-lg text-brand-900">استعادة البيانات</h3>
+                                <p className="text-gray-500 text-sm">قم برفع ملف النسخة الاحتياطية لاسترجاع البيانات.</p>
+                            </div>
+                        </div>
+                        <div className="relative">
+                            <input 
+                                type="file" 
+                                accept=".json" 
+                                onChange={handleRestore}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                disabled={importing}
+                            />
+                            <div className="w-full border-2 border-dashed border-gray-300 hover:border-brand-900 bg-gray-50 p-6 rounded-lg text-center transition">
+                                {importing ? (
+                                    <span className="text-brand-900 font-bold">جاري الاستعادة...</span>
+                                ) : (
+                                    <span className="text-gray-600 flex items-center justify-center gap-2">
+                                        <Icon name="file-up" /> اضغط هنا لاختيار ملف النسخة الاحتياطية
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- USERS COMPONENT ---
         const UsersList = ({ users, currentUser }) => {
             const [showAdd, setShowAdd] = useState(false);
             const [newUser, setNewUser] = useState({ name: '', email: '', uid: '', role: 'employee' });
-            const [editingUser, setEditingUser] = useState(null); // State for editing
+            const [editingUser, setEditingUser] = useState(null);
 
             const toggleRole = (u) => {
                 if(!confirm(`هل تريد تغيير صلاحية ${safeStr(u.name)}؟`)) return;
@@ -350,16 +500,6 @@
                         )}
                     </div>
                     
-                    {/* Notice */}
-                    <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl flex gap-3 text-sm text-blue-800">
-                        <Icon name="info" className="shrink-0 mt-0.5" />
-                        <div>
-                            <strong>ملاحظة هامة:</strong> الموظفون الجدد يظهرون هنا تلقائياً <b>بعد تسجيل دخولهم لأول مرة</b>.
-                            <br/>يمكنك استخدام زر "ربط حساب يدوياً" لإضافتهم فوراً إذا كان لديك معرف المستخدم (UID) الخاص بهم.
-                        </div>
-                    </div>
-
-                    {/* Manual Add Form */}
                     {showAdd && (
                         <div className="bg-white p-4 rounded-xl shadow border border-brand-900/10 mb-4 animate-in fade-in slide-in-from-top-4">
                             <div className="flex justify-between mb-4 font-bold text-brand-900">
@@ -376,11 +516,9 @@
                                 </select>
                                 <button className="bg-brand-900 text-white font-bold rounded p-2">حفظ</button>
                             </form>
-                            <p className="text-xs text-gray-500 mt-2">تجد الـ UID في صفحة Authentication بجانب البريد الإلكتروني للمستخدم.</p>
                         </div>
                     )}
 
-                    {/* Users List */}
                     <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
                         {safeUsers.map(u => (
                             <div key={u.id} className="flex justify-between items-center p-4 border-b last:border-0 hover:bg-gray-50">
@@ -412,7 +550,6 @@
                         ))}
                     </div>
 
-                    {/* Edit Modal */}
                     {editingUser && (
                         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                             <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl">
@@ -437,46 +574,29 @@
             const [modalOpen, setModalOpen] = useState(false);
             const [editClient, setEditClient] = useState(null);
 
-            // Auth Listener with AUTO-CREATE PROFILE feature
+            // Auth Listener
             useEffect(() => {
                 return onAuthStateChanged(auth, async (u) => {
                     if (u) {
-                        // 1. Check if user exists in DB, if not, create default profile
                         const userRef = ref(db, `users/${u.uid}`);
                         try {
                             const snapshot = await get(userRef);
                             if (!snapshot.exists()) {
-                                console.log("Creating new user profile for: " + u.email);
-                                await set(userRef, {
-                                    name: 'مستخدم جديد',
-                                    email: u.email,
-                                    role: 'employee',
-                                    createdAt: new Date().toISOString()
-                                });
+                                await set(userRef, { name: 'مستخدم جديد', email: u.email, role: 'employee', createdAt: new Date().toISOString() });
                             }
-                        } catch (err) {
-                            console.error("Error creating profile:", err);
-                        }
+                        } catch (err) { console.error(err); }
 
-                        // 2. Setup Realtime Listeners
                         onValue(userRef, (s) => {
                             const d = s.val();
                             setUser(d ? { id: u.uid, email: u.email, ...d } : { id: u.uid, email: u.email, name: 'User', role: 'employee' });
                             setLoading(false);
                         });
-                        
                         onValue(ref(db, 'clients'), s => {
-                            try {
-                                setClients(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})).reverse() : [])
-                            } catch(e) { console.error("Data Error", e); setClients([]) }
+                            try { setClients(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})).reverse() : []) } catch(e) { setClients([]) }
                         });
-                        
                         onValue(ref(db, 'users'), s => {
-                            try {
-                                setUsers(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})) : [])
-                            } catch(e) { console.error("User Data Error", e); setUsers([]) }
+                            try { setUsers(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})) : []) } catch(e) { setUsers([]) }
                         });
-
                     } else {
                         setUser(null);
                         setLoading(false);
@@ -499,13 +619,19 @@
                     <aside className={`fixed md:sticky top-0 h-screen w-72 bg-white border-l z-50 transition-transform ${sidebarOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}`}>
                         <div className="p-6 h-full flex flex-col">
                             <div className="flex items-center gap-2 mb-8 text-brand-900 font-black text-xl">
-                                <Logo size={32} />
+                                {/* INCREASED LOGO SIZE IN SIDEBAR */}
+                                <Logo size={40} />
                                 بيوتكم
                             </div>
                             <nav className="flex-1 space-y-1">
                                 <button onClick={()=>{setPage('dashboard');setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='dashboard'?'bg-brand-900 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="layout-dashboard"/> لوحة التحكم</button>
                                 <button onClick={()=>{setPage('clients');setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='clients'?'bg-brand-900 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="users"/> العملاء والطلبات</button>
-                                {user.role==='admin' && <button onClick={()=>{setPage('users');setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='users'?'bg-brand-900 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="shield"/> الموظفين</button>}
+                                {user.role==='admin' && (
+                                    <>
+                                        <button onClick={()=>{setPage('users');setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='users'?'bg-brand-900 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="shield"/> الموظفين</button>
+                                        <button onClick={()=>{setPage('backup');setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='backup'?'bg-brand-900 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="settings"/> الإعدادات والنسخ</button>
+                                    </>
+                                )}
                             </nav>
                             <div className="border-t pt-4 mt-auto">
                                 <div className="flex items-center gap-2 mb-4">
@@ -523,7 +649,7 @@
                     <main className="flex-1 flex flex-col h-screen overflow-hidden">
                         <header className="md:hidden bg-white border-b p-4 flex justify-between items-center">
                             <div className="flex items-center gap-2 font-bold text-brand-900">
-                                <Logo size={24} />
+                                <Logo size={32} />
                                 بيوتكم
                             </div>
                             <button onClick={()=>setSidebarOpen(true)}><Icon name="menu"/></button>
@@ -534,6 +660,7 @@
                                     {page === 'dashboard' && <Dashboard clients={clients} />}
                                     {page === 'clients' && <ClientList clients={clients} users={users} currentUser={user} onAdd={()=>{setEditClient(null);setModalOpen(true)}} onEdit={(c)=>{setEditClient(c);setModalOpen(true)}} />}
                                     {page === 'users' && <UsersList users={users} currentUser={user} />}
+                                    {page === 'backup' && <BackupSettings clients={clients} users={users} />}
                                 </ErrorBoundary>
                             </div>
                         </div>
