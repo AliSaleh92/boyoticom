@@ -25,21 +25,15 @@
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
     
-    <!-- Leaflet CSS (للخرائط) -->
+    <!-- Libraries -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-
-    <!-- React & Libraries -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
-    <!-- Icons & Charts -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://unpkg.com/recharts@2.12.0/umd/Recharts.min.js"></script>
     <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-    <!-- SheetJS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <style>
@@ -51,8 +45,6 @@
       ::-webkit-scrollbar { width: 6px; height: 6px; }
       ::-webkit-scrollbar-track { background: #f1f1f1; }
       ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
-      
-      /* Animation for Portal Cards */
       .portal-card { transition: all 0.3s ease; }
       .portal-card:hover { transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1); }
     </style>
@@ -80,7 +72,7 @@
         const auth = getAuth(app);
         const db = getDatabase(app);
 
-        const { useState, useEffect, useMemo, useRef, Component } = window.React;
+        const { useState, useEffect, useMemo, useRef } = window.React;
         const Recharts = window.Recharts || {};
         const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip: RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } = Recharts;
 
@@ -93,25 +85,19 @@
         const safeArr = (val) => Array.isArray(val) ? val : [];
         const formatTime = (isoString) => new Date(isoString).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
         const formatDate = (isoString) => new Date(isoString).toLocaleDateString('en-GB');
+        const Logo = ({ size = 40 }) => (<div className="bg-brand-900 rounded-xl flex items-center justify-center text-accent-500" style={{ width: size, height: size }}><Icon name="box" size={size * 0.6} /></div>);
+        const exportToExcel = (data, fileName) => { const worksheet = XLSX.utils.json_to_sheet(data); const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1"); XLSX.writeFile(workbook, `${fileName}.xlsx`); };
 
-        // --- SHARED COMPONENTS ---
-        const Logo = ({ size = 40 }) => (
-            <div className="bg-brand-900 rounded-xl flex items-center justify-center text-accent-500" style={{ width: size, height: size }}>
-                <Icon name="box" size={size * 0.6} />
-            </div>
-        );
+        // --- CONSTANTS (FROM CRM) ---
+        const STATUS_LIST = [ { key: 'New', label: 'عميل جديد', color: 'bg-blue-50 text-blue-700 border-blue-200' }, { key: 'Contacted1', label: 'تم التواصل 1', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' }, { key: 'Contacted2', label: 'تم التواصل 2', color: 'bg-purple-50 text-purple-700 border-purple-200' }, { key: 'Contacted3', label: 'تم التواصل 3', color: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200' }, { key: 'Deposit', label: 'دفع عربون', color: 'bg-amber-50 text-amber-700 border-amber-200' }, { key: 'Sold', label: 'تم البيع', color: 'bg-emerald-100 text-emerald-800 border-emerald-200' }, { key: 'Cancelled', label: 'ملغي', color: 'bg-red-50 text-red-700 border-red-200' }, ];
+        const PROJECT_LIST = ["بيوتكم 10", "بيوتكم 11", "بيوتكم 12", "بيوتكم 13", "بيوتكم 14"];
+        const CLIENT_SOURCES = ["مباشر", "عقار", "اعلانات رقمية", "توصية صديق"];
+        const SUPER_ADMIN_EMAIL = "asaleh@boyoticom.com";
 
         // --- 1. LOGIN COMPONENT ---
         const Login = () => {
-            const [email, setEmail] = useState('');
-            const [password, setPassword] = useState('');
-            const [error, setError] = useState('');
-            const [loading, setLoading] = useState(false);
-            const handleLogin = async (e) => {
-                e.preventDefault(); setLoading(true); setError('');
-                try { await signInWithEmailAndPassword(auth, email, password); } 
-                catch (err) { setError('البريد أو كلمة المرور غير صحيحة'); setLoading(false); }
-            };
+            const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [error, setError] = useState(''); const [loading, setLoading] = useState(false);
+            const handleLogin = async (e) => { e.preventDefault(); setLoading(true); setError(''); try { await signInWithEmailAndPassword(auth, email, password); } catch (err) { setError('البريد أو كلمة المرور غير صحيحة'); setLoading(false); } };
             return (
                 <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4">
                     <div className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md text-center">
@@ -129,7 +115,7 @@
             );
         };
 
-        // --- 2. PORTAL (THE CARDS PAGE) ---
+        // --- 2. PORTAL (LANDING) ---
         const Portal = ({ user, onSelectApp }) => {
             return (
                 <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
@@ -137,32 +123,21 @@
                         <div className="flex justify-between items-center mb-10">
                             <div className="flex items-center gap-4">
                                 <div className="w-16 h-16 bg-brand-900 rounded-full text-white flex items-center justify-center text-2xl font-bold">{safeStr(user.name).charAt(0)}</div>
-                                <div>
-                                    <h1 className="text-2xl font-black text-brand-900">مرحباً، {user.name} 👋</h1>
-                                    <p className="text-gray-500">اختر النظام للمتابعة</p>
-                                </div>
+                                <div><h1 className="text-2xl font-black text-brand-900">مرحباً، {user.name} 👋</h1><p className="text-gray-500">اختر النظام للمتابعة</p></div>
                             </div>
                             <button onClick={()=>signOut(auth)} className="text-red-500 hover:bg-red-50 px-4 py-2 rounded-lg font-bold flex items-center gap-2"><Icon name="log-out"/> تسجيل خروج</button>
                         </div>
-
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            {/* CRM Card */}
                             <div onClick={() => onSelectApp('crm')} className="portal-card bg-white p-8 rounded-3xl shadow-lg border-2 border-transparent hover:border-crm-500 cursor-pointer group">
-                                <div className="w-20 h-20 bg-crm-500 text-white rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-crm-500/30 group-hover:scale-110 transition-transform">
-                                    <Icon name="layout-grid" size={40} />
-                                </div>
+                                <div className="w-20 h-20 bg-crm-500 text-white rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-crm-500/30 group-hover:scale-110"><Icon name="layout-grid" size={40} /></div>
                                 <h2 className="text-2xl font-bold text-gray-800 mb-2">إدارة العملاء (CRM)</h2>
-                                <p className="text-gray-500 leading-relaxed">إدارة قاعدة بيانات العملاء، متابعة الصفقات، التقارير المالية، وأداء المبيعات.</p>
+                                <p className="text-gray-500 leading-relaxed">نظامك المتكامل لإدارة العملاء والصفقات والتقارير.</p>
                                 <div className="mt-6 flex items-center text-crm-600 font-bold">الدخول للنظام <Icon name="arrow-left" className="mr-2"/></div>
                             </div>
-
-                            {/* Attendance Card */}
                             <div onClick={() => onSelectApp('attendance')} className="portal-card bg-white p-8 rounded-3xl shadow-lg border-2 border-transparent hover:border-accent-500 cursor-pointer group">
-                                <div className="w-20 h-20 bg-accent-500 text-white rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-accent-500/30 group-hover:scale-110 transition-transform">
-                                    <Icon name="clock" size={40} />
-                                </div>
+                                <div className="w-20 h-20 bg-accent-500 text-white rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-accent-500/30 group-hover:scale-110"><Icon name="clock" size={40} /></div>
                                 <h2 className="text-2xl font-bold text-gray-800 mb-2">الحضور والانصراف</h2>
-                                <p className="text-gray-500 leading-relaxed">تسجيل الحضور اليومي، تتبع ساعات العمل، إدارة المواقع الجغرافية، وسجلات الدوام.</p>
+                                <p className="text-gray-500 leading-relaxed">تسجيل الحضور اليومي وتتبع ساعات العمل.</p>
                                 <div className="mt-6 flex items-center text-accent-600 font-bold">الدخول للنظام <Icon name="arrow-left" className="mr-2"/></div>
                             </div>
                         </div>
@@ -171,7 +146,155 @@
             );
         };
 
-        // --- 3. ATTENDANCE SYSTEM (CODE FROM PREVIOUS) ---
+        // --- 3. CRM SYSTEM COMPONENTS (EXACTLY AS REQUESTED) ---
+        
+        // CRM Header with Notifications
+        const CRMHeader = ({ title, clients, onToggleSidebar }) => {
+            const [showNotifs, setShowNotifs] = useState(false);
+            const today = new Date().toISOString().slice(0,10);
+            const reminders = clients.filter(c => c.nextFollowUp === today);
+            const newClients = clients.filter(c => c.dateAdded && c.dateAdded.startsWith(today));
+            const allNotifs = [...reminders.map(c => ({ type: 'reminder', ...c })), ...newClients.map(c => ({ type: 'new', ...c }))];
+            return (
+                <header className="bg-white border-b p-4 flex justify-between items-center sticky top-0 z-30">
+                    <div className="flex items-center gap-2">
+                        <button onClick={onToggleSidebar} className="md:hidden text-gray-600 p-1"><Icon name="menu" size={24}/></button>
+                        <div className="font-bold text-xl text-brand-900">{title}</div>
+                    </div>
+                    <div className="relative">
+                        <button onClick={() => setShowNotifs(!showNotifs)} className="p-2 rounded-full hover:bg-gray-100 relative text-gray-600 transition"><Icon name="bell" size={22} />{allNotifs.length > 0 && <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>}</button>
+                        {showNotifs && (
+                            <>
+                                <div className="fixed inset-0 z-40 cursor-default" onClick={() => setShowNotifs(false)}></div>
+                                <div className="absolute left-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                                    <div className="p-3 border-b bg-gray-50 font-bold text-sm text-brand-900 flex justify-between items-center"><span>التنبيهات</span><span className="bg-brand-900 text-white text-xs px-2 py-0.5 rounded-full">{allNotifs.length}</span></div>
+                                    <div className="max-h-64 overflow-y-auto">
+                                        {allNotifs.length === 0 ? <div className="p-6 text-center text-gray-400 text-xs flex flex-col items-center gap-2"><Icon name="bell-off" size={24} className="opacity-50"/>لا توجد تنبيهات جديدة</div> : allNotifs.map((n, i) => (<div key={i} className="p-3 border-b last:border-0 hover:bg-gray-50 transition flex items-start gap-3 cursor-pointer"><div className={`p-2 rounded-full shrink-0 ${n.type==='reminder'?'bg-amber-100 text-amber-600':'bg-blue-100 text-blue-600'}`}><Icon name={n.type==='reminder'?'clock':'user-plus'} size={16}/></div><div className="flex-1"><div className="text-sm font-bold text-brand-900 flex justify-between"><span>{safeStr(n.name)}</span></div><div className="text-xs text-gray-500">{n.type==='reminder'?'متابعة مطلوبة':'عميل جديد'}</div></div></div>))}
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </header>
+            );
+        };
+
+        const CRMDashboard = ({ clients }) => {
+            const totalClients = clients.length;
+            const today = new Date().toISOString().slice(0,10);
+            const reminders = clients.filter(c => c.nextFollowUp === today);
+            const statusData = STATUS_LIST.map(s => ({ name: s.label, count: clients.filter(c => c.status === s.key).length, key: s.key, color: s.color }));
+            const projectStats = {}; clients.forEach(c => safeArr(c.projects).forEach(p => { const n = safeStr(p); if(n) projectStats[n] = (projectStats[n]||0)+1; }));
+            const projectData = Object.entries(projectStats).map(([name, value]) => ({ name, value }));
+            const COLORS = ['#2C3340', '#CE9B52', '#E6BC76', '#94a3b8', '#475569', '#64748b'];
+
+            return (
+                <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="bg-gradient-to-r from-brand-900 to-brand-800 text-white p-6 rounded-2xl shadow-lg flex justify-between items-center"><div><h2 className="text-lg font-bold opacity-80 mb-1">إجمالي العملاء</h2><div className="text-4xl font-black">{totalClients}</div></div><div className="bg-white/10 p-4 rounded-full"><Icon name="users" size={32} /></div></div>
+                        <div className="bg-white p-6 rounded-2xl shadow-lg border border-amber-100 md:col-span-2 relative overflow-hidden"><div className="absolute top-0 left-0 w-full h-1 bg-amber-400"></div><div className="flex justify-between items-start mb-4"><h3 className="font-bold text-brand-900 flex items-center gap-2"><Icon name="bell" className="text-amber-500"/> تذكيرات اليوم ({reminders.length})</h3><span className="text-xs bg-amber-50 text-amber-700 px-2 py-1 rounded date-en">{today}</span></div>{reminders.length > 0 ? <div className="flex gap-3 overflow-x-auto pb-2">{reminders.map(c => (<div key={c.id} className="min-w-[200px] bg-gray-50 p-3 rounded-lg border border-gray-100 text-sm"><div className="font-bold text-brand-900 mb-1">{c.name}</div><div className="text-xs text-gray-500 mb-2 date-en">{c.phone}</div><span className={`text-[10px] px-2 py-0.5 rounded border ${STATUS_LIST.find(s=>s.key===c.status)?.color}`}>{STATUS_LIST.find(s=>s.key===c.status)?.label}</span></div>))}</div> : <div className="text-center text-gray-400 text-sm py-2">لا توجد متابعات مجدولة</div>}</div>
+                    </div>
+                    <div><h3 className="font-bold text-brand-900 mb-4 flex items-center gap-2"><Icon name="activity" size={18}/> حالة العملاء</h3><div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">{statusData.map(s => (<div key={s.key} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-md transition"><div className="text-xs text-gray-500 font-bold mb-2">{s.name}</div><div className="flex justify-between items-end"><div className="text-2xl font-black text-brand-900">{s.count}</div><div className={`w-2 h-2 rounded-full ${s.color.split(' ')[0].replace('bg-', 'bg-')}`}></div></div></div>))}</div></div>
+                    {window.Recharts && ( <div className="grid grid-cols-1 lg:grid-cols-2 gap-6"><div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100"><h3 className="font-bold text-brand-900 mb-4 text-sm">توزيع المشاريع</h3><div className="h-64" dir="ltr"><ResponsiveContainer><PieChart><Pie data={projectData} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={5} dataKey="value">{projectData.map((e,i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}</Pie><Tooltip/><Legend/></PieChart></ResponsiveContainer></div></div><div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100"><h3 className="font-bold text-brand-900 mb-4 text-sm">نظرة عامة</h3><div className="h-64" dir="ltr"><ResponsiveContainer><BarChart data={statusData}><CartesianGrid strokeDasharray="3 3" vertical={false}/><XAxis dataKey="name" hide/><YAxis/><Tooltip/><Bar dataKey="count" fill="#2C3340" radius={[4,4,0,0]} barSize={30}/></BarChart></ResponsiveContainer></div></div></div> )}
+                </div>
+            );
+        };
+
+        const CRMReports = ({ clients, users }) => {
+            const [startDate, setStartDate] = useState(''); const [endDate, setEndDate] = useState('');
+            const filteredClients = clients.filter(c => { const d = c.dateAdded ? c.dateAdded.slice(0, 10) : ''; return (startDate ? d >= startDate : true) && (endDate ? d <= endDate : true); });
+            const reportData = users.map(u => { const userClients = filteredClients.filter(c => c.assignedTo === u.name); return { id: u.id, name: u.name, email: u.email, total: userClients.length, sold: userClients.filter(c => c.status === 'Sold').length, deposit: userClients.filter(c => c.status === 'Deposit').length, inProgress: userClients.filter(c => ['New','Contacted1','Contacted2','Contacted3'].includes(c.status)).length }; });
+            return (
+                <div className="space-y-6">
+                    <div className="bg-white p-4 rounded-xl shadow-sm border flex flex-wrap items-center gap-4"><div className="flex items-center gap-2"><span className="text-sm font-bold text-gray-500">من:</span><input type="date" className="bg-gray-50 border rounded-lg px-3 py-2 outline-none text-sm date-en" value={startDate} onChange={e=>setStartDate(e.target.value)} /></div><div className="flex items-center gap-2"><span className="text-sm font-bold text-gray-500">إلى:</span><input type="date" className="bg-gray-50 border rounded-lg px-3 py-2 outline-none text-sm date-en" value={endDate} onChange={e=>setEndDate(e.target.value)} /></div>{(startDate||endDate)&&<button onClick={()=>{setStartDate('');setEndDate('')}} className="text-xs text-red-500 hover:underline font-bold">إلغاء</button>}</div>
+                    <div className="bg-white rounded-xl shadow-sm border overflow-hidden"><table className="w-full text-right"><thead className="bg-gray-50 text-sm font-bold text-brand-900"><tr><th className="p-4">الموظف</th><th className="p-4 text-center">إجمالي العملاء</th><th className="p-4 text-center text-emerald-600">تم البيع</th><th className="p-4 text-center text-amber-600">عربون</th><th className="p-4 text-center text-blue-600">قيد المتابعة</th></tr></thead><tbody className="divide-y">{reportData.map(r=><tr key={r.id} className="hover:bg-gray-50"><td className="p-4"><div className="font-bold text-brand-900">{r.name}</div><div className="text-xs text-gray-500 date-en">{r.email}</div></td><td className="p-4 text-center font-bold">{r.total}</td><td className="p-4 text-center font-bold text-emerald-600">{r.sold}</td><td className="p-4 text-center font-bold text-amber-600">{r.deposit}</td><td className="p-4 text-center font-bold text-blue-600">{r.inProgress}</td></tr>)}</tbody></table></div>
+                </div>
+            );
+        };
+
+        const CRMClientList = ({ clients, users, currentUser, onAdd, onEdit, onImport }) => {
+            const [search, setSearch] = useState(''); const [filterStatus, setFilterStatus] = useState(''); const [filterAssignee, setFilterAssignee] = useState(''); const [itemsPerPage, setItemsPerPage] = useState(10); const [currentPage, setCurrentPage] = useState(1); const [deleteId, setDeleteId] = useState(null);
+            const assignees = useMemo(() => [...new Set(clients.map(c => c.assignedTo).filter(Boolean))], [clients]);
+            const filtered = clients.filter(c => { if(currentUser.role !== 'admin' && c.assignedTo !== currentUser.name && c.addedBy !== currentUser.email) return false; const s = safeStr(search).toLowerCase(); return (safeStr(c.name).toLowerCase().includes(s) || safeStr(c.phone).includes(s)) && (filterStatus ? c.status === filterStatus : true) && (filterAssignee ? c.assignedTo === filterAssignee : true); });
+            useEffect(() => { setCurrentPage(1); }, [search, filterStatus, filterAssignee, itemsPerPage]);
+            const displayedClients = itemsPerPage === 'All' ? filtered : filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+            const handleExport = () => { const excelData = filtered.map(c => ({ 'الاسم': c.name, 'رقم الهاتف': c.phone, 'المشاريع': safeArr(c.projects).join(', '), 'الحالة': STATUS_LIST.find(s=>s.key===c.status)?.label||c.status, 'الموظف': c.assignedTo||'-' })); exportToExcel(excelData, "Clients"); };
+            const handleImportFile = (e) => { const file = e.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = (evt) => { const bstr = evt.target.result; const wb = XLSX.read(bstr, {type:'binary'}); const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]); onImport(data); }; reader.readAsBinaryString(file); };
+            const confirmDelete = () => { if(deleteId) { remove(ref(db, `clients/${deleteId}`)); setDeleteId(null); } };
+
+            return (
+                <div className="space-y-4">
+                    <div className="flex justify-between items-center flex-wrap gap-4"><div className="flex gap-2 flex-wrap mr-auto">{currentUser.role === 'admin' && (<><div className="relative overflow-hidden"><button className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2"><Icon name="upload" size={18}/> استيراد</button><input type="file" accept=".xlsx" onChange={handleImportFile} className="absolute inset-0 opacity-0 cursor-pointer"/></div><button onClick={handleExport} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2"><Icon name="file-spreadsheet" size={18}/> تصدير</button></>)}<button onClick={onAdd} className="bg-brand-900 hover:bg-brand-800 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2"><Icon name="plus" size={18}/> إضافة عميل</button></div></div>
+                    <div className="bg-white p-3 rounded-xl shadow-sm border flex flex-wrap gap-2 items-center"><input className="flex-1 bg-gray-50 rounded-lg px-3 py-2 outline-none min-w-[150px] text-sm" placeholder="بحث..." value={search} onChange={e=>setSearch(e.target.value)} /><select className="bg-gray-50 rounded-lg px-3 py-2 outline-none text-sm" value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}><option value="">كل الحالات</option>{STATUS_LIST.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}</select><select className="bg-gray-50 rounded-lg px-3 py-2 outline-none text-sm" value={filterAssignee} onChange={e=>setFilterAssignee(e.target.value)}><option value="">كل الموظفين</option>{assignees.map(a=><option key={a} value={a}>{a}</option>)}</select></div>
+                    <div className="bg-white rounded-xl shadow-sm border overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-right"><thead className="bg-gray-50 text-sm font-bold text-brand-900"><tr><th className="p-4">الاسم</th><th className="p-4">المشاريع</th><th className="p-4">الحالة</th><th className="p-4">الموظف</th><th className="p-4">تاريخ المتابعة</th><th className="p-4"></th></tr></thead><tbody className="divide-y">{displayedClients.length > 0 ? displayedClients.map(c => (<tr key={c.id} className="hover:bg-gray-50 group"><td className="p-4"><div className="font-bold text-brand-900">{safeStr(c.name)}</div><div className="flex items-center gap-2 mt-1"><span className="text-xs text-gray-500 date-en">{safeStr(c.phone)}</span><a href={`https://wa.me/966${safeStr(c.phone).substring(1)}`} target="_blank" className="bg-green-50 text-green-600 p-1.5 rounded-full"><Icon name="message-circle" size={14} /></a></div></td><td className="p-4 text-sm text-gray-600">{safeArr(c.projects).map((p,i)=><div key={i}>• {safeStr(p)}</div>)}</td><td className="p-4"><span className={`px-2 py-1 rounded text-xs border ${STATUS_LIST.find(s=>s.key===c.status)?.color}`}>{STATUS_LIST.find(s=>s.key===c.status)?.label}</span></td><td className="p-4 text-sm text-gray-600">{safeStr(c.assignedTo)}</td><td className="p-4 text-xs text-amber-600 font-bold date-en">{c.nextFollowUp||'-'}</td><td className="p-4 flex items-center gap-2"><button onClick={()=>onEdit(c)} className="text-brand-900 hover:bg-gray-100 p-2 rounded"><Icon name="edit" size={16}/></button>{currentUser.role==='admin' && <button onClick={()=>setDeleteId(c.id)} className="text-red-500 hover:bg-red-50 p-2 rounded"><Icon name="trash-2" size={16}/></button>}</td></tr>)) : <tr><td colSpan="6" className="p-8 text-center text-gray-400">لا توجد نتائج</td></tr>}</tbody></table></div></div>
+                    {deleteId && <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"><div className="bg-white p-6 rounded-xl shadow-lg max-w-sm w-full text-center"><h3 className="text-lg font-bold mb-2">هل أنت متأكد؟</h3><div className="flex gap-3 justify-center mt-4"><button onClick={confirmDelete} className="bg-red-600 text-white px-4 py-2 rounded-lg">حذف</button><button onClick={()=>setDeleteId(null)} className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg">إلغاء</button></div></div></div>}
+                </div>
+            );
+        };
+
+        const CRMUsersList = ({ users, currentUser }) => {
+            const [showAdd, setShowAdd] = useState(false); const [newUser, setNewUser] = useState({ name: '', email: '', uid: '', role: 'employee' }); const [editingUser, setEditingUser] = useState(null);
+            const handleManualAdd = (e) => { e.preventDefault(); if(!newUser.uid) return alert('UID مطلوب'); set(ref(db, `users/${newUser.uid}`), newUser).then(() => { setShowAdd(false); setNewUser({ name: '', email: '', uid: '', role: 'employee' }); }); };
+            const handleUpdateUser = () => { if(!editingUser.name) return; update(ref(db, `users/${editingUser.id}`), { name: editingUser.name, role: editingUser.role }).then(()=>setEditingUser(null)); };
+            return (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center"><h2 className="text-2xl font-bold text-brand-900">الموظفين</h2>{currentUser.role === 'admin' && <button onClick={()=>setShowAdd(true)} className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-bold flex items-center gap-2"><Icon name="user-plus" size={16}/> إضافة</button>}</div>
+                    {showAdd && <div className="bg-white p-4 rounded-xl shadow border mb-4"><form onSubmit={handleManualAdd} className="grid md:grid-cols-5 gap-3"><input required className="p-2 border rounded" placeholder="الاسم" value={newUser.name} onChange={e=>setNewUser({...newUser, name: e.target.value})} /><input required className="p-2 border rounded text-right" placeholder="البريد" value={newUser.email} onChange={e=>setNewUser({...newUser, email: e.target.value})} /><input required className="p-2 border rounded text-right" placeholder="UID" value={newUser.uid} onChange={e=>setNewUser({...newUser, uid: e.target.value})} /><select className="p-2 border rounded" value={newUser.role} onChange={e=>setNewUser({...newUser, role: e.target.value})}><option value="employee">موظف</option><option value="admin">مسؤول</option></select><button className="bg-brand-900 text-white font-bold rounded p-2">حفظ</button></form></div>}
+                    <div className="bg-white rounded-xl shadow-sm border overflow-hidden">{users.filter(u=>u&&u.id).map(u => (<div key={u.id} className="flex justify-between items-center p-4 border-b last:border-0 hover:bg-gray-50"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-500">{safeStr(u.name).charAt(0)}</div><div><div className="font-bold text-brand-900">{safeStr(u.name)}</div><div className="text-xs text-gray-500 date-en">{safeStr(u.email)}</div></div></div><div className="flex items-center gap-3"><span className={`px-3 py-1 rounded text-xs font-bold ${u.role==='admin' ? 'bg-brand-900 text-white' : 'bg-gray-100 text-gray-700'}`}>{u.role === 'admin' ? 'مسؤول' : 'موظف'}</span>{currentUser.role === 'admin' && u.email !== SUPER_ADMIN_EMAIL && (<button onClick={()=>setEditingUser(u)} className="p-2 text-gray-400 hover:text-brand-900"><Icon name="pencil" size={16} /></button>)}</div></div>))}</div>
+                    {editingUser && <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"><div className="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4"><h3 className="font-bold">تعديل الموظف</h3><input className="w-full bg-gray-50 border rounded-lg p-3" value={editingUser.name} onChange={e=>setEditingUser({...editingUser, name:e.target.value})} /><select className="w-full bg-gray-50 border rounded-lg p-3" value={editingUser.role} onChange={e=>setEditingUser({...editingUser, role:e.target.value})}><option value="employee">موظف</option><option value="admin">مسؤول</option></select><button onClick={handleUpdateUser} className="w-full bg-brand-900 text-white py-3 rounded-lg font-bold">حفظ</button><button onClick={()=>setEditingUser(null)} className="w-full bg-gray-100 py-3 rounded-lg font-bold">إلغاء</button></div></div>}
+                </div>
+            );
+        };
+
+        const CRMClientModal = ({ isOpen, onClose, client, onSave, users, currentUser }) => {
+            const [d, setD] = useState({ name: '', phone: '', projects: [], status: 'New', assignedTo: currentUser.role==='employee'?currentUser.name:'', source: 'مباشر', nextFollowUp: '' });
+            const [newNote, setNewNote] = useState(''); const [notes, setNotes] = useState([]); const notesEndRef = useRef(null);
+            useEffect(() => { if(client) { setD(client); setNotes(client.notes ? Object.values(client.notes) : []); } else { setD({ name: '', phone: '', projects: [], status: 'New', assignedTo: currentUser.role==='employee'?currentUser.name:'', source: 'مباشر', nextFollowUp: '' }); setNotes([]); } }, [client]);
+            useEffect(() => { notesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [notes, isOpen]);
+            const toggleProject = (p) => { const curr = safeArr(d.projects); setD({ ...d, projects: curr.includes(p) ? curr.filter(x=>x!==p) : [...curr, p] }); };
+            const handleAddNote = () => { if(!newNote.trim()) return; const noteData = { text: newNote, date: new Date().toISOString(), author: currentUser.name }; setNotes([...notes, noteData]); if(client) push(ref(db, `clients/${client.id}/notes`), noteData); else setD({...d, notes: [...notes, noteData]}); setNewNote(''); };
+            return (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"><div className="bg-white w-full max-w-2xl rounded-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-6"><div className="space-y-4"><h3 className="font-bold text-lg">{client?'تعديل العميل':'إضافة عميل'}</h3><input className="w-full bg-gray-50 border rounded-lg p-3" placeholder="الاسم" value={safeStr(d.name)} onChange={e=>setD({...d, name:e.target.value})} /><input className="w-full bg-gray-50 border rounded-lg p-3 date-en text-right" placeholder="05xxxxxxxx" value={safeStr(d.phone)} onChange={e=>setD({...d, phone:e.target.value})} /><div><label className="text-xs font-bold block mb-2">المشاريع</label><div className="grid grid-cols-2 gap-2">{PROJECT_LIST.map(p => (<button key={p} onClick={()=>toggleProject(p)} className={`p-2 rounded text-xs border ${safeArr(d.projects).includes(p)?'bg-brand-900 text-white':'bg-white'}`}>{p}</button>))}</div></div><select className="w-full bg-gray-50 border rounded-lg p-3" value={safeStr(d.source)} onChange={e=>setD({...d, source:e.target.value})}>{CLIENT_SOURCES.map(s=><option key={s} value={s}>{s}</option>)}</select><input className="w-full bg-gray-50 border rounded-lg p-3" placeholder="رقم الوحدة" value={safeStr(d.unitNumber)} onChange={e=>setD({...d, unitNumber:e.target.value})} /><select className="w-full bg-gray-50 border rounded-lg p-3" value={safeStr(d.status)} onChange={e=>setD({...d, status:e.target.value})}>{STATUS_LIST.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}</select><select className="w-full bg-gray-50 border rounded-lg p-3 disabled:opacity-50" value={safeStr(d.assignedTo)} onChange={e=>setD({...d, assignedTo:e.target.value})} disabled={currentUser.role!=='admin'}><option value="">بدون إسناد</option>{users.map(u=><option key={u.id} value={u.name}>{u.name}</option>)}</select><div><label className="text-xs font-bold block mb-1 text-amber-600">تاريخ المتابعة القادم</label><input type="date" className="w-full bg-amber-50 border border-amber-200 rounded-lg p-3 date-en" value={d.nextFollowUp || ''} onChange={e=>setD({...d, nextFollowUp:e.target.value})} /></div></div><div className="flex flex-col h-full"><div className="flex justify-between mb-2"><h3 className="font-bold text-lg flex items-center gap-2"><Icon name="notebook-pen" size={18}/> الملاحظات</h3><button onClick={onClose} className="md:hidden"><Icon name="x"/></button></div><div className="flex-1 bg-gray-50 border rounded-xl p-4 mb-4 overflow-y-auto max-h-[400px] space-y-3">{notes.length === 0 && <div className="text-center text-gray-400 text-sm mt-10">لا توجد ملاحظات بعد</div>}{notes.map((n, i) => (<div key={i} className="bg-white p-3 rounded-lg border shadow-sm text-sm"><p className="text-gray-800 mb-2">{n.text}</p><div className="flex justify-between text-xs text-gray-400"><span>{n.author}</span><span className="date-en">{new Date(n.date).toLocaleDateString('en-GB')}</span></div></div>))}<div ref={notesEndRef} /></div><div className="flex gap-2 mb-6"><input className="flex-1 border rounded-lg p-2 text-sm" placeholder="اكتب ملاحظة..." value={newNote} onChange={e=>setNewNote(e.target.value)} onKeyPress={e=>e.key==='Enter'&&handleAddNote()} /><button onClick={handleAddNote} className="bg-gray-200 hover:bg-gray-300 p-2 rounded-lg"><Icon name="send" size={16}/></button></div><div className="mt-auto flex gap-3"><button onClick={onClose} className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-200">إلغاء</button><button onClick={()=>onSave(client?d:{...d, notes:notes})} className="flex-1 bg-brand-900 text-white py-3 rounded-lg font-bold hover:bg-brand-800 shadow-lg">حفظ البيانات</button></div></div></div></div>
+            );
+        };
+        const CRMBackup = ({ clients, users }) => ( <div className="bg-white p-6 rounded-xl shadow-sm border"><button onClick={() => { const data = { clients, users, date: new Date().toISOString() }; const blob = new Blob([JSON.stringify(data)], { type: "application/json" }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = "backup.json"; link.click(); }} className="w-full bg-brand-900 text-white p-3 rounded-lg flex justify-center gap-2"><Icon name="download" /> تحميل نسخة احتياطية</button></div> );
+
+        // --- 4. CRM APP CONTAINER ---
+        const CRMApp = ({ user, clients, users, onSaveClient, onImport, onBack }) => {
+            const [page, setPage] = useState('dashboard'); const [modalOpen, setModalOpen] = useState(false); const [editClient, setEditClient] = useState(null); const [sidebarOpen, setSidebarOpen] = useState(false);
+            const getPageTitle = () => { switch(page) { case 'dashboard': return 'لوحة التحكم'; case 'clients': return 'العملاء والطلبات'; case 'reports': return 'التقارير'; case 'users': return 'الموظفين'; case 'backup': return 'الإعدادات'; default: return ''; }};
+            return (
+                <div className="flex min-h-screen bg-slate-50">
+                    <aside className={`fixed md:sticky top-0 h-screen w-72 bg-white border-l z-50 transition-transform ${sidebarOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}`}>
+                        <div className="p-6 h-full flex flex-col">
+                            <div className="flex items-center gap-2 mb-8 text-brand-900 font-black text-xl"><Logo size={40} /> بيوتكم</div>
+                            <nav className="flex-1 space-y-1">
+                                <button onClick={()=>{setPage('dashboard');setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='dashboard'?'bg-brand-900 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="layout-dashboard"/> لوحة التحكم</button>
+                                <button onClick={()=>{setPage('clients');setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='clients'?'bg-brand-900 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="users"/> العملاء</button>
+                                {user.role==='admin' && (<><button onClick={()=>{setPage('reports');setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='reports'?'bg-brand-900 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="bar-chart-2"/> التقارير</button><button onClick={()=>{setPage('users');setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='users'?'bg-brand-900 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="shield"/> الموظفين</button><button onClick={()=>{setPage('backup');setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='backup'?'bg-brand-900 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="settings"/> الإعدادات</button></>)}
+                            </nav>
+                            <div className="border-t pt-4 mt-auto">
+                                <button onClick={onBack} className="w-full bg-gray-50 border border-gray-200 text-gray-700 p-2 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-gray-100 transition mb-4"><Icon name="grid" size={16}/> تبديل التطبيق</button>
+                                <div className="flex items-center gap-2 mb-4"><div className="w-8 h-8 rounded-full bg-brand-900 text-white flex items-center justify-center text-xs">{safeStr(user.name).charAt(0)}</div><div><div className="text-sm font-bold text-brand-900">{safeStr(user.name)}</div><div className="text-xs text-gray-500">{user.role==='admin'?'مسؤول':'موظف'}</div></div></div>
+                            </div>
+                        </div>
+                    </aside>
+                    <main className="flex-1 flex flex-col h-screen overflow-hidden">
+                        <CRMHeader title={getPageTitle()} clients={clients} onToggleSidebar={()=>setSidebarOpen(true)} />
+                        <div className="flex-1 overflow-y-auto p-6"><div className="max-w-5xl mx-auto">
+                            {page === 'dashboard' && <CRMDashboard clients={clients} />}
+                            {page === 'clients' && <CRMClientList clients={clients} users={users} currentUser={user} onAdd={()=>{setEditClient(null);setModalOpen(true)}} onEdit={(c)=>{setEditClient(c);setModalOpen(true)}} onImport={onImport} />}
+                            {page === 'reports' && <CRMReports clients={clients} users={users} />}
+                            {page === 'users' && <CRMUsersList users={users} currentUser={user} />}
+                            {page === 'backup' && <CRMBackup clients={clients} users={users} />}
+                        </div></div>
+                    </main>
+                    {modalOpen && <CRMClientModal isOpen={modalOpen} onClose={()=>setModalOpen(false)} client={editClient} onSave={(d)=>{onSaveClient(d, editClient);setModalOpen(false)}} users={users} currentUser={user} />}
+                </div>
+            );
+        };
+
+        // --- 5. ATTENDANCE SYSTEM (PRESERVED) ---
         const MapZoneEditor = ({ center, radius, onChange }) => {
             const mapRef = useRef(null); const mapObj = useRef(null); const markerObj = useRef(null); const circleObj = useRef(null);
             useEffect(() => {
@@ -206,257 +329,64 @@
             const [status, setStatus] = useState('loading'); const [distance, setDistance] = useState(0); const [processing, setProcessing] = useState(false); const [note, setNote] = useState('');
 
             const handleAddZone = () => { push(ref(db, 'zones'), newZone); setShowZoneModal(false); alert('تم إضافة الموقع'); };
-            const exportReport = () => {
-                 const data = logs.map(l => {
-                    const u = usersList.find(x => x.id === l.uid);
-                    return { 'تاريخ': formatDate(l.timestamp), 'اسم': u?.name, 'نوع': l.type, 'وقت': formatTime(l.timestamp), 'ملاحظات': l.note };
-                });
-                const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Att"); XLSX.writeFile(wb, "Attendance_Report.xlsx");
-            };
+            const exportReport = () => { const data = logs.map(l => { const u = usersList.find(x => x.id === l.uid); return { 'تاريخ': formatDate(l.timestamp), 'اسم': u?.name, 'نوع': l.type, 'وقت': formatTime(l.timestamp), 'ملاحظات': l.note }; }); const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Att"); XLSX.writeFile(wb, "Attendance_Report.xlsx"); };
             useEffect(() => {
                 if(tab !== 'my_attendance' || !myZone) return;
-                const checkLocation = () => {
-                    setStatus('loading');
-                    if (!navigator.geolocation) return setStatus('error');
-                    navigator.geolocation.getCurrentPosition(
-                        (pos) => { const d = calculateDistance(pos.coords.latitude, pos.coords.longitude, myZone.lat, myZone.lng); setDistance(Math.round(d)); setStatus(d <= myZone.radius ? 'in_range' : 'out_range'); },
-                        (err) => { console.error(err); setStatus('error'); }, { enableHighAccuracy: true }
-                    );
-                };
+                const checkLocation = () => { setStatus('loading'); if (!navigator.geolocation) return setStatus('error'); navigator.geolocation.getCurrentPosition((pos) => { const d = calculateDistance(pos.coords.latitude, pos.coords.longitude, myZone.lat, myZone.lng); setDistance(Math.round(d)); setStatus(d <= myZone.radius ? 'in_range' : 'out_range'); }, (err) => { console.error(err); setStatus('error'); }, { enableHighAccuracy: true }); };
                 checkLocation();
             }, [tab, myZone]);
-            const handleAttendance = async (type) => {
-                if (status !== 'in_range') return;
-                setProcessing(true);
-                await push(ref(db, 'attendance'), { uid: user.id, type, timestamp: new Date().toISOString(), lat: myZone.lat, lng: myZone.lng, note });
-                alert('تم التسجيل بنجاح'); setProcessing(false); setNote('');
-            };
+            const handleAttendance = async (type) => { if (status !== 'in_range') return; setProcessing(true); await push(ref(db, 'attendance'), { uid: user.id, type, timestamp: new Date().toISOString(), lat: myZone.lat, lng: myZone.lng, note }); alert('تم التسجيل بنجاح'); setProcessing(false); setNote(''); };
 
             return (
                 <div className="min-h-screen bg-slate-50">
                     <header className="bg-white border-b px-6 py-4 flex justify-between items-center sticky top-0 z-20 shadow-sm">
-                        <div className="flex items-center gap-4">
-                            <button onClick={onBack} className="bg-gray-100 p-2 rounded-lg hover:bg-gray-200 text-gray-600"><Icon name="arrow-right"/></button>
-                            <h1 className="text-xl font-bold text-brand-900 flex items-center gap-2"><Icon name="clock" className="text-accent-500"/> الحضور والانصراف</h1>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <div className="text-sm font-bold text-gray-700">{user.name}</div>
-                            <div className="w-8 h-8 rounded-full bg-accent-500 text-white flex items-center justify-center font-bold">{user.name.charAt(0)}</div>
-                        </div>
+                        <div className="flex items-center gap-4"><button onClick={onBack} className="bg-gray-100 p-2 rounded-lg hover:bg-gray-200 text-gray-600"><Icon name="arrow-right"/></button><h1 className="text-xl font-bold text-brand-900 flex items-center gap-2"><Icon name="clock" className="text-accent-500"/> الحضور والانصراف</h1></div>
+                        <div className="flex items-center gap-3"><div className="text-sm font-bold text-gray-700">{user.name}</div><div className="w-8 h-8 rounded-full bg-accent-500 text-white flex items-center justify-center font-bold">{user.name.charAt(0)}</div></div>
                     </header>
                     <div className="p-6 max-w-5xl mx-auto space-y-6">
-                        {user.role === 'admin' && (
-                            <div className="flex gap-2 bg-white p-1 rounded-lg border w-fit mx-auto shadow-sm">
-                                <button onClick={()=>setTab('summary')} className={`px-4 py-2 rounded-lg text-sm font-bold ${tab==='summary'?'bg-accent-500 text-white':'text-gray-500 hover:bg-gray-50'}`}>التقارير</button>
-                                <button onClick={()=>setTab('zones')} className={`px-4 py-2 rounded-lg text-sm font-bold ${tab==='zones'?'bg-accent-500 text-white':'text-gray-500 hover:bg-gray-50'}`}>المواقع</button>
-                                <button onClick={()=>setTab('my_attendance')} className={`px-4 py-2 rounded-lg text-sm font-bold ${tab==='my_attendance'?'bg-accent-500 text-white':'text-gray-500 hover:bg-gray-50'}`}>تسجيلي</button>
-                            </div>
-                        )}
-                        {tab === 'summary' && user.role === 'admin' && (
-                            <div className="bg-white p-6 rounded-2xl shadow border">
-                                <div className="flex justify-between mb-4"><h3 className="font-bold">سجل الحركات</h3><button onClick={exportReport} className="text-sm bg-green-100 text-green-700 px-3 py-1 rounded font-bold">Excel</button></div>
-                                <table className="w-full text-sm text-right"><thead className="bg-gray-50"><tr><th className="p-2">الموظف</th><th className="p-2">الحركة</th><th className="p-2">الوقت</th></tr></thead><tbody>{logs.slice().reverse().slice(0,10).map(l => (<tr key={l.id} className="border-b"><td className="p-2">{usersList.find(x=>x.id===l.uid)?.name}</td><td className="p-2">{l.type==='IN'?'دخول':'خروج'}</td><td className="p-2 date-en">{formatTime(l.timestamp)}</td></tr>))}</tbody></table>
-                            </div>
-                        )}
-                        {tab === 'zones' && user.role === 'admin' && (
-                            <div>
-                                <button onClick={()=>setShowZoneModal(true)} className="bg-brand-900 text-white px-4 py-2 rounded-xl mb-4 shadow-lg">إضافة موقع جديد</button>
-                                <div className="grid gap-3">{zones.map(z=><div key={z.id} className="bg-white p-4 border rounded-xl shadow-sm flex justify-between items-center"><div><div className="font-bold">{z.name}</div><div className="text-xs text-gray-500 date-en">{z.startTime}-{z.endTime}</div></div><span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">{z.radius}m</span></div>)}</div>
-                            </div>
-                        )}
-                        {tab === 'my_attendance' && (
-                            <div className="bg-white p-8 rounded-2xl shadow-lg text-center max-w-lg mx-auto border-t-4 border-accent-500">
-                                 {!myZone ? <div className="text-red-500 bg-red-50 p-4 rounded-xl">لم يتم تحديد موقع عمل لك. يرجى التواصل مع المدير.</div> : (
-                                    <>
-                                        <div className="mb-6"><div className="text-sm text-gray-500">موقع عملك: <strong>{myZone.name}</strong></div>{status === 'loading' && <div className="loader mx-auto mt-4"></div>}{status === 'in_range' && <div className="text-green-600 font-bold text-lg mt-4 flex items-center justify-center gap-2 py-2 bg-green-50 rounded-xl"><Icon name="map-pin"/> أنت في الموقع الصحيح</div>}{status === 'out_range' && <div className="text-red-600 font-bold mt-4 py-2 bg-red-50 rounded-xl">خارج النطاق ({distance}م)</div>}</div>
-                                        <input className="w-full p-3 border rounded-xl mb-4 text-sm bg-gray-50" placeholder="أضف ملاحظة (اختياري)..." value={note} onChange={e=>setNote(e.target.value)} />
-                                        <div className="grid grid-cols-2 gap-4"><button disabled={status!=='in_range'||processing} onClick={()=>handleAttendance('IN')} className="bg-green-600 text-white py-4 rounded-xl font-bold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg">تسجيل دخول</button><button disabled={status!=='in_range'||processing} onClick={()=>handleAttendance('OUT')} className="bg-red-600 text-white py-4 rounded-xl font-bold hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg">تسجيل خروج</button></div>
-                                    </>
-                                 )}
-                            </div>
-                        )}
+                        {user.role === 'admin' && (<div className="flex gap-2 bg-white p-1 rounded-lg border w-fit mx-auto shadow-sm"><button onClick={()=>setTab('summary')} className={`px-4 py-2 rounded-lg text-sm font-bold ${tab==='summary'?'bg-accent-500 text-white':'text-gray-500 hover:bg-gray-50'}`}>التقارير</button><button onClick={()=>setTab('zones')} className={`px-4 py-2 rounded-lg text-sm font-bold ${tab==='zones'?'bg-accent-500 text-white':'text-gray-500 hover:bg-gray-50'}`}>المواقع</button><button onClick={()=>setTab('my_attendance')} className={`px-4 py-2 rounded-lg text-sm font-bold ${tab==='my_attendance'?'bg-accent-500 text-white':'text-gray-500 hover:bg-gray-50'}`}>تسجيلي</button></div>)}
+                        {tab === 'summary' && user.role === 'admin' && (<div className="bg-white p-6 rounded-2xl shadow border"><div className="flex justify-between mb-4"><h3 className="font-bold">سجل الحركات</h3><button onClick={exportReport} className="text-sm bg-green-100 text-green-700 px-3 py-1 rounded font-bold">Excel</button></div><table className="w-full text-sm text-right"><thead className="bg-gray-50"><tr><th className="p-2">الموظف</th><th className="p-2">الحركة</th><th className="p-2">الوقت</th></tr></thead><tbody>{logs.slice().reverse().slice(0,10).map(l => (<tr key={l.id} className="border-b"><td className="p-2">{usersList.find(x=>x.id===l.uid)?.name}</td><td className="p-2">{l.type==='IN'?'دخول':'خروج'}</td><td className="p-2 date-en">{formatTime(l.timestamp)}</td></tr>))}</tbody></table></div>)}
+                        {tab === 'zones' && user.role === 'admin' && (<div><button onClick={()=>setShowZoneModal(true)} className="bg-brand-900 text-white px-4 py-2 rounded-xl mb-4 shadow-lg">إضافة موقع جديد</button><div className="grid gap-3">{zones.map(z=><div key={z.id} className="bg-white p-4 border rounded-xl shadow-sm flex justify-between items-center"><div><div className="font-bold">{z.name}</div><div className="text-xs text-gray-500 date-en">{z.startTime}-{z.endTime}</div></div><span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">{z.radius}m</span></div>)}</div></div>)}
+                        {tab === 'my_attendance' && (<div className="bg-white p-8 rounded-2xl shadow-lg text-center max-w-lg mx-auto border-t-4 border-accent-500">{!myZone ? <div className="text-red-500 bg-red-50 p-4 rounded-xl">لم يتم تحديد موقع عمل لك. يرجى التواصل مع المدير.</div> : (<><div className="mb-6"><div className="text-sm text-gray-500">موقع عملك: <strong>{myZone.name}</strong></div>{status === 'loading' && <div className="loader mx-auto mt-4"></div>}{status === 'in_range' && <div className="text-green-600 font-bold text-lg mt-4 flex items-center justify-center gap-2 py-2 bg-green-50 rounded-xl"><Icon name="map-pin"/> أنت في الموقع الصحيح</div>}{status === 'out_range' && <div className="text-red-600 font-bold mt-4 py-2 bg-red-50 rounded-xl">خارج النطاق ({distance}م)</div>}</div><input className="w-full p-3 border rounded-xl mb-4 text-sm bg-gray-50" placeholder="أضف ملاحظة (اختياري)..." value={note} onChange={e=>setNote(e.target.value)} /><div className="grid grid-cols-2 gap-4"><button disabled={status!=='in_range'||processing} onClick={()=>handleAttendance('IN')} className="bg-green-600 text-white py-4 rounded-xl font-bold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg">تسجيل دخول</button><button disabled={status!=='in_range'||processing} onClick={()=>handleAttendance('OUT')} className="bg-red-600 text-white py-4 rounded-xl font-bold hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg">تسجيل خروج</button></div></>)}</div>)}
                     </div>
                     {showZoneModal && ( <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"><div className="bg-white w-full max-w-lg rounded-2xl p-6"><h3 className="font-bold mb-4">إضافة موقع</h3><input className="w-full border p-2 mb-2 rounded" placeholder="الاسم" value={newZone.name} onChange={e=>setNewZone({...newZone, name: e.target.value})} /><MapZoneEditor center={{lat: newZone.lat, lng: newZone.lng}} radius={newZone.radius} onChange={(c, r) => setNewZone({...newZone, lat: c.lat, lng: c.lng, radius: r})} /><div className="flex gap-2 mt-4"><button onClick={handleAddZone} className="flex-1 bg-brand-900 text-white py-2 rounded">حفظ</button><button onClick={()=>setShowZoneModal(false)} className="flex-1 bg-gray-100 py-2 rounded">إلغاء</button></div></div></div> )}
                 </div>
             );
         };
 
-        // --- 4. CRM SYSTEM (ORIGINAL CODE WRAPPED) ---
-        const STATUS_LIST = [ { key: 'New', label: 'عميل جديد', color: 'bg-blue-50 text-blue-700 border-blue-200' }, { key: 'Contacted1', label: 'تم التواصل 1', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' }, { key: 'Contacted2', label: 'تم التواصل 2', color: 'bg-purple-50 text-purple-700 border-purple-200' }, { key: 'Contacted3', label: 'تم التواصل 3', color: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200' }, { key: 'Deposit', label: 'دفع عربون', color: 'bg-amber-50 text-amber-700 border-amber-200' }, { key: 'Sold', label: 'تم البيع', color: 'bg-emerald-100 text-emerald-800 border-emerald-200' }, { key: 'Cancelled', label: 'ملغي', color: 'bg-red-50 text-red-700 border-red-200' }, ];
-        const PROJECT_LIST = ["بيوتكم 10", "بيوتكم 11", "بيوتكم 12", "بيوتكم 13", "بيوتكم 14"];
-        const CLIENT_SOURCES = ["مباشر", "عقار", "اعلانات رقمية", "توصية صديق"];
-
-        const CRMDashboard = ({ clients }) => {
-            const totalClients = clients.length;
-            const statusData = STATUS_LIST.map(s => ({ name: s.label, count: clients.filter(c => c.status === s.key).length, key: s.key, color: s.color }));
-            return (
-                <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="bg-gradient-to-r from-brand-900 to-brand-800 text-white p-6 rounded-2xl shadow-lg flex justify-between items-center"><div><h2 className="text-lg font-bold opacity-80 mb-1">إجمالي العملاء</h2><div className="text-4xl font-black">{totalClients}</div></div><div className="bg-white/10 p-4 rounded-full"><Icon name="users" size={32} /></div></div>
-                        <div className="bg-white p-6 rounded-2xl shadow-lg border border-amber-100 md:col-span-2 relative"><div className="flex justify-between items-start mb-4"><h3 className="font-bold text-brand-900 flex items-center gap-2"><Icon name="activity" className="text-amber-500"/> نظرة عامة</h3></div><div className="h-24 flex items-end gap-2">{statusData.map(s=><div key={s.key} style={{height: `${Math.max(10, (s.count/totalClients)*100)}%`}} className={`flex-1 rounded-t-lg ${s.color.split(' ')[0]} opacity-80`} title={`${s.name}: ${s.count}`}></div>)}</div></div>
-                    </div>
-                    {/* Add more dashboard widgets here if needed */}
-                </div>
-            );
-        };
-
-        const CRMClientList = ({ clients, users, currentUser, onAdd, onEdit }) => {
-            const [search, setSearch] = useState('');
-            const filtered = clients.filter(c => (currentUser.role === 'admin' || c.assignedTo === currentUser.name || c.addedBy === currentUser.email) && (safeStr(c.name).includes(search) || safeStr(c.phone).includes(search)));
-            return (
-                <div className="space-y-4">
-                    <div className="flex justify-between"><input className="bg-white border rounded-xl px-4 py-2 w-64 shadow-sm" placeholder="بحث باسم العميل..." value={search} onChange={e=>setSearch(e.target.value)} /><button onClick={onAdd} className="bg-brand-900 text-white px-4 py-2 rounded-xl font-bold flex gap-2"><Icon name="plus" size={18}/> إضافة عميل</button></div>
-                    <div className="bg-white rounded-xl shadow-sm border overflow-hidden"><table className="w-full text-right"><thead className="bg-gray-50 font-bold text-brand-900"><tr><th className="p-4">الاسم</th><th className="p-4">المشاريع</th><th className="p-4">الحالة</th><th className="p-4">الموظف</th><th className="p-4"></th></tr></thead><tbody className="divide-y">{filtered.map(c=>(<tr key={c.id} className="hover:bg-gray-50"><td className="p-4 font-bold">{c.name}<div className="text-xs text-gray-500 date-en">{c.phone}</div></td><td className="p-4 text-sm">{safeArr(c.projects).join(', ')}</td><td className="p-4"><span className={`px-2 py-1 rounded text-xs border ${STATUS_LIST.find(s=>s.key===c.status)?.color}`}>{STATUS_LIST.find(s=>s.key===c.status)?.label}</span></td><td className="p-4 text-sm">{c.assignedTo}</td><td className="p-4"><button onClick={()=>onEdit(c)} className="text-brand-900"><Icon name="edit" size={18}/></button></td></tr>))}</tbody></table></div>
-                </div>
-            );
-        };
-
-        const ClientModal = ({ isOpen, onClose, client, onSave, users, currentUser }) => {
-            const [d, setD] = useState({ name: '', phone: '', projects: [], status: 'New', assignedTo: currentUser.role==='employee'?currentUser.name:'', source: 'مباشر', nextFollowUp: '' });
-            useEffect(() => { if(client) setD(client); else setD({ name: '', phone: '', projects: [], status: 'New', assignedTo: currentUser.role==='employee'?currentUser.name:'', source: 'مباشر', nextFollowUp: '' }); }, [client]);
-            const toggleProject = (p) => { const curr = safeArr(d.projects); setD({ ...d, projects: curr.includes(p) ? curr.filter(x=>x!==p) : [...curr, p] }); };
-            return (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"><div className="bg-white w-full max-w-lg rounded-2xl p-6 shadow-2xl space-y-4"><h3 className="font-bold text-lg">{client?'تعديل العميل':'إضافة عميل'}</h3><input className="w-full bg-gray-50 border rounded-lg p-3" placeholder="الاسم" value={safeStr(d.name)} onChange={e=>setD({...d, name:e.target.value})} /><input className="w-full bg-gray-50 border rounded-lg p-3 date-en text-right" placeholder="05xxxxxxxx" value={safeStr(d.phone)} onChange={e=>setD({...d, phone:e.target.value})} /><div><label className="text-xs font-bold block mb-2">المشاريع</label><div className="flex flex-wrap gap-2">{PROJECT_LIST.map(p => (<button key={p} onClick={()=>toggleProject(p)} className={`p-2 rounded text-xs border ${safeArr(d.projects).includes(p)?'bg-brand-900 text-white':'bg-white'}`}>{p}</button>))}</div></div><select className="w-full bg-gray-50 border rounded-lg p-3" value={safeStr(d.status)} onChange={e=>setD({...d, status:e.target.value})}>{STATUS_LIST.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}</select><select className="w-full bg-gray-50 border rounded-lg p-3 disabled:opacity-50" value={safeStr(d.assignedTo)} onChange={e=>setD({...d, assignedTo:e.target.value})} disabled={currentUser.role!=='admin'}><option value="">بدون إسناد</option>{users.map(u=><option key={u.id} value={u.name}>{u.name}</option>)}</select><div className="flex gap-3"><button onClick={onClose} className="flex-1 bg-gray-100 py-3 rounded-lg">إلغاء</button><button onClick={()=>onSave(d)} className="flex-1 bg-brand-900 text-white py-3 rounded-lg">حفظ</button></div></div></div>
-            );
-        };
-
-        const CRMReports = ({ clients, users }) => {
-            const reportData = users.map(u => {
-                const userClients = clients.filter(c => c.assignedTo === u.name);
-                return { id: u.id, name: u.name, total: userClients.length, sold: userClients.filter(c => c.status === 'Sold').length };
-            });
-            return (
-                <div className="bg-white rounded-xl shadow-sm border p-6">
-                    <h3 className="font-bold mb-4">تقارير الموظفين</h3>
-                    <table className="w-full text-right"><thead className="bg-gray-50"><tr><th className="p-3">الموظف</th><th className="p-3">العملاء</th><th className="p-3 text-green-600">المبيعات</th></tr></thead><tbody>{reportData.map(r=><tr key={r.id} className="border-b"><td className="p-3 font-bold">{r.name}</td><td className="p-3">{r.total}</td><td className="p-3 text-green-600 font-bold">{r.sold}</td></tr>)}</tbody></table>
-                </div>
-            )
-        };
-        const CRMUsers = ({ users, currentUser }) => {
-             const [newUser, setNewUser] = useState({ name: '', email: '', uid: '', role: 'employee' });
-             const [showAdd, setShowAdd] = useState(false);
-             const handleAdd = (e) => { e.preventDefault(); if(!newUser.uid) return alert('UID مطلوب'); set(ref(db, `users/${newUser.uid}`), newUser); setShowAdd(false); alert('تم'); };
-             return (
-                <div className="space-y-4">
-                    <div className="flex justify-between"><h3 className="font-bold">قائمة الموظفين</h3>{currentUser.role==='admin' && <button onClick={()=>setShowAdd(!showAdd)} className="bg-brand-900 text-white px-3 py-1 rounded text-sm">+ موظف</button>}</div>
-                    {showAdd && <form onSubmit={handleAdd} className="bg-white p-4 border rounded-xl grid gap-2"><input placeholder="الاسم" value={newUser.name} onChange={e=>setNewUser({...newUser, name:e.target.value})}/><input placeholder="Email" value={newUser.email} onChange={e=>setNewUser({...newUser, email:e.target.value})}/><input placeholder="UID" value={newUser.uid} onChange={e=>setNewUser({...newUser, uid:e.target.value})}/><button className="bg-brand-900 text-white p-2 rounded">حفظ</button></form>}
-                    <div className="grid gap-2">{users.map(u=><div key={u.id} className="bg-white p-3 border rounded flex justify-between"><span>{u.name}</span><span className="text-xs bg-gray-100 p-1 rounded">{u.role}</span></div>)}</div>
-                </div>
-             );
-        };
-        const BackupSettings = ({ clients, users }) => ( <div className="bg-white p-6 rounded-xl shadow-sm border"><button onClick={() => { const data = { clients, users, date: new Date().toISOString() }; const blob = new Blob([JSON.stringify(data)], { type: "application/json" }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = "backup.json"; link.click(); }} className="w-full bg-brand-900 text-white p-3 rounded-lg flex justify-center gap-2"><Icon name="download" /> تحميل نسخة احتياطية</button></div> );
-
-        const CRMApp = ({ user, clients, users, onSaveClient, onBack }) => {
-            const [page, setPage] = useState('dashboard');
-            const [modalOpen, setModalOpen] = useState(false);
-            const [editClient, setEditClient] = useState(null);
-
-            const handleAdd = () => { setEditClient(null); setModalOpen(true); };
-            const handleEdit = (c) => { setEditClient(c); setModalOpen(true); };
-            const handleSave = (d) => { onSaveClient(d, editClient); setModalOpen(false); };
-
-            return (
-                <div className="flex min-h-screen bg-slate-50">
-                    <aside className="w-64 bg-white border-l h-screen sticky top-0 flex flex-col z-10">
-                        <div className="p-6 flex items-center gap-2 font-black text-xl text-brand-900 border-b">
-                            <Logo size={32} /> بيوتكم CRM
-                        </div>
-                        <nav className="flex-1 p-4 space-y-2">
-                            <button onClick={()=>setPage('dashboard')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='dashboard'?'bg-brand-900 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="layout-dashboard"/> لوحة التحكم</button>
-                            <button onClick={()=>setPage('clients')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='clients'?'bg-brand-900 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="users"/> العملاء</button>
-                            {user.role === 'admin' && (
-                                <>
-                                    <button onClick={()=>setPage('reports')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='reports'?'bg-brand-900 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="bar-chart-2"/> التقارير</button>
-                                    <button onClick={()=>setPage('users')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='users'?'bg-brand-900 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="shield"/> الموظفين</button>
-                                    <button onClick={()=>setPage('backup')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='backup'?'bg-brand-900 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="settings"/> الإعدادات</button>
-                                </>
-                            )}
-                        </nav>
-                        <div className="p-4 border-t bg-gray-50">
-                            <button onClick={onBack} className="w-full bg-white border border-gray-300 text-gray-700 p-2 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-gray-100 transition"><Icon name="grid" size={16}/> تبديل التطبيق</button>
-                        </div>
-                    </aside>
-                    <main className="flex-1 p-8 overflow-y-auto">
-                        <header className="flex justify-between items-center mb-8">
-                            <h2 className="text-2xl font-bold text-brand-900">{page==='dashboard'?'لوحة التحكم':page==='clients'?'العملاء والطلبات':page==='reports'?'التقارير':page==='users'?'الموظفين':'الإعدادات'}</h2>
-                            <div className="flex items-center gap-3">
-                                <div className="text-sm font-bold text-gray-700">{user.name}</div>
-                                <div className="w-10 h-10 rounded-full bg-brand-900 text-white flex items-center justify-center font-bold">{user.name.charAt(0)}</div>
-                            </div>
-                        </header>
-                        <div className="max-w-6xl mx-auto">
-                            {page === 'dashboard' && <CRMDashboard clients={clients} />}
-                            {page === 'clients' && <CRMClientList clients={clients} users={users} currentUser={user} onAdd={handleAdd} onEdit={handleEdit} />}
-                            {page === 'reports' && <CRMReports clients={clients} users={users} />}
-                            {page === 'users' && <CRMUsers users={users} currentUser={user} />}
-                            {page === 'backup' && <BackupSettings clients={clients} users={users} />}
-                        </div>
-                    </main>
-                    {modalOpen && <ClientModal isOpen={modalOpen} onClose={()=>setModalOpen(false)} client={editClient} onSave={handleSave} users={users} currentUser={user} />}
-                </div>
-            );
-        };
-
-        // --- 5. MAIN ORCHESTRATOR ---
+        // --- 6. MAIN ORCHESTRATOR ---
         const App = () => {
-            const [user, setUser] = useState(null);
-            const [dbUser, setDbUser] = useState(null);
-            const [currentApp, setCurrentApp] = useState('portal'); // 'portal', 'crm', 'attendance'
-            
-            // Shared Data State
-            const [clients, setClients] = useState([]);
-            const [users, setUsers] = useState([]);
-            const [zones, setZones] = useState([]);
-            const [logs, setLogs] = useState([]);
-            const [loading, setLoading] = useState(true);
+            const [user, setUser] = useState(null); const [dbUser, setDbUser] = useState(null); const [currentApp, setCurrentApp] = useState('portal');
+            const [clients, setClients] = useState([]); const [users, setUsers] = useState([]); const [zones, setZones] = useState([]); const [logs, setLogs] = useState([]); const [loading, setLoading] = useState(true);
 
             useEffect(() => {
                 const unsub = onAuthStateChanged(auth, u => {
                     if (u) {
                         setUser(u);
-                        // Fetch Users
                         onValue(ref(db, 'users'), s => {
-                            const data = s.val() || {};
-                            const list = Object.keys(data).map(k => ({ id: k, ...data[k] }));
-                            setUsers(list);
+                            const data = s.val() || {}; const list = Object.keys(data).map(k => ({ id: k, ...data[k] })); setUsers(list);
                             const profile = list.find(x => x.email.toLowerCase() === u.email.toLowerCase());
-                            if (u.email.toLowerCase() === 'asleh@boyoticom.com') {
-                                setDbUser({ ...profile, id: u.uid, role: 'admin', name: 'Ali Saleh', email: u.email });
-                            } else {
-                                setDbUser(profile ? { ...profile, id: u.uid } : { id: u.uid, email: u.email, role: 'employee', name: 'مستخدم جديد' });
-                            }
+                            if (u.email.toLowerCase() === 'asleh@boyoticom.com') { setDbUser({ ...profile, id: u.uid, role: 'admin', name: 'Ali Saleh', email: u.email }); } 
+                            else { setDbUser(profile ? { ...profile, id: u.uid } : { id: u.uid, email: u.email, role: 'employee', name: 'مستخدم جديد' }); }
                         });
-                        // Fetch All Data needed for both apps
                         onValue(ref(db, 'clients'), s => setClients(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})).reverse() : []));
                         onValue(ref(db, 'zones'), s => setZones(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})) : []));
                         onValue(ref(db, 'attendance'), s => setLogs(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})) : []));
-                    } else {
-                        setUser(null); setDbUser(null);
-                    }
+                    } else { setUser(null); setDbUser(null); }
                     setLoading(false);
                 });
                 return () => unsub();
             }, []);
 
-            const handleSaveClient = (data, existing) => {
-                const payload = { ...data, assignedTo: safeStr(data.assignedTo), projects: safeArr(data.projects) };
-                if (existing) update(ref(db, `clients/${existing.id}`), payload);
-                else push(ref(db, 'clients'), { ...payload, dateAdded: new Date().toISOString(), addedBy: dbUser.email });
-            };
+            const handleSaveClient = (data, existing) => { const payload = { ...data, assignedTo: safeStr(data.assignedTo), projects: safeArr(data.projects) }; if (existing) update(ref(db, `clients/${existing.id}`), payload); else push(ref(db, 'clients'), { ...payload, dateAdded: new Date().toISOString(), addedBy: dbUser.email }); };
+            const handleImport = (data) => { if(!confirm(`سيتم استيراد ${data.length} عميل. هل أنت متأكد؟`)) return; data.forEach(row => { push(ref(db, 'clients'), { name: row['الاسم']||row['Name']||'No Name', phone: row['رقم الهاتف']||row['Phone']||'', projects: [row['المشروع']||''], status: 'New', addedBy: dbUser.email, dateAdded: new Date().toISOString() }); }); alert('تم الاستيراد بنجاح!'); };
 
             if (loading) return <div className="h-screen flex items-center justify-center"><div className="loader"></div></div>;
             if (!user) return <Login />;
             if (!dbUser) return <div className="h-screen flex items-center justify-center"><div className="loader"></div></div>;
 
-            // --- ROUTING ---
-            if (currentApp === 'crm') {
-                return <CRMApp user={dbUser} clients={clients} users={users} onSaveClient={handleSaveClient} onBack={() => setCurrentApp('portal')} />;
-            }
-            if (currentApp === 'attendance') {
-                return <AttendanceApp user={dbUser} zones={zones} usersList={users} logs={logs} onBack={() => setCurrentApp('portal')} />;
-            }
-            
-            // Default: Portal
+            if (currentApp === 'crm') return <CRMApp user={dbUser} clients={clients} users={users} onSaveClient={handleSaveClient} onImport={handleImport} onBack={() => setCurrentApp('portal')} />;
+            if (currentApp === 'attendance') return <AttendanceApp user={dbUser} zones={zones} usersList={users} logs={logs} onBack={() => setCurrentApp('portal')} />;
             return <Portal user={dbUser} onSelectApp={setCurrentApp} />;
         };
 
