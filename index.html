@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Boyoticom ERP System</title>
+    <title>Boyoticom Portal</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -51,13 +51,17 @@
       ::-webkit-scrollbar { width: 6px; height: 6px; }
       ::-webkit-scrollbar-track { background: #f1f1f1; }
       ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+      
+      /* Animation for Portal Cards */
+      .portal-card { transition: all 0.3s ease; }
+      .portal-card:hover { transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1); }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel" data-type="module">
-        // --- 1. FIREBASE CONFIGURATION (من ملفك المرفق) ---
+        // --- FIREBASE CONFIGURATION ---
         const firebaseConfig = {
           apiKey: "AIzaSyAOMnl9ikDMngZZH-eSa3ldqtDCh6qsy_U",
           authDomain: "boyoticom-15c4b.firebaseapp.com",
@@ -68,7 +72,6 @@
           appId: "1:433583401372:web:2d483367ad0e0184a10059"
         };
 
-        // --- IMPORTS ---
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getDatabase, ref, set, push, onValue, update, remove, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
@@ -86,35 +89,19 @@
             useEffect(() => { if (window.lucide) window.lucide.createIcons(); }, [name]);
             return <i data-lucide={name} width={size} height={size} className={className}></i>;
         };
-
         const safeStr = (val) => (val === null || val === undefined) ? '' : String(val);
         const safeArr = (val) => Array.isArray(val) ? val : [];
-
-        const calculateDistance = (lat1, lon1, lat2, lon2) => {
-            const R = 6371e3; const φ1 = lat1 * Math.PI/180; const φ2 = lat2 * Math.PI/180;
-            const Δφ = (lat2-lat1) * Math.PI/180; const Δλ = (lon2-lon1) * Math.PI/180;
-            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
-            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        };
-
         const formatTime = (isoString) => new Date(isoString).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
         const formatDate = (isoString) => new Date(isoString).toLocaleDateString('en-GB');
 
-        // --- CRM CONSTANTS ---
-        const STATUS_LIST = [
-          { key: 'New', label: 'عميل جديد', color: 'bg-blue-50 text-blue-700 border-blue-200' },
-          { key: 'Contacted1', label: 'تم التواصل 1', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
-          { key: 'Contacted2', label: 'تم التواصل 2', color: 'bg-purple-50 text-purple-700 border-purple-200' },
-          { key: 'Contacted3', label: 'تم التواصل 3', color: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200' },
-          { key: 'Deposit', label: 'دفع عربون', color: 'bg-amber-50 text-amber-700 border-amber-200' },
-          { key: 'Sold', label: 'تم البيع', color: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
-          { key: 'Cancelled', label: 'ملغي', color: 'bg-red-50 text-red-700 border-red-200' },
-        ];
-        const PROJECT_LIST = ["بيوتكم 10", "بيوتكم 11", "بيوتكم 12", "بيوتكم 13", "بيوتكم 14"];
-        const CLIENT_SOURCES = ["مباشر", "عقار", "اعلانات رقمية", "توصية صديق"];
+        // --- SHARED COMPONENTS ---
+        const Logo = ({ size = 40 }) => (
+            <div className="bg-brand-900 rounded-xl flex items-center justify-center text-accent-500" style={{ width: size, height: size }}>
+                <Icon name="box" size={size * 0.6} />
+            </div>
+        );
 
-        // --- COMPONENTS ---
-
+        // --- 1. LOGIN COMPONENT ---
         const Login = () => {
             const [email, setEmail] = useState('');
             const [password, setPassword] = useState('');
@@ -128,9 +115,9 @@
             return (
                 <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4">
                     <div className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md text-center">
-                        <div className="mx-auto flex items-center justify-center mb-6 bg-brand-900 w-20 h-20 rounded-2xl text-accent-500"><Icon name="box" size={40}/></div>
+                        <div className="mx-auto flex items-center justify-center mb-6"><Logo size={80} /></div>
                         <h1 className="text-3xl font-black text-brand-900 mb-2">بيوتكم ERP</h1>
-                        <p className="text-gray-500 mb-8">نظام الإدارة المتكامل</p>
+                        <p className="text-gray-500 mb-8">بوابة الموظفين الموحدة</p>
                         {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm font-bold">{error}</div>}
                         <form onSubmit={handleLogin} className="space-y-4">
                             <input className="w-full p-4 border rounded-xl bg-gray-50 text-right date-en outline-none focus:border-brand-900" type="email" required placeholder="البريد الإلكتروني" value={email} onChange={e=>setEmail(e.target.value)} />
@@ -142,12 +129,51 @@
             );
         };
 
-        // --- ATTENDANCE MAP COMPONENT ---
+        // --- 2. PORTAL (THE CARDS PAGE) ---
+        const Portal = ({ user, onSelectApp }) => {
+            return (
+                <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+                    <div className="max-w-4xl w-full">
+                        <div className="flex justify-between items-center mb-10">
+                            <div className="flex items-center gap-4">
+                                <div className="w-16 h-16 bg-brand-900 rounded-full text-white flex items-center justify-center text-2xl font-bold">{safeStr(user.name).charAt(0)}</div>
+                                <div>
+                                    <h1 className="text-2xl font-black text-brand-900">مرحباً، {user.name} 👋</h1>
+                                    <p className="text-gray-500">اختر النظام للمتابعة</p>
+                                </div>
+                            </div>
+                            <button onClick={()=>signOut(auth)} className="text-red-500 hover:bg-red-50 px-4 py-2 rounded-lg font-bold flex items-center gap-2"><Icon name="log-out"/> تسجيل خروج</button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            {/* CRM Card */}
+                            <div onClick={() => onSelectApp('crm')} className="portal-card bg-white p-8 rounded-3xl shadow-lg border-2 border-transparent hover:border-crm-500 cursor-pointer group">
+                                <div className="w-20 h-20 bg-crm-500 text-white rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-crm-500/30 group-hover:scale-110 transition-transform">
+                                    <Icon name="layout-grid" size={40} />
+                                </div>
+                                <h2 className="text-2xl font-bold text-gray-800 mb-2">إدارة العملاء (CRM)</h2>
+                                <p className="text-gray-500 leading-relaxed">إدارة قاعدة بيانات العملاء، متابعة الصفقات، التقارير المالية، وأداء المبيعات.</p>
+                                <div className="mt-6 flex items-center text-crm-600 font-bold">الدخول للنظام <Icon name="arrow-left" className="mr-2"/></div>
+                            </div>
+
+                            {/* Attendance Card */}
+                            <div onClick={() => onSelectApp('attendance')} className="portal-card bg-white p-8 rounded-3xl shadow-lg border-2 border-transparent hover:border-accent-500 cursor-pointer group">
+                                <div className="w-20 h-20 bg-accent-500 text-white rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-accent-500/30 group-hover:scale-110 transition-transform">
+                                    <Icon name="clock" size={40} />
+                                </div>
+                                <h2 className="text-2xl font-bold text-gray-800 mb-2">الحضور والانصراف</h2>
+                                <p className="text-gray-500 leading-relaxed">تسجيل الحضور اليومي، تتبع ساعات العمل، إدارة المواقع الجغرافية، وسجلات الدوام.</p>
+                                <div className="mt-6 flex items-center text-accent-600 font-bold">الدخول للنظام <Icon name="arrow-left" className="mr-2"/></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- 3. ATTENDANCE SYSTEM (CODE FROM PREVIOUS) ---
         const MapZoneEditor = ({ center, radius, onChange }) => {
-            const mapRef = useRef(null);
-            const mapObj = useRef(null);
-            const markerObj = useRef(null);
-            const circleObj = useRef(null);
+            const mapRef = useRef(null); const mapObj = useRef(null); const markerObj = useRef(null); const circleObj = useRef(null);
             useEffect(() => {
                 if (!mapRef.current) return;
                 if (!mapObj.current) {
@@ -165,16 +191,19 @@
             return <div ref={mapRef} className="w-full h-64 rounded-xl z-0" />;
         };
 
-        // --- MODULE: ATTENDANCE ---
-        const AttendanceModule = ({ user, zones, usersList, logs }) => {
+        const calculateDistance = (lat1, lon1, lat2, lon2) => {
+            const R = 6371e3; const φ1 = lat1 * Math.PI/180; const φ2 = lat2 * Math.PI/180;
+            const Δφ = (lat2-lat1) * Math.PI/180; const Δλ = (lon2-lon1) * Math.PI/180;
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        };
+
+        const AttendanceApp = ({ user, zones, usersList, logs, onBack }) => {
             const [tab, setTab] = useState(user.role === 'admin' ? 'summary' : 'my_attendance');
             const [showZoneModal, setShowZoneModal] = useState(false);
             const [newZone, setNewZone] = useState({ name: '', startTime: '08:00', endTime: '16:00', lat: 24.7136, lng: 46.6753, radius: 200 });
             const myZone = zones.find(z => z.id === user.zoneId);
-            const [status, setStatus] = useState('loading'); 
-            const [distance, setDistance] = useState(0);
-            const [processing, setProcessing] = useState(false);
-            const [note, setNote] = useState('');
+            const [status, setStatus] = useState('loading'); const [distance, setDistance] = useState(0); const [processing, setProcessing] = useState(false); const [note, setNote] = useState('');
 
             const handleAddZone = () => { push(ref(db, 'zones'), newZone); setShowZoneModal(false); alert('تم إضافة الموقع'); };
             const exportReport = () => {
@@ -182,29 +211,20 @@
                     const u = usersList.find(x => x.id === l.uid);
                     return { 'تاريخ': formatDate(l.timestamp), 'اسم': u?.name, 'نوع': l.type, 'وقت': formatTime(l.timestamp), 'ملاحظات': l.note };
                 });
-                const ws = XLSX.utils.json_to_sheet(data);
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, "Att");
-                XLSX.writeFile(wb, "Attendance_Report.xlsx");
+                const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Att"); XLSX.writeFile(wb, "Attendance_Report.xlsx");
             };
-
             useEffect(() => {
                 if(tab !== 'my_attendance' || !myZone) return;
                 const checkLocation = () => {
                     setStatus('loading');
                     if (!navigator.geolocation) return setStatus('error');
                     navigator.geolocation.getCurrentPosition(
-                        (pos) => {
-                            const d = calculateDistance(pos.coords.latitude, pos.coords.longitude, myZone.lat, myZone.lng);
-                            setDistance(Math.round(d));
-                            setStatus(d <= myZone.radius ? 'in_range' : 'out_range');
-                        },
+                        (pos) => { const d = calculateDistance(pos.coords.latitude, pos.coords.longitude, myZone.lat, myZone.lng); setDistance(Math.round(d)); setStatus(d <= myZone.radius ? 'in_range' : 'out_range'); },
                         (err) => { console.error(err); setStatus('error'); }, { enableHighAccuracy: true }
                     );
                 };
                 checkLocation();
             }, [tab, myZone]);
-
             const handleAttendance = async (type) => {
                 if (status !== 'in_range') return;
                 setProcessing(true);
@@ -213,49 +233,60 @@
             };
 
             return (
-                <div className="space-y-6">
-                    <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-2xl font-bold text-gray-800">نظام الحضور والانصراف</h2>
+                <div className="min-h-screen bg-slate-50">
+                    <header className="bg-white border-b px-6 py-4 flex justify-between items-center sticky top-0 z-20 shadow-sm">
+                        <div className="flex items-center gap-4">
+                            <button onClick={onBack} className="bg-gray-100 p-2 rounded-lg hover:bg-gray-200 text-gray-600"><Icon name="arrow-right"/></button>
+                            <h1 className="text-xl font-bold text-brand-900 flex items-center gap-2"><Icon name="clock" className="text-accent-500"/> الحضور والانصراف</h1>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className="text-sm font-bold text-gray-700">{user.name}</div>
+                            <div className="w-8 h-8 rounded-full bg-accent-500 text-white flex items-center justify-center font-bold">{user.name.charAt(0)}</div>
+                        </div>
+                    </header>
+                    <div className="p-6 max-w-5xl mx-auto space-y-6">
                         {user.role === 'admin' && (
-                            <div className="flex gap-2 bg-white p-1 rounded-lg border">
-                                <button onClick={()=>setTab('summary')} className={`px-3 py-1 rounded text-sm ${tab==='summary'?'bg-accent-500 text-white':'hover:bg-gray-50'}`}>التقارير</button>
-                                <button onClick={()=>setTab('zones')} className={`px-3 py-1 rounded text-sm ${tab==='zones'?'bg-accent-500 text-white':'hover:bg-gray-50'}`}>المواقع</button>
-                                <button onClick={()=>setTab('my_attendance')} className={`px-3 py-1 rounded text-sm ${tab==='my_attendance'?'bg-accent-500 text-white':'hover:bg-gray-50'}`}>تسجيلي</button>
+                            <div className="flex gap-2 bg-white p-1 rounded-lg border w-fit mx-auto shadow-sm">
+                                <button onClick={()=>setTab('summary')} className={`px-4 py-2 rounded-lg text-sm font-bold ${tab==='summary'?'bg-accent-500 text-white':'text-gray-500 hover:bg-gray-50'}`}>التقارير</button>
+                                <button onClick={()=>setTab('zones')} className={`px-4 py-2 rounded-lg text-sm font-bold ${tab==='zones'?'bg-accent-500 text-white':'text-gray-500 hover:bg-gray-50'}`}>المواقع</button>
+                                <button onClick={()=>setTab('my_attendance')} className={`px-4 py-2 rounded-lg text-sm font-bold ${tab==='my_attendance'?'bg-accent-500 text-white':'text-gray-500 hover:bg-gray-50'}`}>تسجيلي</button>
+                            </div>
+                        )}
+                        {tab === 'summary' && user.role === 'admin' && (
+                            <div className="bg-white p-6 rounded-2xl shadow border">
+                                <div className="flex justify-between mb-4"><h3 className="font-bold">سجل الحركات</h3><button onClick={exportReport} className="text-sm bg-green-100 text-green-700 px-3 py-1 rounded font-bold">Excel</button></div>
+                                <table className="w-full text-sm text-right"><thead className="bg-gray-50"><tr><th className="p-2">الموظف</th><th className="p-2">الحركة</th><th className="p-2">الوقت</th></tr></thead><tbody>{logs.slice().reverse().slice(0,10).map(l => (<tr key={l.id} className="border-b"><td className="p-2">{usersList.find(x=>x.id===l.uid)?.name}</td><td className="p-2">{l.type==='IN'?'دخول':'خروج'}</td><td className="p-2 date-en">{formatTime(l.timestamp)}</td></tr>))}</tbody></table>
+                            </div>
+                        )}
+                        {tab === 'zones' && user.role === 'admin' && (
+                            <div>
+                                <button onClick={()=>setShowZoneModal(true)} className="bg-brand-900 text-white px-4 py-2 rounded-xl mb-4 shadow-lg">إضافة موقع جديد</button>
+                                <div className="grid gap-3">{zones.map(z=><div key={z.id} className="bg-white p-4 border rounded-xl shadow-sm flex justify-between items-center"><div><div className="font-bold">{z.name}</div><div className="text-xs text-gray-500 date-en">{z.startTime}-{z.endTime}</div></div><span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">{z.radius}m</span></div>)}</div>
+                            </div>
+                        )}
+                        {tab === 'my_attendance' && (
+                            <div className="bg-white p-8 rounded-2xl shadow-lg text-center max-w-lg mx-auto border-t-4 border-accent-500">
+                                 {!myZone ? <div className="text-red-500 bg-red-50 p-4 rounded-xl">لم يتم تحديد موقع عمل لك. يرجى التواصل مع المدير.</div> : (
+                                    <>
+                                        <div className="mb-6"><div className="text-sm text-gray-500">موقع عملك: <strong>{myZone.name}</strong></div>{status === 'loading' && <div className="loader mx-auto mt-4"></div>}{status === 'in_range' && <div className="text-green-600 font-bold text-lg mt-4 flex items-center justify-center gap-2 py-2 bg-green-50 rounded-xl"><Icon name="map-pin"/> أنت في الموقع الصحيح</div>}{status === 'out_range' && <div className="text-red-600 font-bold mt-4 py-2 bg-red-50 rounded-xl">خارج النطاق ({distance}م)</div>}</div>
+                                        <input className="w-full p-3 border rounded-xl mb-4 text-sm bg-gray-50" placeholder="أضف ملاحظة (اختياري)..." value={note} onChange={e=>setNote(e.target.value)} />
+                                        <div className="grid grid-cols-2 gap-4"><button disabled={status!=='in_range'||processing} onClick={()=>handleAttendance('IN')} className="bg-green-600 text-white py-4 rounded-xl font-bold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg">تسجيل دخول</button><button disabled={status!=='in_range'||processing} onClick={()=>handleAttendance('OUT')} className="bg-red-600 text-white py-4 rounded-xl font-bold hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg">تسجيل خروج</button></div>
+                                    </>
+                                 )}
                             </div>
                         )}
                     </div>
-                    {tab === 'summary' && user.role === 'admin' && (
-                        <div className="bg-white p-6 rounded-2xl shadow border">
-                            <div className="flex justify-between mb-4"><h3 className="font-bold">سجل الحركات</h3><button onClick={exportReport} className="text-sm bg-green-100 text-green-700 px-3 py-1 rounded font-bold">Excel</button></div>
-                            <table className="w-full text-sm text-right"><thead className="bg-gray-50"><tr><th className="p-2">الموظف</th><th className="p-2">الحركة</th><th className="p-2">الوقت</th></tr></thead><tbody>{logs.slice().reverse().slice(0,10).map(l => (<tr key={l.id} className="border-b"><td className="p-2">{usersList.find(x=>x.id===l.uid)?.name}</td><td className="p-2">{l.type==='IN'?'دخول':'خروج'}</td><td className="p-2 date-en">{formatTime(l.timestamp)}</td></tr>))}</tbody></table>
-                        </div>
-                    )}
-                    {tab === 'zones' && user.role === 'admin' && (
-                        <div>
-                            <button onClick={()=>setShowZoneModal(true)} className="bg-brand-900 text-white px-4 py-2 rounded mb-4">إضافة موقع</button>
-                            <div className="grid gap-3">{zones.map(z=><div key={z.id} className="bg-white p-3 border rounded shadow-sm flex justify-between"><span>{z.name}</span><span className="text-gray-500 text-sm date-en">{z.startTime}-{z.endTime}</span></div>)}</div>
-                        </div>
-                    )}
-                    {tab === 'my_attendance' && (
-                        <div className="bg-white p-8 rounded-2xl shadow text-center max-w-lg mx-auto border-t-4 border-accent-500">
-                             {!myZone ? <div className="text-red-500">لم يتم تحديد موقع عمل لك. يرجى التواصل مع المدير لربطك بموقع.</div> : (
-                                <>
-                                    <div className="mb-6"><div className="text-sm text-gray-500">موقع عملك: {myZone.name}</div>{status === 'loading' && <div className="loader mx-auto mt-2"></div>}{status === 'in_range' && <div className="text-green-600 font-bold text-lg mt-2 flex items-center justify-center gap-2"><Icon name="map-pin"/> أنت في الموقع</div>}{status === 'out_range' && <div className="text-red-600 font-bold mt-2">خارج النطاق ({distance}م)</div>}</div>
-                                    <input className="w-full p-3 border rounded-xl mb-4 text-sm" placeholder="ملاحظة..." value={note} onChange={e=>setNote(e.target.value)} />
-                                    <div className="grid grid-cols-2 gap-4"><button disabled={status!=='in_range'||processing} onClick={()=>handleAttendance('IN')} className="bg-green-600 text-white py-3 rounded-xl hover:bg-green-700 disabled:opacity-50">دخول</button><button disabled={status!=='in_range'||processing} onClick={()=>handleAttendance('OUT')} className="bg-red-600 text-white py-3 rounded-xl hover:bg-red-700 disabled:opacity-50">خروج</button></div>
-                                </>
-                             )}
-                        </div>
-                    )}
-                    {showZoneModal && (
-                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"><div className="bg-white w-full max-w-lg rounded-2xl p-6"><h3 className="font-bold mb-4">إضافة موقع</h3><input className="w-full border p-2 mb-2 rounded" placeholder="الاسم" value={newZone.name} onChange={e=>setNewZone({...newZone, name: e.target.value})} /><MapZoneEditor center={{lat: newZone.lat, lng: newZone.lng}} radius={newZone.radius} onChange={(c, r) => setNewZone({...newZone, lat: c.lat, lng: c.lng, radius: r})} /><div className="flex gap-2 mt-4"><button onClick={handleAddZone} className="flex-1 bg-brand-900 text-white py-2 rounded">حفظ</button><button onClick={()=>setShowZoneModal(false)} className="flex-1 bg-gray-100 py-2 rounded">إلغاء</button></div></div></div>
-                    )}
+                    {showZoneModal && ( <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"><div className="bg-white w-full max-w-lg rounded-2xl p-6"><h3 className="font-bold mb-4">إضافة موقع</h3><input className="w-full border p-2 mb-2 rounded" placeholder="الاسم" value={newZone.name} onChange={e=>setNewZone({...newZone, name: e.target.value})} /><MapZoneEditor center={{lat: newZone.lat, lng: newZone.lng}} radius={newZone.radius} onChange={(c, r) => setNewZone({...newZone, lat: c.lat, lng: c.lng, radius: r})} /><div className="flex gap-2 mt-4"><button onClick={handleAddZone} className="flex-1 bg-brand-900 text-white py-2 rounded">حفظ</button><button onClick={()=>setShowZoneModal(false)} className="flex-1 bg-gray-100 py-2 rounded">إلغاء</button></div></div></div> )}
                 </div>
             );
         };
 
-        // --- MODULE: CRM COMPONENTS ---
-        const Dashboard = ({ clients }) => {
+        // --- 4. CRM SYSTEM (ORIGINAL CODE WRAPPED) ---
+        const STATUS_LIST = [ { key: 'New', label: 'عميل جديد', color: 'bg-blue-50 text-blue-700 border-blue-200' }, { key: 'Contacted1', label: 'تم التواصل 1', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' }, { key: 'Contacted2', label: 'تم التواصل 2', color: 'bg-purple-50 text-purple-700 border-purple-200' }, { key: 'Contacted3', label: 'تم التواصل 3', color: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200' }, { key: 'Deposit', label: 'دفع عربون', color: 'bg-amber-50 text-amber-700 border-amber-200' }, { key: 'Sold', label: 'تم البيع', color: 'bg-emerald-100 text-emerald-800 border-emerald-200' }, { key: 'Cancelled', label: 'ملغي', color: 'bg-red-50 text-red-700 border-red-200' }, ];
+        const PROJECT_LIST = ["بيوتكم 10", "بيوتكم 11", "بيوتكم 12", "بيوتكم 13", "بيوتكم 14"];
+        const CLIENT_SOURCES = ["مباشر", "عقار", "اعلانات رقمية", "توصية صديق"];
+
+        const CRMDashboard = ({ clients }) => {
             const totalClients = clients.length;
             const statusData = STATUS_LIST.map(s => ({ name: s.label, count: clients.filter(c => c.status === s.key).length, key: s.key, color: s.color }));
             return (
@@ -264,11 +295,12 @@
                         <div className="bg-gradient-to-r from-brand-900 to-brand-800 text-white p-6 rounded-2xl shadow-lg flex justify-between items-center"><div><h2 className="text-lg font-bold opacity-80 mb-1">إجمالي العملاء</h2><div className="text-4xl font-black">{totalClients}</div></div><div className="bg-white/10 p-4 rounded-full"><Icon name="users" size={32} /></div></div>
                         <div className="bg-white p-6 rounded-2xl shadow-lg border border-amber-100 md:col-span-2 relative"><div className="flex justify-between items-start mb-4"><h3 className="font-bold text-brand-900 flex items-center gap-2"><Icon name="activity" className="text-amber-500"/> نظرة عامة</h3></div><div className="h-24 flex items-end gap-2">{statusData.map(s=><div key={s.key} style={{height: `${Math.max(10, (s.count/totalClients)*100)}%`}} className={`flex-1 rounded-t-lg ${s.color.split(' ')[0]} opacity-80`} title={`${s.name}: ${s.count}`}></div>)}</div></div>
                     </div>
+                    {/* Add more dashboard widgets here if needed */}
                 </div>
             );
         };
 
-        const ClientList = ({ clients, users, currentUser, onAdd, onEdit }) => {
+        const CRMClientList = ({ clients, users, currentUser, onAdd, onEdit }) => {
             const [search, setSearch] = useState('');
             const filtered = clients.filter(c => (currentUser.role === 'admin' || c.assignedTo === currentUser.name || c.addedBy === currentUser.email) && (safeStr(c.name).includes(search) || safeStr(c.phone).includes(search)));
             return (
@@ -288,41 +320,114 @@
             );
         };
 
-        // --- MAIN APP (CONTAINER) ---
+        const CRMReports = ({ clients, users }) => {
+            const reportData = users.map(u => {
+                const userClients = clients.filter(c => c.assignedTo === u.name);
+                return { id: u.id, name: u.name, total: userClients.length, sold: userClients.filter(c => c.status === 'Sold').length };
+            });
+            return (
+                <div className="bg-white rounded-xl shadow-sm border p-6">
+                    <h3 className="font-bold mb-4">تقارير الموظفين</h3>
+                    <table className="w-full text-right"><thead className="bg-gray-50"><tr><th className="p-3">الموظف</th><th className="p-3">العملاء</th><th className="p-3 text-green-600">المبيعات</th></tr></thead><tbody>{reportData.map(r=><tr key={r.id} className="border-b"><td className="p-3 font-bold">{r.name}</td><td className="p-3">{r.total}</td><td className="p-3 text-green-600 font-bold">{r.sold}</td></tr>)}</tbody></table>
+                </div>
+            )
+        };
+        const CRMUsers = ({ users, currentUser }) => {
+             const [newUser, setNewUser] = useState({ name: '', email: '', uid: '', role: 'employee' });
+             const [showAdd, setShowAdd] = useState(false);
+             const handleAdd = (e) => { e.preventDefault(); if(!newUser.uid) return alert('UID مطلوب'); set(ref(db, `users/${newUser.uid}`), newUser); setShowAdd(false); alert('تم'); };
+             return (
+                <div className="space-y-4">
+                    <div className="flex justify-between"><h3 className="font-bold">قائمة الموظفين</h3>{currentUser.role==='admin' && <button onClick={()=>setShowAdd(!showAdd)} className="bg-brand-900 text-white px-3 py-1 rounded text-sm">+ موظف</button>}</div>
+                    {showAdd && <form onSubmit={handleAdd} className="bg-white p-4 border rounded-xl grid gap-2"><input placeholder="الاسم" value={newUser.name} onChange={e=>setNewUser({...newUser, name:e.target.value})}/><input placeholder="Email" value={newUser.email} onChange={e=>setNewUser({...newUser, email:e.target.value})}/><input placeholder="UID" value={newUser.uid} onChange={e=>setNewUser({...newUser, uid:e.target.value})}/><button className="bg-brand-900 text-white p-2 rounded">حفظ</button></form>}
+                    <div className="grid gap-2">{users.map(u=><div key={u.id} className="bg-white p-3 border rounded flex justify-between"><span>{u.name}</span><span className="text-xs bg-gray-100 p-1 rounded">{u.role}</span></div>)}</div>
+                </div>
+             );
+        };
+        const BackupSettings = ({ clients, users }) => ( <div className="bg-white p-6 rounded-xl shadow-sm border"><button onClick={() => { const data = { clients, users, date: new Date().toISOString() }; const blob = new Blob([JSON.stringify(data)], { type: "application/json" }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = "backup.json"; link.click(); }} className="w-full bg-brand-900 text-white p-3 rounded-lg flex justify-center gap-2"><Icon name="download" /> تحميل نسخة احتياطية</button></div> );
+
+        const CRMApp = ({ user, clients, users, onSaveClient, onBack }) => {
+            const [page, setPage] = useState('dashboard');
+            const [modalOpen, setModalOpen] = useState(false);
+            const [editClient, setEditClient] = useState(null);
+
+            const handleAdd = () => { setEditClient(null); setModalOpen(true); };
+            const handleEdit = (c) => { setEditClient(c); setModalOpen(true); };
+            const handleSave = (d) => { onSaveClient(d, editClient); setModalOpen(false); };
+
+            return (
+                <div className="flex min-h-screen bg-slate-50">
+                    <aside className="w-64 bg-white border-l h-screen sticky top-0 flex flex-col z-10">
+                        <div className="p-6 flex items-center gap-2 font-black text-xl text-brand-900 border-b">
+                            <Logo size={32} /> بيوتكم CRM
+                        </div>
+                        <nav className="flex-1 p-4 space-y-2">
+                            <button onClick={()=>setPage('dashboard')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='dashboard'?'bg-brand-900 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="layout-dashboard"/> لوحة التحكم</button>
+                            <button onClick={()=>setPage('clients')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='clients'?'bg-brand-900 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="users"/> العملاء</button>
+                            {user.role === 'admin' && (
+                                <>
+                                    <button onClick={()=>setPage('reports')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='reports'?'bg-brand-900 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="bar-chart-2"/> التقارير</button>
+                                    <button onClick={()=>setPage('users')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='users'?'bg-brand-900 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="shield"/> الموظفين</button>
+                                    <button onClick={()=>setPage('backup')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='backup'?'bg-brand-900 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="settings"/> الإعدادات</button>
+                                </>
+                            )}
+                        </nav>
+                        <div className="p-4 border-t bg-gray-50">
+                            <button onClick={onBack} className="w-full bg-white border border-gray-300 text-gray-700 p-2 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-gray-100 transition"><Icon name="grid" size={16}/> تبديل التطبيق</button>
+                        </div>
+                    </aside>
+                    <main className="flex-1 p-8 overflow-y-auto">
+                        <header className="flex justify-between items-center mb-8">
+                            <h2 className="text-2xl font-bold text-brand-900">{page==='dashboard'?'لوحة التحكم':page==='clients'?'العملاء والطلبات':page==='reports'?'التقارير':page==='users'?'الموظفين':'الإعدادات'}</h2>
+                            <div className="flex items-center gap-3">
+                                <div className="text-sm font-bold text-gray-700">{user.name}</div>
+                                <div className="w-10 h-10 rounded-full bg-brand-900 text-white flex items-center justify-center font-bold">{user.name.charAt(0)}</div>
+                            </div>
+                        </header>
+                        <div className="max-w-6xl mx-auto">
+                            {page === 'dashboard' && <CRMDashboard clients={clients} />}
+                            {page === 'clients' && <CRMClientList clients={clients} users={users} currentUser={user} onAdd={handleAdd} onEdit={handleEdit} />}
+                            {page === 'reports' && <CRMReports clients={clients} users={users} />}
+                            {page === 'users' && <CRMUsers users={users} currentUser={user} />}
+                            {page === 'backup' && <BackupSettings clients={clients} users={users} />}
+                        </div>
+                    </main>
+                    {modalOpen && <ClientModal isOpen={modalOpen} onClose={()=>setModalOpen(false)} client={editClient} onSave={handleSave} users={users} currentUser={user} />}
+                </div>
+            );
+        };
+
+        // --- 5. MAIN ORCHESTRATOR ---
         const App = () => {
             const [user, setUser] = useState(null);
             const [dbUser, setDbUser] = useState(null);
-            const [currentApp, setCurrentApp] = useState('crm'); // 'crm' | 'attendance'
-            const [subPage, setSubPage] = useState('dashboard'); // for CRM sidebar
+            const [currentApp, setCurrentApp] = useState('portal'); // 'portal', 'crm', 'attendance'
+            
+            // Shared Data State
             const [clients, setClients] = useState([]);
             const [users, setUsers] = useState([]);
             const [zones, setZones] = useState([]);
             const [logs, setLogs] = useState([]);
             const [loading, setLoading] = useState(true);
-            const [modalOpen, setModalOpen] = useState(false);
-            const [editClient, setEditClient] = useState(null);
 
             useEffect(() => {
                 const unsub = onAuthStateChanged(auth, u => {
                     if (u) {
                         setUser(u);
-                        // Fetch Users to find Role & Zone
+                        // Fetch Users
                         onValue(ref(db, 'users'), s => {
                             const data = s.val() || {};
                             const list = Object.keys(data).map(k => ({ id: k, ...data[k] }));
                             setUsers(list);
                             const profile = list.find(x => x.email.toLowerCase() === u.email.toLowerCase());
-                            
-                            // دمج بيانات الدخول مع بيانات الملف الشخصي
                             if (u.email.toLowerCase() === 'asleh@boyoticom.com') {
                                 setDbUser({ ...profile, id: u.uid, role: 'admin', name: 'Ali Saleh', email: u.email });
                             } else {
                                 setDbUser(profile ? { ...profile, id: u.uid } : { id: u.uid, email: u.email, role: 'employee', name: 'مستخدم جديد' });
                             }
                         });
-                        // Fetch CRM Data
+                        // Fetch All Data needed for both apps
                         onValue(ref(db, 'clients'), s => setClients(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})).reverse() : []));
-                        // Fetch Attendance Data
                         onValue(ref(db, 'zones'), s => setZones(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})) : []));
                         onValue(ref(db, 'attendance'), s => setLogs(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})) : []));
                     } else {
@@ -333,86 +438,26 @@
                 return () => unsub();
             }, []);
 
-            const saveClient = (data) => {
+            const handleSaveClient = (data, existing) => {
                 const payload = { ...data, assignedTo: safeStr(data.assignedTo), projects: safeArr(data.projects) };
-                if (editClient) update(ref(db, `clients/${editClient.id}`), payload);
+                if (existing) update(ref(db, `clients/${existing.id}`), payload);
                 else push(ref(db, 'clients'), { ...payload, dateAdded: new Date().toISOString(), addedBy: dbUser.email });
-                setModalOpen(false);
             };
 
             if (loading) return <div className="h-screen flex items-center justify-center"><div className="loader"></div></div>;
             if (!user) return <Login />;
             if (!dbUser) return <div className="h-screen flex items-center justify-center"><div className="loader"></div></div>;
 
-            return (
-                <div className="flex h-screen bg-slate-50 overflow-hidden">
-                    {/* Sidebar */}
-                    <aside className="w-20 md:w-64 bg-brand-900 text-white flex flex-col z-20 transition-all">
-                        <div className="p-4 md:p-6 flex items-center gap-3 font-black text-xl border-b border-brand-800">
-                            <div className="text-accent-500"><Icon name="box" /></div>
-                            <span className="hidden md:block">بيوتكم</span>
-                        </div>
-                        
-                        <nav className="flex-1 p-2 space-y-2 mt-4">
-                            {/* App Switcher */}
-                            <div className="px-3 mb-2 text-xs text-gray-400 font-bold uppercase hidden md:block">التطبيقات</div>
-                            
-                            <button onClick={()=>setCurrentApp('crm')} className={`w-full flex items-center gap-3 p-3 rounded-xl transition ${currentApp==='crm' ? 'bg-crm-600 text-white shadow-lg' : 'text-gray-400 hover:bg-brand-800 hover:text-white'}`}>
-                                <Icon name="layout-grid" />
-                                <span className="hidden md:block font-bold">إدارة العملاء (CRM)</span>
-                            </button>
-
-                            <button onClick={()=>setCurrentApp('attendance')} className={`w-full flex items-center gap-3 p-3 rounded-xl transition ${currentApp==='attendance' ? 'bg-accent-600 text-white shadow-lg' : 'text-gray-400 hover:bg-brand-800 hover:text-white'}`}>
-                                <Icon name="clock" />
-                                <span className="hidden md:block font-bold">الحضور والانصراف</span>
-                            </button>
-                        </nav>
-
-                        <div className="p-4 border-t border-brand-800">
-                            <div className="flex items-center gap-3 mb-4 overflow-hidden">
-                                <div className="w-8 h-8 rounded-full bg-brand-800 flex-shrink-0 flex items-center justify-center text-xs">{safeStr(dbUser.name).charAt(0)}</div>
-                                <div className="hidden md:block overflow-hidden">
-                                    <div className="font-bold text-sm truncate">{dbUser.name}</div>
-                                    <div className="text-xs text-gray-400 truncate">{dbUser.role === 'admin' ? 'مسؤول' : 'موظف'}</div>
-                                </div>
-                            </div>
-                            <button onClick={()=>signOut(auth)} className="w-full bg-red-500/10 text-red-400 p-2 rounded-lg hover:bg-red-500 hover:text-white transition flex items-center justify-center gap-2">
-                                <Icon name="log-out" size={16}/> <span className="hidden md:inline">خروج</span>
-                            </button>
-                        </div>
-                    </aside>
-
-                    {/* Main Content Area */}
-                    <main className="flex-1 overflow-y-auto relative bg-slate-50">
-                        {/* Mobile Header */}
-                        <header className="md:hidden bg-white p-4 shadow-sm flex justify-between items-center sticky top-0 z-10">
-                            <div className="font-bold text-brand-900">{currentApp === 'crm' ? 'لوحة الـ CRM' : 'الحضور والانصراف'}</div>
-                            <div className="w-8 h-8 bg-brand-900 rounded-full text-white flex items-center justify-center">{safeStr(dbUser.name).charAt(0)}</div>
-                        </header>
-
-                        <div className="p-4 md:p-8 max-w-7xl mx-auto">
-                            {currentApp === 'crm' ? (
-                                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-                                    {/* CRM Internal Nav */}
-                                    <div className="flex gap-4 border-b pb-4 mb-4 overflow-x-auto">
-                                        <button onClick={()=>setSubPage('dashboard')} className={`font-bold pb-2 ${subPage==='dashboard'?'text-brand-900 border-b-2 border-brand-900':'text-gray-400'}`}>لوحة التحكم</button>
-                                        <button onClick={()=>setSubPage('clients')} className={`font-bold pb-2 ${subPage==='clients'?'text-brand-900 border-b-2 border-brand-900':'text-gray-400'}`}>العملاء</button>
-                                    </div>
-
-                                    {subPage === 'dashboard' && <Dashboard clients={clients} />}
-                                    {subPage === 'clients' && <ClientList clients={clients} users={users} currentUser={dbUser} onAdd={()=>{setEditClient(null);setModalOpen(true)}} onEdit={(c)=>{setEditClient(c);setModalOpen(true)}} />}
-                                    
-                                    {modalOpen && <ClientModal isOpen={modalOpen} onClose={()=>setModalOpen(false)} client={editClient} onSave={saveClient} users={users} currentUser={dbUser} />}
-                                </div>
-                            ) : (
-                                <div className="animate-in fade-in slide-in-from-bottom-4">
-                                    <AttendanceModule user={dbUser} zones={zones} usersList={users} logs={logs} />
-                                </div>
-                            )}
-                        </div>
-                    </main>
-                </div>
-            );
+            // --- ROUTING ---
+            if (currentApp === 'crm') {
+                return <CRMApp user={dbUser} clients={clients} users={users} onSaveClient={handleSaveClient} onBack={() => setCurrentApp('portal')} />;
+            }
+            if (currentApp === 'attendance') {
+                return <AttendanceApp user={dbUser} zones={zones} usersList={users} logs={logs} onBack={() => setCurrentApp('portal')} />;
+            }
+            
+            // Default: Portal
+            return <Portal user={dbUser} onSelectApp={setCurrentApp} />;
         };
 
         const root = window.ReactDOM.createRoot(document.getElementById('root'));
