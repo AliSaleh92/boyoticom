@@ -547,7 +547,73 @@
 
             return <div ref={mapRef} className="w-full h-64 rounded-xl z-0" />; 
         };
+
         const calculateDistance = (lat1, lon1, lat2, lon2) => { const R = 6371e3; const φ1 = lat1 * Math.PI/180; const φ2 = lat2 * Math.PI/180; const Δφ = (lat2-lat1) * Math.PI/180; const Δλ = (lon2-lon1) * Math.PI/180; const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2); return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); };
+
+        // --- NEW: Employee Map Component ---
+        const EmployeeMap = ({ users, logs }) => {
+            const mapRef = useRef(null);
+            const mapObj = useRef(null);
+            const markersRef = useRef({}); 
+
+            useEffect(() => {
+                if (!mapRef.current) return;
+                
+                // Initialize Map
+                if (!mapObj.current) {
+                    mapObj.current = L.map(mapRef.current).setView([24.7136, 46.6753], 11);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapObj.current);
+                }
+
+                // Update Markers
+                users.forEach(u => {
+                    if (u.id === 'admin') return;
+                    
+                    // Get latest log with coordinates
+                    const userLogs = logs.filter(l => l.uid === u.id && l.lat && l.lng);
+                    const lastLog = userLogs.sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp))[0];
+
+                    if (lastLog) {
+                        const isOnline = lastLog.type === 'IN' && new Date(lastLog.timestamp).toDateString() === new Date().toDateString();
+                        // Color logic: Green if online & inside, Red if online & outside, Gray if offline
+                        let color = '#9ca3af'; // gray-400
+                        if (isOnline) {
+                            color = lastLog.locationStatus === 'outside_zone' ? '#ef4444' : '#22c55e'; // red-500 : green-500
+                        }
+
+                        const iconHtml = `<div style="background-color: ${color}; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`;
+                        const icon = L.divIcon({ 
+                            className: 'custom-map-marker', 
+                            html: iconHtml, 
+                            iconSize: [14, 14],
+                            iconAnchor: [7, 7]
+                        });
+
+                        if (markersRef.current[u.id]) {
+                            markersRef.current[u.id].setLatLng([lastLog.lat, lastLog.lng]);
+                            markersRef.current[u.id].setIcon(icon);
+                            markersRef.current[u.id].setPopupContent(`<div class="text-right"><div class="font-bold">${u.name}</div><div class="text-xs">${isOnline ? 'متواجد الآن' : 'آخر ظهور'}</div><div class="text-xs text-gray-500 date-en">${formatTime(lastLog.timestamp)}</div></div>`);
+                        } else {
+                            const marker = L.marker([lastLog.lat, lastLog.lng], { icon }).addTo(mapObj.current);
+                            marker.bindPopup(`<div class="text-right"><div class="font-bold">${u.name}</div><div class="text-xs">${isOnline ? 'متواجد الآن' : 'آخر ظهور'}</div><div class="text-xs text-gray-500 date-en">${formatTime(lastLog.timestamp)}</div></div>`);
+                            markersRef.current[u.id] = marker;
+                        }
+                    }
+                });
+
+                // Cleanup markers for users who have no logs anymore
+                Object.keys(markersRef.current).forEach(uid => {
+                    const hasLog = logs.some(l => l.uid === uid && l.lat);
+                    if (!hasLog) {
+                        mapObj.current.removeLayer(markersRef.current[uid]);
+                        delete markersRef.current[uid];
+                    }
+                });
+
+            }, [users, logs]);
+
+            return <div className="bg-white p-2 rounded-2xl shadow-sm border mb-4"><div ref={mapRef} className="w-full h-80 rounded-xl z-0" /></div>;
+        };
 
         // -- New Permission Modal --
         const PermissionModal = ({ isOpen, onClose, onSend }) => {
@@ -718,6 +784,7 @@
             const [myStatus, setMyStatus] = useState('loading'); const [currentZone, setCurrentZone] = useState(null); const [todayLog, setTodayLog] = useState({ in: null, out: null });
             const [dist, setDist] = useState(null);
             const [sidebarOpen, setSidebarOpen] = useState(false);
+            const [currentPos, setCurrentPos] = useState(null); // Store User Position
             
             // New States for Permission and Confirmation
             const [permModalOpen, setPermModalOpen] = useState(false);
@@ -730,6 +797,9 @@
                 if(foundZone) { 
                     const options = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
                     const id = navigator.geolocation.watchPosition(pos => { 
+                        // Update Position State
+                        setCurrentPos({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+                        
                         const d = calculateDistance(pos.coords.latitude, pos.coords.longitude, foundZone.lat, foundZone.lng); setDist(Math.round(d)); setMyStatus(d <= foundZone.radius ? 'inside' : 'outside'); 
                     }, err => { console.error(err); setMyStatus('error'); }, options); 
                     return () => navigator.geolocation.clearWatch(id); 
@@ -755,7 +825,13 @@
             };
 
             const handleAttendance = (type, locationStatus) => { 
-                push(ref(db, 'attendance'), { uid: user.id, type, timestamp: new Date().toISOString(), locationStatus }); 
+                // Store coords if available
+                const payload = { uid: user.id, type, timestamp: new Date().toISOString(), locationStatus };
+                if (currentPos) {
+                    payload.lat = currentPos.lat;
+                    payload.lng = currentPos.lng;
+                }
+                push(ref(db, 'attendance'), payload); 
                 alert(`تم تسجيل ${type==='IN'?'الدخول':'الخروج'} بنجاح (${locationStatus === 'outside_zone' ? 'خارج النطاق' : 'داخل النطاق'})`); 
             };
 
@@ -847,26 +923,31 @@
                         {page === 'zones' && (<div><button onClick={openAddModal} className="bg-accent-600 text-white px-6 py-3 rounded-xl font-bold mb-6 shadow-lg">+ إضافة نطاق جديد</button><div className="grid gap-4">{zones.map(z => (<div key={z.id} className="bg-white p-5 rounded-2xl shadow-sm border flex justify-between items-center"><div><h4 className="font-bold text-lg text-brand-900">{z.name}</h4><div className="text-sm text-gray-500 date-en">{z.startTime} - {z.endTime}</div></div><div className="flex items-center gap-3"><span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm font-bold">{safeArr(z.assignedUsers).length} موظف</span><button onClick={()=>openEditModal(z)} className="bg-gray-100 p-2 rounded-lg hover:bg-gray-200 text-brand-900"><Icon name="pencil" size={16}/></button></div></div>))}</div></div>)}
                         {page === 'reports' && <AttendanceReports logs={logs} users={usersList} zones={zones} permissions={permissions} />}
                         {page === 'perms' && <PermissionsManager permissions={permissions} />}
-                        {page === 'live' && (<div className="grid grid-cols-1 md:grid-cols-3 gap-4">{usersList.filter(u => u.id !== 'admin').map(u => { 
-                            const lastLog = logs.filter(l => l.uid === u.id).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp))[0]; 
-                            const isOnline = lastLog?.type === 'IN' && new Date(lastLog.timestamp).toDateString() === new Date().toDateString(); 
-                            const isOutside = lastLog?.locationStatus === 'outside_zone';
-                            
-                            return ( 
-                                <div key={u.id} className="bg-white p-5 rounded-2xl shadow-sm border flex items-center gap-4 relative overflow-hidden">
-                                    {isOnline && (
-                                        <div className={`absolute top-0 left-0 px-2 py-1 text-[10px] font-bold text-white ${isOutside ? 'bg-red-500' : 'bg-green-500'} rounded-br-lg`}>
-                                            {isOutside ? 'خارج النطاق' : 'داخل النطاق'}
-                                        </div>
-                                    )}
-                                    <div className={`w-4 h-4 rounded-full ${isOnline?'bg-green-500 animate-pulse':'bg-gray-300'}`}></div>
-                                    <div>
-                                        <div className="font-bold text-brand-900">{u.name}</div>
-                                        <div className="text-xs text-gray-500">{isOnline ? `دخل منذ ${formatTime(lastLog.timestamp)}` : 'غير متواجد'}</div>
-                                    </div>
-                                </div> 
-                            ) 
-                        })}</div>)}
+                        {page === 'live' && (
+                            <>
+                                <EmployeeMap users={usersList} logs={logs} />
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">{usersList.filter(u => u.id !== 'admin').map(u => { 
+                                    const lastLog = logs.filter(l => l.uid === u.id).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp))[0]; 
+                                    const isOnline = lastLog?.type === 'IN' && new Date(lastLog.timestamp).toDateString() === new Date().toDateString(); 
+                                    const isOutside = lastLog?.locationStatus === 'outside_zone';
+                                    
+                                    return ( 
+                                        <div key={u.id} className="bg-white p-5 rounded-2xl shadow-sm border flex items-center gap-4 relative overflow-hidden">
+                                            {isOnline && (
+                                                <div className={`absolute top-0 left-0 px-2 py-1 text-[10px] font-bold text-white ${isOutside ? 'bg-red-500' : 'bg-green-500'} rounded-br-lg`}>
+                                                    {isOutside ? 'خارج النطاق' : 'داخل النطاق'}
+                                                </div>
+                                            )}
+                                            <div className={`w-4 h-4 rounded-full ${isOnline?'bg-green-500 animate-pulse':'bg-gray-300'}`}></div>
+                                            <div>
+                                                <div className="font-bold text-brand-900">{u.name}</div>
+                                                <div className="text-xs text-gray-500">{isOnline ? `دخل منذ ${formatTime(lastLog.timestamp)}` : 'غير متواجد'}</div>
+                                            </div>
+                                        </div> 
+                                    ) 
+                                })}</div>
+                            </>
+                        )}
                     </main>
                     <ZoneModal 
                         key={editingZone ? editingZone.id : 'new_zone_modal'} 
