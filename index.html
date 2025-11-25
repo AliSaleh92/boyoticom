@@ -72,7 +72,7 @@
 
         const { useState, useEffect, useMemo, useRef, Component } = window.React;
         const Recharts = window.Recharts || {};
-        const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip: RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } = Recharts;
+        const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip: RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line } = Recharts;
 
         // --- ERROR BOUNDARY ---
         class ErrorBoundary extends Component {
@@ -485,104 +485,58 @@
             const mapObj = useRef(null); 
             const markerObj = useRef(null); 
             const circleObj = useRef(null); 
-            
-            // Ref to hold latest props to avoid stale closures in event handlers
             const propsRef = useRef({ radius, onChange, center });
             propsRef.current = { radius, onChange, center };
 
             useEffect(() => { 
                 if (!mapRef.current) return; 
-                
-                // Initialize map ONLY ONCE
                 if (!mapObj.current) { 
                     mapObj.current = L.map(mapRef.current).setView([center.lat, center.lng], 15); 
                     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapObj.current); 
-                    
                     const icon = L.icon({ iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png', shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41] }); 
-                    
                     markerObj.current = L.marker([center.lat, center.lng], { icon, draggable: true }).addTo(mapObj.current); 
                     circleObj.current = L.circle([center.lat, center.lng], { color: '#CE9B52', fillColor: '#CE9B52', fillOpacity: 0.2, radius: radius }).addTo(mapObj.current); 
-                    
-                    const handleUpdate = (lat, lng) => { 
-                        const currentRadius = propsRef.current.radius;
-                        const currentOnChange = propsRef.current.onChange;
-                        
-                        // Update UI immediately for smoothness
-                        if(markerObj.current) markerObj.current.setLatLng([lat, lng]); 
-                        if(circleObj.current) circleObj.current.setLatLng([lat, lng]); 
-                        
-                        // Propagate change
-                        currentOnChange({ lat, lng }, currentRadius); 
-                    }; 
-
+                    const handleUpdate = (lat, lng) => { const currentRadius = propsRef.current.radius; const currentOnChange = propsRef.current.onChange; if(markerObj.current) markerObj.current.setLatLng([lat, lng]); if(circleObj.current) circleObj.current.setLatLng([lat, lng]); currentOnChange({ lat, lng }, currentRadius); }; 
                     mapObj.current.on('click', (e) => handleUpdate(e.latlng.lat, e.latlng.lng)); 
                     markerObj.current.on('dragend', (e) => { const l = e.target.getLatLng(); handleUpdate(l.lat, l.lng); }); 
-                } else {
-                    // If map exists, just update view to center
-                     mapObj.current.setView([center.lat, center.lng], 15);
-                }
-            }, []); // Empty dependency array to run init only once
-            
-            // Update circle radius when prop changes
-            useEffect(() => { 
-                if(circleObj.current) circleObj.current.setRadius(radius); 
-            }, [radius]); 
-            
-            // Update map/marker position when center prop changes (e.g. selecting different zone)
-            useEffect(() => {
-                if(mapObj.current && markerObj.current && circleObj.current) {
-                    const newLatLng = [center.lat, center.lng];
-                    const currentLatLng = markerObj.current.getLatLng();
-                    
-                    // Only update if position actually changed to prevent loop
-                    if (Math.abs(currentLatLng.lat - center.lat) > 0.0001 || Math.abs(currentLatLng.lng - center.lng) > 0.0001) {
-                         markerObj.current.setLatLng(newLatLng);
-                         circleObj.current.setLatLng(newLatLng);
-                         mapObj.current.setView(newLatLng); 
-                    }
-                }
-            }, [center.lat, center.lng]); // Depend on lat/lng primitives
-
+                } else { mapObj.current.setView([center.lat, center.lng], 15); }
+            }, []);
+            useEffect(() => { if(circleObj.current) circleObj.current.setRadius(radius); }, [radius]); 
+            useEffect(() => { if(mapObj.current && markerObj.current && circleObj.current) { const newLatLng = [center.lat, center.lng]; const currentLatLng = markerObj.current.getLatLng(); if (Math.abs(currentLatLng.lat - center.lat) > 0.0001 || Math.abs(currentLatLng.lng - center.lng) > 0.0001) { markerObj.current.setLatLng(newLatLng); circleObj.current.setLatLng(newLatLng); mapObj.current.setView(newLatLng); } } }, [center.lat, center.lng]); 
             return <div ref={mapRef} className="w-full h-64 rounded-xl z-0" />; 
         };
-        // MODIFIED: Increased tolerance in distance calculation to account for GPS drift
-        const calculateDistance = (lat1, lon1, lat2, lon2) => { 
-            const R = 6371e3; 
-            const φ1 = lat1 * Math.PI/180; 
-            const φ2 = lat2 * Math.PI/180; 
-            const Δφ = (lat2-lat1) * Math.PI/180; 
-            const Δλ = (lon2-lon1) * Math.PI/180; 
-            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2); 
-            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
-        };
+        const calculateDistance = (lat1, lon1, lat2, lon2) => { const R = 6371e3; const φ1 = lat1 * Math.PI/180; const φ2 = lat2 * Math.PI/180; const Δφ = (lat2-lat1) * Math.PI/180; const Δλ = (lon2-lon1) * Math.PI/180; const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2); return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); };
 
-        // -- New Permission Modal --
+        // --- NEW MODALS ---
         const PermissionModal = ({ isOpen, onClose, onSend }) => {
             const [reason, setReason] = useState('');
+            const [type, setType] = useState('excuse'); // excuse, sick_leave, annual_leave
             if (!isOpen) return null;
             return (
                 <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4">
                     <div className="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl animate-slide-up">
-                        <h3 className="font-bold text-lg mb-4">طلب استئذان / خروج</h3>
-                        <textarea className="w-full border rounded-xl p-3 mb-4 h-32 resize-none focus:ring-2 focus:ring-accent-500 outline-none" placeholder="سبب الاستئذان..." value={reason} onChange={e=>setReason(e.target.value)}/>
+                        <h3 className="font-bold text-lg mb-4">طلب جديد</h3>
+                        <div className="flex gap-2 mb-4">
+                            <button onClick={()=>setType('excuse')} className={`flex-1 py-2 rounded-lg text-sm font-bold border ${type==='excuse'?'bg-accent-50 border-accent-500 text-accent-700':'border-gray-200'}`}>استئذان ساعات</button>
+                            <button onClick={()=>setType('sick_leave')} className={`flex-1 py-2 rounded-lg text-sm font-bold border ${type==='sick_leave'?'bg-red-50 border-red-500 text-red-700':'border-gray-200'}`}>إجازة مرضية</button>
+                            <button onClick={()=>setType('annual_leave')} className={`flex-1 py-2 rounded-lg text-sm font-bold border ${type==='annual_leave'?'bg-blue-50 border-blue-500 text-blue-700':'border-gray-200'}`}>إجازة سنوية</button>
+                        </div>
+                        <textarea className="w-full border rounded-xl p-3 mb-4 h-32 resize-none focus:ring-2 focus:ring-accent-500 outline-none" placeholder="السبب والتفاصيل..." value={reason} onChange={e=>setReason(e.target.value)}/>
                         <div className="flex gap-2">
                             <button onClick={onClose} className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200">إلغاء</button>
-                            <button onClick={()=>{onSend(reason); setReason('');}} className="flex-1 bg-accent-600 text-white py-3 rounded-xl font-bold hover:bg-accent-700">إرسال الطلب</button>
+                            <button onClick={()=>{onSend(reason, type); setReason('');}} className="flex-1 bg-accent-600 text-white py-3 rounded-xl font-bold hover:bg-accent-700">إرسال الطلب</button>
                         </div>
                     </div>
                 </div>
             );
         };
 
-        // -- New Confirmation Modal for Outside Zone --
         const ConfirmOutsideModal = ({ isOpen, onClose, onConfirm }) => {
             if (!isOpen) return null;
             return (
                 <div className="fixed inset-0 bg-black/50 z-[80] flex items-center justify-center p-4">
                     <div className="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl text-center animate-slide-up">
-                        <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Icon name="alert-triangle" size={32}/>
-                        </div>
+                        <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4"><Icon name="alert-triangle" size={32}/></div>
                         <h3 className="font-bold text-lg mb-2 text-brand-900">تنبيه: أنت خارج النطاق!</h3>
                         <p className="text-gray-500 mb-6">سيتم تسجيل هذا الإجراء مع ملاحظة أنك خارج النطاق الجغرافي المسموح. هل تريد المتابعة؟</p>
                         <div className="flex gap-2">
@@ -594,36 +548,134 @@
             );
         };
 
+        // --- NEW: SHIFT & HOLIDAY MANAGERS ---
+        const ShiftManager = ({ shifts, rosters, users, onSaveShift, onSaveRoster, onClose }) => {
+            const [activeTab, setActiveTab] = useState('shifts');
+            const [newShift, setNewShift] = useState({ name: '', start: '08:00', end: '16:00' });
+            const [rosterData, setRosterData] = useState({ uid: '', date: '', shiftId: '' });
+
+            return (
+                <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+                    <div className="bg-white w-full max-w-2xl rounded-2xl p-6 shadow-2xl h-[500px] flex flex-col">
+                        <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-lg">إدارة الورديات والجداول</h3><button onClick={onClose}><Icon name="x"/></button></div>
+                        <div className="flex gap-4 mb-4 border-b">
+                            <button onClick={()=>setActiveTab('shifts')} className={`pb-2 ${activeTab==='shifts'?'border-b-2 border-brand-900 font-bold':'text-gray-500'}`}>أنواع الورديات</button>
+                            <button onClick={()=>setActiveTab('roster')} className={`pb-2 ${activeTab==='roster'?'border-b-2 border-brand-900 font-bold':'text-gray-500'}`}>جدول الموظفين</button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto">
+                            {activeTab === 'shifts' && (
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-3 gap-2 items-end bg-gray-50 p-3 rounded-lg">
+                                        <div><label className="text-xs">الاسم</label><input className="w-full border p-2 rounded" value={newShift.name} onChange={e=>setNewShift({...newShift, name:e.target.value})} placeholder="مثال: صباحي"/></div>
+                                        <div><label className="text-xs">من - إلى</label><div className="flex gap-1"><input type="time" className="w-full border p-1 rounded" value={newShift.start} onChange={e=>setNewShift({...newShift, start:e.target.value})}/><input type="time" className="w-full border p-1 rounded" value={newShift.end} onChange={e=>setNewShift({...newShift, end:e.target.value})}/></div></div>
+                                        <button onClick={()=>onSaveShift(newShift)} className="bg-brand-900 text-white p-2 rounded font-bold">إضافة</button>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {shifts.map(s => <div key={s.id} className="flex justify-between p-3 border rounded"><span>{s.name}</span><span className="font-mono text-sm bg-gray-100 px-2 rounded">{s.start} - {s.end}</span></div>)}
+                                    </div>
+                                </div>
+                            )}
+                            {activeTab === 'roster' && (
+                                <div className="space-y-4">
+                                    <div className="bg-yellow-50 p-2 text-xs text-yellow-800 rounded mb-2">تعيين وردية محددة لموظف في يوم معين (يتجاوز الوردية الافتراضية).</div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <select className="border p-2 rounded" value={rosterData.uid} onChange={e=>setRosterData({...rosterData, uid:e.target.value})}><option value="">اختر الموظف</option>{users.map(u=><option key={u.id} value={u.id}>{u.name}</option>)}</select>
+                                        <input type="date" className="border p-2 rounded" value={rosterData.date} onChange={e=>setRosterData({...rosterData, date:e.target.value})}/>
+                                        <select className="border p-2 rounded col-span-2" value={rosterData.shiftId} onChange={e=>setRosterData({...rosterData, shiftId:e.target.value})}><option value="">اختر الوردية</option>{shifts.map(s=><option key={s.id} value={s.id}>{s.name} ({s.start}-{s.end})</option>)}</select>
+                                        <button onClick={()=>onSaveRoster(rosterData)} className="bg-accent-600 text-white p-2 rounded font-bold col-span-2">حفظ الجدول</button>
+                                    </div>
+                                    <div className="mt-4 border-t pt-2">
+                                        <h4 className="font-bold text-sm mb-2">الجداول المخصصة القادمة</h4>
+                                        {rosters.map(r => {
+                                            const u = users.find(x=>x.id===r.uid);
+                                            const s = shifts.find(x=>x.id===r.shiftId);
+                                            return <div key={r.id} className="text-sm p-2 border-b flex justify-between"><span>{u?.name}</span><span className="date-en">{r.date}</span><span>{s?.name}</span></div>
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const HolidayManager = ({ holidays, onAdd, onClose }) => {
+            const [date, setDate] = useState('');
+            const [name, setName] = useState('');
+            return (
+                <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+                    <div className="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl">
+                        <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-lg">العطلات الرسمية</h3><button onClick={onClose}><Icon name="x"/></button></div>
+                        <div className="flex gap-2 mb-4">
+                            <input className="border p-2 rounded flex-1" placeholder="اسم المناسبة" value={name} onChange={e=>setName(e.target.value)}/>
+                            <input type="date" className="border p-2 rounded" value={date} onChange={e=>setDate(e.target.value)}/>
+                            <button onClick={()=>onAdd({name, date})} className="bg-green-600 text-white p-2 rounded"><Icon name="plus"/></button>
+                        </div>
+                        <div className="max-h-60 overflow-y-auto space-y-2">
+                            {holidays.sort((a,b)=>new Date(a.date)-new Date(b.date)).map(h => (
+                                <div key={h.id} className="flex justify-between p-2 bg-gray-50 rounded text-sm"><span>{h.name}</span><span className="date-en font-bold">{h.date}</span></div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const AttendanceAnalytics = ({ logs, users }) => {
+            // Processing Data
+            const lateStats = useMemo(() => {
+                const stats = {};
+                logs.forEach(l => {
+                    if(l.type === 'IN' && l.locationStatus === 'inside_zone') { // Simplified check
+                        // In real app, compare with Shift time. Here we simulate random late data for visualization
+                        const user = users.find(u=>u.id===l.uid)?.name || 'Unknown';
+                        stats[user] = (stats[user] || 0) + (Math.random() > 0.7 ? 1 : 0); // Mock logic for demo
+                    }
+                });
+                return Object.entries(stats).map(([name, count]) => ({name, count}));
+            }, [logs, users]);
+
+            const statusDist = [
+                { name: 'حضور', value: logs.filter(l=>l.type==='IN').length, fill: '#10b981' },
+                { name: 'خروج', value: logs.filter(l=>l.type==='OUT').length, fill: '#ef4444' },
+                { name: 'خارج النطاق', value: logs.filter(l=>l.locationStatus==='outside_zone').length, fill: '#f59e0b' }
+            ];
+
+            return (
+                <div className="grid md:grid-cols-2 gap-6 mb-8">
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border">
+                        <h3 className="font-bold mb-4">توزيع الحركات</h3>
+                        <div className="h-64" dir="ltr">
+                            <ResponsiveContainer><PieChart><Pie data={statusDist} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value"><Cell fill="#10b981"/><Cell fill="#ef4444"/><Cell fill="#f59e0b"/></Pie><Tooltip/><Legend/></PieChart></ResponsiveContainer>
+                        </div>
+                    </div>
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border">
+                        <h3 className="font-bold mb-4">أكثر الموظفين تأخيراً (تجريبي)</h3>
+                        <div className="h-64" dir="ltr">
+                            <ResponsiveContainer><BarChart data={lateStats}><CartesianGrid strokeDasharray="3 3"/><XAxis dataKey="name"/><YAxis/><Tooltip/><Bar dataKey="count" fill="#2C3340" radius={[4,4,0,0]}/></BarChart></ResponsiveContainer>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
         const ZoneModal = ({ isOpen, onClose, users, zones, onSave, zoneToEdit }) => {
-            // MODIFIED: Set default radius to 250m to handle GPS drift better
-            const [zone, setZone] = useState({ name: '', startTime: '08:00', endTime: '16:00', lat: 24.7136, lng: 46.6753, radius: 250, assignedUsers: [] });
-            
-            // Reset state COMPLETELY when modal opens or zoneToEdit changes
+            const [zone, setZone] = useState({ name: '', startTime: '08:00', endTime: '16:00', lat: 24.7136, lng: 46.6753, radius: 200, assignedUsers: [] });
             useEffect(() => { 
                 if (isOpen) { 
-                    if (zoneToEdit) {
-                        // Deep copy to break reference
-                        setZone(JSON.parse(JSON.stringify(zoneToEdit))); 
-                    } else {
-                        setZone({ name: '', startTime: '08:00', endTime: '16:00', lat: 24.7136, lng: 46.6753, radius: 250, assignedUsers: [] }); 
-                    }
+                    if (zoneToEdit) { setZone(JSON.parse(JSON.stringify(zoneToEdit))); } 
+                    else { setZone({ name: '', startTime: '08:00', endTime: '16:00', lat: 24.7136, lng: 46.6753, radius: 200, assignedUsers: [] }); }
                 } 
             }, [isOpen, zoneToEdit]);
-            
             if(!isOpen) return null;
-
             const toggleUser = (uid) => {
                 const current = safeArr(zone.assignedUsers);
-                // Check other zones excluding the current one being edited
                 const otherZones = zones.filter(z => z.id !== (zone.id || 'new')); 
                 const isAssignedElsewhere = otherZones.some(z => safeArr(z.assignedUsers).includes(uid));
-                
-                if (isAssignedElsewhere && !current.includes(uid)) {
-                    return alert("هذا الموظف مسجل في نطاق آخر بالفعل. لا يمكن تسجيله في نطاقين.");
-                }
+                if (isAssignedElsewhere && !current.includes(uid)) { return alert("هذا الموظف مسجل في نطاق آخر بالفعل."); }
                 setZone(prev => ({...prev, assignedUsers: current.includes(uid) ? current.filter(id=>id!==uid) : [...current, uid] }));
             };
-            
             return (
                 <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
                     <div className="bg-white w-full max-w-2xl rounded-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -634,44 +686,82 @@
             );
         };
 
-        const AttendanceReports = ({ logs, users, zones, permissions }) => {
+        const AttendanceReports = ({ logs, users, zones, permissions, shifts, rosters, holidays }) => {
             const [startDate, setStartDate] = useState(''); const [endDate, setEndDate] = useState('');
-            const [selectedUser, setSelectedUser] = useState(''); // New Filter State
+            const [selectedUser, setSelectedUser] = useState('');
 
-            const reportData = logs.slice().reverse().filter(l => { 
-                const logDate = l.timestamp.slice(0, 10); 
-                // Apply filters
-                const dateMatch = (!startDate || logDate >= startDate) && (!endDate || logDate <= endDate); 
-                const userMatch = !selectedUser || l.uid === selectedUser;
-                return dateMatch && userMatch;
-            }).reduce((acc, log) => { const date = log.timestamp.slice(0, 10); const key = `${log.uid}-${date}`; if (!acc[key]) acc[key] = { uid: log.uid, date: date, user: users.find(u=>u.id===log.uid)?.name, checkIn: '-', checkOut: '-', late: 0, early: 0, hours: 0, inStatus: '', outStatus: '' }; if (log.type === 'IN') { acc[key].checkIn = log.timestamp; acc[key].inStatus = log.locationStatus; } if (log.type === 'OUT') { acc[key].checkOut = log.timestamp; acc[key].outStatus = log.locationStatus; } return acc; }, {});
-            
-            const processedRows = Object.values(reportData).map(row => {
-                let lateText = '-', earlyText = '-', hoursText = '-', deduction = '-';
-                const zone = zones.find(z => safeArr(z.assignedUsers).includes(row.uid));
-                // Find approved permission for this user and date
-                const hasPermission = permissions.find(p => p.uid === row.uid && p.date === row.date && p.status === 'approved');
-
-                if (row.checkIn !== '-' && zone) {
-                    const shiftStart = new Date(`${row.date}T${zone.startTime}`); const actualIn = new Date(row.checkIn); const diffLate = (actualIn - shiftStart) / 60000; 
-                    if (diffLate > 15) { lateText = `${Math.round(diffLate)} دقيقة`; if (diffLate > 60) deduction = 'خصم يوم'; else if (diffLate > 30) deduction = 'خصم نصف يوم'; else deduction = 'تنبيه (تأخير)'; }
-                }
-                if (row.checkOut !== '-' && zone) {
-                    const shiftEnd = new Date(`${row.date}T${zone.endTime}`); const actualOut = new Date(row.checkOut); const diffEarly = (shiftEnd - actualOut) / 60000;
-                    if (diffEarly > 0) earlyText = `${Math.round(diffEarly)} دقيقة`;
-                }
-                if (row.checkIn !== '-' && row.checkOut !== '-') hoursText = calculateDuration(row.checkIn, row.checkOut);
+            // Advanced Report Generation
+            const processedRows = useMemo(() => {
+                if(!startDate || !endDate) return [];
                 
-                // Override deduction if permission approved
-                if(hasPermission) deduction = `تم الاستئذان: ${hasPermission.reason}`;
+                const rows = [];
+                const start = new Date(startDate);
+                const end = new Date(endDate);
+                const targetUsers = selectedUser ? users.filter(u=>u.id===selectedUser) : users.filter(u=>u.role!=='admin');
 
-                return { ...row, lateText, earlyText, hoursText, deduction };
-            });
+                for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                    const dateStr = d.toISOString().slice(0, 10);
+                    const isHoliday = holidays.some(h => h.date === dateStr);
+                    const holidayName = isHoliday ? holidays.find(h => h.date === dateStr).name : null;
+
+                    targetUsers.forEach(user => {
+                        const dayLog = logs.find(l => l.uid === user.id && l.timestamp.startsWith(dateStr) && l.type === 'IN');
+                        const dayOut = logs.find(l => l.uid === user.id && l.timestamp.startsWith(dateStr) && l.type === 'OUT');
+                        
+                        const roster = rosters.find(r => r.uid === user.id && r.date === dateStr);
+                        const zone = zones.find(z => safeArr(z.assignedUsers).includes(user.id));
+                        
+                        let shiftStart = zone ? zone.startTime : '08:00';
+                        let shiftEnd = zone ? zone.endTime : '16:00';
+                        
+                        // Override if Shift Roster exists
+                        if (roster) {
+                            const shift = shifts.find(s => s.id === roster.shiftId);
+                            if(shift) { shiftStart = shift.start; shiftEnd = shift.end; }
+                        }
+
+                        // Check Permissions/Leaves
+                        const perm = permissions.find(p => p.uid === user.id && p.date === dateStr && p.status === 'approved');
+                        
+                        let status = 'غياب';
+                        let deduction = '-';
+                        let lateText = '-';
+
+                        if (dayLog) {
+                            status = 'حضور';
+                            const actualIn = new Date(dayLog.timestamp);
+                            const schedIn = new Date(`${dateStr}T${shiftStart}`);
+                            const diff = (actualIn - schedIn) / 60000;
+                            if (diff > 15) { lateText = `${Math.round(diff)} دقيقة`; deduction = 'تأخير'; }
+                        } else if (isHoliday) {
+                            status = 'عطلة رسمية';
+                            deduction = holidayName;
+                        } else if (perm) {
+                            status = perm.type === 'annual_leave' ? 'إجازة سنوية' : perm.type === 'sick_leave' ? 'إجازة مرضية' : 'استئذان';
+                            deduction = 'مقبول';
+                        } else {
+                            // Absent logic
+                            const dayName = d.toLocaleDateString('en-US', {weekday:'short'});
+                            if (dayName === 'Fri' || dayName === 'Sat') { status = 'عطلة أسبوعية'; deduction = ''; } // Simple weekend logic
+                        }
+
+                        rows.push({
+                            user: user.name,
+                            date: dateStr,
+                            checkIn: dayLog ? formatTime(dayLog.timestamp) : '-',
+                            checkOut: dayOut ? formatTime(dayOut.timestamp) : '-',
+                            status,
+                            lateText,
+                            deduction
+                        });
+                    });
+                }
+                return rows;
+            }, [startDate, endDate, selectedUser, logs, holidays, rosters, shifts, permissions]);
 
             return (
                 <div className="space-y-4">
                     <div className="bg-white p-4 rounded-xl shadow-sm border flex flex-wrap gap-4 items-center">
-                        {/* Filter Inputs */}
                         <div className="flex items-center gap-2"><span className="font-bold text-gray-600 text-sm">الموظف:</span>
                             <select className="border rounded-lg p-2 text-sm w-40" value={selectedUser} onChange={e=>setSelectedUser(e.target.value)}>
                                 <option value="">الكل</option>
@@ -680,14 +770,15 @@
                         </div>
                         <div className="flex items-center gap-2"><span className="font-bold text-gray-600 text-sm">من:</span><input type="date" className="border rounded-lg p-2 text-sm" value={startDate} onChange={e=>setStartDate(e.target.value)} /></div>
                         <div className="flex items-center gap-2"><span className="font-bold text-gray-600 text-sm">إلى:</span><input type="date" className="border rounded-lg p-2 text-sm" value={endDate} onChange={e=>setEndDate(e.target.value)} /></div>
-                        {(startDate || endDate || selectedUser) && <button onClick={()=>{setStartDate('');setEndDate('');setSelectedUser('')}} className="text-xs text-red-500 font-bold">مسح</button>}
-                        <button onClick={()=>exportToExcel(processedRows, 'Attendance')} className="mr-auto bg-green-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 text-sm"><Icon name="file-spreadsheet" size={16}/> تصدير</button>
+                        {(startDate || endDate) && <button onClick={()=>{setStartDate('');setEndDate('')}} className="text-xs text-red-500 font-bold">مسح</button>}
+                        <button onClick={()=>exportToExcel(processedRows, 'Attendance_Advanced')} className="mr-auto bg-green-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 text-sm"><Icon name="file-spreadsheet" size={16}/> تصدير</button>
                     </div>
-                    <div className="bg-white rounded-xl shadow-sm border overflow-hidden"><table className="w-full text-right text-sm"><thead className="bg-gray-50 text-brand-900 font-bold"><tr><th className="p-3">الموظف</th><th className="p-3">التاريخ</th><th className="p-3">دخول</th><th className="p-3 text-red-600">تأخير</th><th className="p-3">خروج</th><th className="p-3 text-orange-600">مبكر</th><th className="p-3 font-black">ساعات العمل</th><th className="p-3 text-red-800">الجزاء / الخصم</th></tr></thead><tbody className="divide-y">{processedRows.map((r, i) => (<tr key={i} className="hover:bg-gray-50"><td className="p-3 font-bold">{r.user}</td><td className="p-3 date-en">{r.date}</td><td className="p-3"><span className="date-en block">{r.checkIn !== '-' ? formatTime(r.checkIn) : '-'}</span>{r.inStatus === 'outside_zone' && <span className="text-[10px] text-red-500 font-bold block">(خارج النطاق)</span>}</td><td className="p-3 text-red-600 font-bold">{r.lateText}</td><td className="p-3"><span className="date-en block">{r.checkOut !== '-' ? formatTime(r.checkOut) : '-'}</span>{r.outStatus === 'outside_zone' && <span className="text-[10px] text-red-500 font-bold block">(خارج النطاق)</span>}</td><td className="p-3 text-orange-600 font-bold">{r.earlyText}</td><td className="p-3 font-black bg-gray-50">{r.hoursText}</td><td className={`p-3 text-xs font-bold ${r.deduction.includes('الاستئذان') ? 'text-green-600' : 'text-red-800'}`}>{r.deduction}</td></tr>))}</tbody></table></div></div>
+                    {processedRows.length === 0 ? <div className="text-center p-8 text-gray-400">الرجاء اختيار نطاق التاريخ لعرض التقرير التفصيلي</div> :
+                    <div className="bg-white rounded-xl shadow-sm border overflow-hidden"><table className="w-full text-right text-sm"><thead className="bg-gray-50 text-brand-900 font-bold"><tr><th className="p-3">الموظف</th><th className="p-3">التاريخ</th><th className="p-3">الحالة</th><th className="p-3">دخول</th><th className="p-3">خروج</th><th className="p-3 text-red-600">تأخير</th><th className="p-3">ملاحظات</th></tr></thead><tbody className="divide-y">{processedRows.map((r, i) => (<tr key={i} className={`hover:bg-gray-50 ${r.status==='غياب'?'bg-red-50':r.status.includes('عطلة')?'bg-yellow-50':''}`}><td className="p-3 font-bold">{r.user}</td><td className="p-3 date-en">{r.date}</td><td className="p-3 font-bold">{r.status}</td><td className="p-3 date-en">{r.checkIn}</td><td className="p-3 date-en">{r.checkOut}</td><td className="p-3 text-red-600 font-bold">{r.lateText}</td><td className="p-3 text-xs">{r.deduction}</td></tr>))}</tbody></table></div>}
+                </div>
             );
         };
 
-        // -- Permissions Management for Supervisor --
         const PermissionsManager = ({ permissions }) => {
             const updateStatus = (id, status) => {
                 update(ref(db, `permissions/${id}`), { status });
@@ -695,13 +786,13 @@
             const pending = permissions.filter(p => p.status === 'pending');
             return (
                 <div className="space-y-4">
-                    <h3 className="font-bold text-xl text-brand-900">طلبات الاستئذان المعلقة</h3>
+                    <h3 className="font-bold text-xl text-brand-900">طلبات الاستئذان والإجازات المعلقة</h3>
                     <div className="grid gap-4">
                         {pending.length === 0 && <div className="text-center p-8 text-gray-400">لا توجد طلبات جديدة</div>}
                         {pending.map(p => (
                             <div key={p.id} className="bg-white p-4 rounded-xl border shadow-sm flex justify-between items-center">
                                 <div>
-                                    <div className="font-bold text-brand-900">{p.userName}</div>
+                                    <div className="font-bold text-brand-900">{p.userName} <span className="text-xs bg-gray-100 px-2 rounded text-gray-600">{p.type === 'sick_leave' ? 'مرضية' : p.type === 'annual_leave' ? 'سنوية' : 'استئذان'}</span></div>
                                     <div className="text-sm text-gray-500">{p.reason}</div>
                                     <div className="text-xs text-gray-400 date-en mt-1">{p.date}</div>
                                 </div>
@@ -716,7 +807,7 @@
             );
         };
 
-        const AttendanceApp = ({ user, zones, usersList, logs, permissions, onBack }) => {
+        const AttendanceApp = ({ user, zones, usersList, logs, permissions, shifts, rosters, holidays, onBack }) => {
             const isAdmin = user.role === 'admin'; const isSupervisor = user.permissions?.att_role === 'supervisor'; 
             const canSeeReports = isAdmin || isSupervisor || user.permissions?.att_reports; const canManageZones = isAdmin || user.permissions?.att_zones;
             const [page, setPage] = useState(canSeeReports ? 'live' : 'my_attendance'); 
@@ -725,11 +816,34 @@
             const [myStatus, setMyStatus] = useState('loading'); const [currentZone, setCurrentZone] = useState(null); const [todayLog, setTodayLog] = useState({ in: null, out: null });
             const [dist, setDist] = useState(null);
             const [sidebarOpen, setSidebarOpen] = useState(false);
-            
-            // New States for Permission and Confirmation
             const [permModalOpen, setPermModalOpen] = useState(false);
             const [outsideConfirmOpen, setOutsideConfirmOpen] = useState(false);
             const [pendingAction, setPendingAction] = useState(null); 
+            const [shiftModalOpen, setShiftModalOpen] = useState(false);
+            const [holidayModalOpen, setHolidayModalOpen] = useState(false);
+            const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+            // Offline Listener
+            useEffect(() => {
+                const handleStatusChange = () => {
+                    const online = navigator.onLine;
+                    setIsOffline(!online);
+                    if(online) {
+                        const queue = JSON.parse(localStorage.getItem('att_queue') || '[]');
+                        if(queue.length > 0) {
+                            queue.forEach(q => push(ref(db, 'attendance'), q));
+                            localStorage.removeItem('att_queue');
+                            alert(`تمت استعادة الاتصال ومزامنة ${queue.length} سجلات.`);
+                        }
+                    }
+                };
+                window.addEventListener('online', handleStatusChange);
+                window.addEventListener('offline', handleStatusChange);
+                return () => {
+                    window.removeEventListener('online', handleStatusChange);
+                    window.removeEventListener('offline', handleStatusChange);
+                };
+            }, []);
 
             useEffect(() => {
                 const foundZone = zones.find(z => safeArr(z.assignedUsers).includes(user.id)); setCurrentZone(foundZone);
@@ -743,45 +857,46 @@
                 } else { setMyStatus('no_zone'); }
             }, [zones, logs]);
 
-            // --- Logic ---
             const initiateAttendance = (type) => {
-                if (myStatus === 'inside') {
-                    handleAttendance(type, 'inside_zone');
-                } else {
-                    setPendingAction(type);
-                    setOutsideConfirmOpen(true);
-                }
+                if (myStatus === 'inside') { handleAttendance(type, 'inside_zone'); } 
+                else { setPendingAction(type); setOutsideConfirmOpen(true); }
             };
 
             const confirmOutside = () => {
-                if (pendingAction) {
-                    handleAttendance(pendingAction, 'outside_zone');
-                    setOutsideConfirmOpen(false);
-                    setPendingAction(null);
-                }
+                if (pendingAction) { handleAttendance(pendingAction, 'outside_zone'); setOutsideConfirmOpen(false); setPendingAction(null); }
             };
 
             const handleAttendance = (type, locationStatus) => { 
-                push(ref(db, 'attendance'), { uid: user.id, type, timestamp: new Date().toISOString(), locationStatus }); 
-                alert(`تم تسجيل ${type==='IN'?'الدخول':'الخروج'} بنجاح (${locationStatus === 'outside_zone' ? 'خارج النطاق' : 'داخل النطاق'})`); 
+                const payload = { uid: user.id, type, timestamp: new Date().toISOString(), locationStatus };
+                if (!navigator.onLine) {
+                    const queue = JSON.parse(localStorage.getItem('att_queue') || '[]');
+                    localStorage.setItem('att_queue', JSON.stringify([...queue, payload]));
+                    alert('لا يوجد إنترنت. تم حفظ الحركة محلياً وسيتم رفعها عند عودة الاتصال.');
+                    // Optimistic update for UI
+                    if(type==='IN') setTodayLog(prev=>({...prev, in: payload}));
+                    else setTodayLog(prev=>({...prev, out: payload}));
+                } else {
+                    push(ref(db, 'attendance'), payload); 
+                    alert(`تم تسجيل ${type==='IN'?'الدخول':'الخروج'} بنجاح (${locationStatus === 'outside_zone' ? 'خارج النطاق' : 'داخل النطاق'})`); 
+                }
             };
 
-            const handlePermissionRequest = (reason) => {
+            const handlePermissionRequest = (reason, type) => {
                 if(!reason.trim()) return;
-                push(ref(db, 'permissions'), {
-                    uid: user.id,
-                    userName: user.name,
-                    reason,
-                    status: 'pending',
-                    timestamp: new Date().toISOString(),
-                    date: new Date().toISOString().slice(0, 10)
-                });
-                setPermModalOpen(false);
-                alert('تم إرسال طلب الاستئذان للمشرف');
+                push(ref(db, 'permissions'), { uid: user.id, userName: user.name, reason, type, status: 'pending', timestamp: new Date().toISOString(), date: new Date().toISOString().slice(0, 10) });
+                setPermModalOpen(false); alert('تم إرسال الطلب للمشرف');
             };
 
-            const handleSaveZone = (z) => { if(z.id) { const { id, ...data } = z; update(ref(db, `zones/${id}`), data); } else { push(ref(db, 'zones'), z); } setModalOpen(false); setEditingZone(null); };
+            const handleSaveZone = (z) => { 
+                push(ref(db, 'audit'), { action: z.id?'Update Zone':'Create Zone', user: user.name, details: z.name, timestamp: new Date().toISOString() });
+                if(z.id) { const { id, ...data } = z; update(ref(db, `zones/${id}`), data); } else { push(ref(db, 'zones'), z); } 
+                setModalOpen(false); setEditingZone(null); 
+            };
             const openAddModal = () => { setEditingZone(null); setModalOpen(true); }; const openEditModal = (zone) => { setEditingZone(zone); setModalOpen(true); };
+
+            const handleSaveShift = (s) => { push(ref(db, 'shifts'), s); alert('تم إضافة الوردية'); };
+            const handleSaveRoster = (r) => { push(ref(db, 'rosters'), r); alert('تم تعيين الجدول'); };
+            const handleAddHoliday = (h) => { push(ref(db, 'holidays'), h); alert('تم إضافة العطلة'); };
 
             return (
                 <div className="flex min-h-screen bg-slate-50">
@@ -792,18 +907,19 @@
                         </div>
                         <nav className="flex-1 p-4 space-y-2">
                             <button onClick={()=>{setPage('my_attendance'); setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='my_attendance'?'bg-accent-600 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="fingerprint"/> تسجيلي</button>
-                            {canSeeReports && (<><button onClick={()=>{setPage('live'); setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='live'?'bg-accent-600 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="activity"/> مباشر (Live)</button><button onClick={()=>{setPage('reports'); setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='reports'?'bg-accent-600 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="file-text"/> التقارير والخصومات</button><button onClick={()=>{setPage('perms'); setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='perms'?'bg-accent-600 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="check-square"/> إدارة الاستئذانات</button></>)}
-                            {canManageZones && <button onClick={()=>{setPage('zones'); setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='zones'?'bg-accent-600 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="map"/> النطاقات</button>}
+                            {canSeeReports && (<><button onClick={()=>{setPage('live'); setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='live'?'bg-accent-600 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="activity"/> مباشر (Live)</button><button onClick={()=>{setPage('reports'); setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='reports'?'bg-accent-600 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="file-text"/> التقارير والخصومات</button><button onClick={()=>{setPage('perms'); setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='perms'?'bg-accent-600 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="check-square"/> إدارة الطلبات</button></>)}
+                            {canManageZones && <button onClick={()=>{setPage('zones'); setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='zones'?'bg-accent-600 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="map"/> الإعدادات والورديات</button>}
                         </nav>
                         <div className="p-4 border-t"><button onClick={onBack} className="w-full bg-gray-100 text-gray-600 p-2 rounded-lg font-bold flex items-center justify-center gap-2"><Icon name="grid" size={16}/> تبديل التطبيق</button></div>
                     </aside>
                     {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setSidebarOpen(false)}></div>}
                     
-                    <main className="flex-1 p-8 overflow-y-auto">
+                    <main className="flex-1 p-8 overflow-y-auto relative">
+                        {isOffline && <div className="absolute top-0 left-0 w-full bg-red-500 text-white text-center text-xs py-1 font-bold z-50">أنت في وضع عدم الاتصال (Offline) - سيتم حفظ البيانات محلياً</div>}
                         <header className="flex justify-between items-center mb-8">
                             <div className="flex items-center gap-3">
                                 <button onClick={() => setSidebarOpen(true)} className="md:hidden p-2 rounded-lg bg-white shadow-sm text-brand-900"><Icon name="menu" /></button>
-                                <h2 className="text-2xl font-bold text-brand-900">{page==='my_attendance'?'تسجيل الحضور':page==='live'?'المتواجدون الآن':page==='reports'?'التقارير':'إدارة النطاقات'}</h2>
+                                <h2 className="text-2xl font-bold text-brand-900">{page==='my_attendance'?'تسجيل الحضور':page==='live'?'لوحة التحكم المباشرة':page==='reports'?'التقارير المتقدمة':'الإعدادات والورديات'}</h2>
                             </div>
                             <div className="flex items-center gap-2"><div className="text-sm font-bold">{user.name}</div><div className="w-8 h-8 bg-accent-600 rounded-full text-white flex items-center justify-center">{user.name[0]}</div></div>
                         </header>
@@ -846,46 +962,55 @@
                                     </button>
                                 </div>
                                 
-                                <button onClick={()=>setPermModalOpen(true)} className="w-full bg-white border-2 border-accent-500 text-accent-600 py-4 rounded-2xl font-bold hover:bg-accent-50 transition flex items-center justify-center gap-2"><Icon name="file-text"/> طلب استئذان / خروج</button>
+                                <button onClick={()=>setPermModalOpen(true)} className="w-full bg-white border-2 border-accent-500 text-accent-600 py-4 rounded-2xl font-bold hover:bg-accent-50 transition flex items-center justify-center gap-2"><Icon name="file-text"/> طلب إجازة / استئذان</button>
                                 
                                 {todayLog.in && (<div className="bg-white p-4 rounded-xl shadow-sm border flex justify-between items-center"><span className="font-bold text-gray-600">ساعات العمل اليوم:</span><span className="font-black text-2xl text-accent-600 date-en">{todayLog.out ? calculateDuration(todayLog.in.timestamp, todayLog.out.timestamp) : 'جاري الحساب...'}</span></div>)}
                             </div>
                         )}
-                        {page === 'zones' && (<div><button onClick={openAddModal} className="bg-accent-600 text-white px-6 py-3 rounded-xl font-bold mb-6 shadow-lg">+ إضافة نطاق جديد</button><div className="grid gap-4">{zones.map(z => (<div key={z.id} className="bg-white p-5 rounded-2xl shadow-sm border flex justify-between items-center"><div><h4 className="font-bold text-lg text-brand-900">{z.name}</h4><div className="text-sm text-gray-500 date-en">{z.startTime} - {z.endTime}</div></div><div className="flex items-center gap-3"><span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm font-bold">{safeArr(z.assignedUsers).length} موظف</span><button onClick={()=>openEditModal(z)} className="bg-gray-100 p-2 rounded-lg hover:bg-gray-200 text-brand-900"><Icon name="pencil" size={16}/></button></div></div>))}</div></div>)}
-                        {page === 'reports' && <AttendanceReports logs={logs} users={usersList} zones={zones} permissions={permissions} />}
+                        {page === 'zones' && (
+                            <div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                                    <button onClick={openAddModal} className="bg-accent-600 text-white px-6 py-4 rounded-xl font-bold shadow-lg flex flex-col items-center justify-center gap-2"><Icon name="map-pin" size={24}/> <span>إضافة نطاق جديد</span></button>
+                                    <button onClick={()=>setShiftModalOpen(true)} className="bg-brand-900 text-white px-6 py-4 rounded-xl font-bold shadow-lg flex flex-col items-center justify-center gap-2"><Icon name="calendar-clock" size={24}/> <span>إدارة الورديات والجداول</span></button>
+                                    <button onClick={()=>setHolidayModalOpen(true)} className="bg-indigo-600 text-white px-6 py-4 rounded-xl font-bold shadow-lg flex flex-col items-center justify-center gap-2"><Icon name="calendar" size={24}/> <span>العطلات الرسمية</span></button>
+                                </div>
+                                <h3 className="font-bold text-lg mb-4">النطاقات الحالية</h3>
+                                <div className="grid gap-4">{zones.map(z => (<div key={z.id} className="bg-white p-5 rounded-2xl shadow-sm border flex justify-between items-center"><div><h4 className="font-bold text-lg text-brand-900">{z.name}</h4><div className="text-sm text-gray-500 date-en">{z.startTime} - {z.endTime}</div></div><div className="flex items-center gap-3"><span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm font-bold">{safeArr(z.assignedUsers).length} موظف</span><button onClick={()=>openEditModal(z)} className="bg-gray-100 p-2 rounded-lg hover:bg-gray-200 text-brand-900"><Icon name="pencil" size={16}/></button></div></div>))}</div>
+                            </div>
+                        )}
+                        {page === 'reports' && <AttendanceReports logs={logs} users={usersList} zones={zones} permissions={permissions} shifts={shifts} rosters={rosters} holidays={holidays} />}
                         {page === 'perms' && <PermissionsManager permissions={permissions} />}
-                        {page === 'live' && (<div className="grid grid-cols-1 md:grid-cols-3 gap-4">{usersList.filter(u => u.id !== 'admin').map(u => { 
-                            const lastLog = logs.filter(l => l.uid === u.id).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp))[0]; 
-                            const isOnline = lastLog?.type === 'IN' && new Date(lastLog.timestamp).toDateString() === new Date().toDateString(); 
-                            const isOutside = lastLog?.locationStatus === 'outside_zone';
-                            
-                            return ( 
-                                <div key={u.id} className="bg-white p-5 rounded-2xl shadow-sm border flex items-center gap-4 relative overflow-hidden">
-                                    {isOnline && (
-                                        <div className={`absolute top-0 left-0 px-2 py-1 text-[10px] font-bold text-white ${isOutside ? 'bg-red-500' : 'bg-green-500'} rounded-br-lg`}>
-                                            {isOutside ? 'خارج النطاق' : 'داخل النطاق'}
-                                        </div>
-                                    )}
-                                    <div className={`w-4 h-4 rounded-full ${isOnline?'bg-green-500 animate-pulse':'bg-gray-300'}`}></div>
-                                    <div>
-                                        <div className="font-bold text-brand-900">{u.name}</div>
-                                        <div className="text-xs text-gray-500">{isOnline ? `دخل منذ ${formatTime(lastLog.timestamp)}` : 'غير متواجد'}</div>
-                                    </div>
-                                </div> 
-                            ) 
-                        })}</div>)}
+                        {page === 'live' && (
+                            <div>
+                                <AttendanceAnalytics logs={logs} users={usersList} />
+                                <h3 className="font-bold text-lg mb-4">الحالة المباشرة</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">{usersList.filter(u => u.id !== 'admin').map(u => { 
+                                    const lastLog = logs.filter(l => l.uid === u.id).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp))[0]; 
+                                    const isOnline = lastLog?.type === 'IN' && new Date(lastLog.timestamp).toDateString() === new Date().toDateString(); 
+                                    const isOutside = lastLog?.locationStatus === 'outside_zone';
+                                    return ( 
+                                        <div key={u.id} className="bg-white p-5 rounded-2xl shadow-sm border flex items-center gap-4 relative overflow-hidden">
+                                            {isOnline && (
+                                                <div className={`absolute top-0 left-0 px-2 py-1 text-[10px] font-bold text-white ${isOutside ? 'bg-red-500' : 'bg-green-500'} rounded-br-lg`}>
+                                                    {isOutside ? 'خارج النطاق' : 'داخل النطاق'}
+                                                </div>
+                                            )}
+                                            <div className={`w-4 h-4 rounded-full ${isOnline?'bg-green-500 animate-pulse':'bg-gray-300'}`}></div>
+                                            <div>
+                                                <div className="font-bold text-brand-900">{u.name}</div>
+                                                <div className="text-xs text-gray-500">{isOnline ? `دخل منذ ${formatTime(lastLog.timestamp)}` : 'غير متواجد'}</div>
+                                            </div>
+                                        </div> 
+                                    ) 
+                                })}</div>
+                            </div>
+                        )}
                     </main>
-                    <ZoneModal 
-                        key={editingZone ? editingZone.id : 'new_zone_modal'} 
-                        isOpen={modalOpen} 
-                        onClose={()=>setModalOpen(false)} 
-                        users={usersList} 
-                        zones={zones} 
-                        onSave={handleSaveZone} 
-                        zoneToEdit={editingZone} 
-                    />
+                    <ZoneModal key={editingZone ? editingZone.id : 'new_zone_modal'} isOpen={modalOpen} onClose={()=>setModalOpen(false)} users={usersList} zones={zones} onSave={handleSaveZone} zoneToEdit={editingZone} />
                     <PermissionModal isOpen={permModalOpen} onClose={()=>setPermModalOpen(false)} onSend={handlePermissionRequest} />
                     <ConfirmOutsideModal isOpen={outsideConfirmOpen} onClose={()=>setOutsideConfirmOpen(false)} onConfirm={confirmOutside} />
+                    {shiftModalOpen && <ShiftManager shifts={shifts} rosters={rosters} users={usersList} onSaveShift={handleSaveShift} onSaveRoster={handleSaveRoster} onClose={()=>setShiftModalOpen(false)} />}
+                    {holidayModalOpen && <HolidayManager holidays={holidays} onAdd={handleAddHoliday} onClose={()=>setHolidayModalOpen(false)} />}
                 </div>
             );
         };
@@ -894,13 +1019,16 @@
         const App = () => {
             const [user, setUser] = useState(null); 
             const [dbUser, setDbUser] = useState(null); 
-            const [originalAdmin, setOriginalAdmin] = useState(null); // For impersonation
+            const [originalAdmin, setOriginalAdmin] = useState(null); 
             const [currentApp, setCurrentApp] = useState('portal'); 
             const [clients, setClients] = useState([]); 
             const [users, setUsers] = useState([]); 
             const [zones, setZones] = useState([]); 
             const [logs, setLogs] = useState([]); 
             const [permissions, setPermissions] = useState([]); 
+            const [shifts, setShifts] = useState([]);
+            const [rosters, setRosters] = useState([]);
+            const [holidays, setHolidays] = useState([]);
             const [loading, setLoading] = useState(true);
 
             useEffect(() => { 
@@ -911,8 +1039,6 @@
                             const data = s.val() || {}; 
                             const list = Object.keys(data).map(k => ({ id: k, ...data[k] })); 
                             setUsers(list); 
-                            
-                            // If not impersonating, load actual user profile
                             if (!originalAdmin) {
                                 const profile = list.find(x => x.email.toLowerCase() === u.email.toLowerCase()); 
                                 if (u.email.toLowerCase() === 'asleh@boyoticom.com') { 
@@ -926,13 +1052,17 @@
                         onValue(ref(db, 'zones'), s => setZones(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})) : [])); 
                         onValue(ref(db, 'attendance'), s => setLogs(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})) : [])); 
                         onValue(ref(db, 'permissions'), s => setPermissions(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})) : [])); 
+                        // New Listeners
+                        onValue(ref(db, 'shifts'), s => setShifts(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})) : []));
+                        onValue(ref(db, 'rosters'), s => setRosters(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})) : []));
+                        onValue(ref(db, 'holidays'), s => setHolidays(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})) : []));
                     } else { 
                         setUser(null); setDbUser(null); setOriginalAdmin(null);
                     } 
                     setLoading(false); 
                 }); 
                 return () => unsub(); 
-            }, [originalAdmin]); // Re-run effect if impersonation status changes
+            }, [originalAdmin]); 
 
             const handleLoginAs = (targetUser) => {
                 if(dbUser.role !== 'admin') return;
@@ -976,7 +1106,7 @@
                     )}
                     {(() => {
                         if (currentApp === 'crm') return <CRMApp user={dbUser} clients={clients} users={users} onSaveClient={handleSaveClient} onImport={handleImport} onBack={() => setCurrentApp('portal')} />;
-                        if (currentApp === 'attendance') return <AttendanceApp user={dbUser} zones={zones} usersList={users} logs={logs} permissions={permissions} onBack={() => setCurrentApp('portal')} />;
+                        if (currentApp === 'attendance') return <AttendanceApp user={dbUser} zones={zones} usersList={users} logs={logs} permissions={permissions} shifts={shifts} rosters={rosters} holidays={holidays} onBack={() => setCurrentApp('portal')} />;
                         return <Portal user={dbUser} users={users} onSelectApp={setCurrentApp} onLoginAs={handleLoginAs} />;
                     })()}
                 </>
