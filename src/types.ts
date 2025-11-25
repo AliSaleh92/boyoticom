@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   name: string;
@@ -63,6 +64,8 @@ export interface AttendanceLog {
   type: 'IN' | 'OUT';
   timestamp: string;
   locationStatus: string;
+  lat?: number;
+  lng?: number;
 }
 
 export interface PermissionRequest {
