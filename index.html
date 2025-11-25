@@ -92,7 +92,9 @@
         };
         const safeStr = (val) => (val === null || val === undefined) ? '' : String(val);
         const safeArr = (val) => Array.isArray(val) ? val : [];
+        // Helper to format ISO string to time (HH:MM)
         const formatTime = (isoString) => new Date(isoString).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+        // Helper to format ISO string to date (DD/MM/YYYY)
         const formatDate = (isoString) => new Date(isoString).toLocaleDateString('en-GB');
         
         const Logo = ({ size = 40 }) => {
@@ -152,13 +154,15 @@
             );
         };
 
-        // B. Role Editor Modal
+        // B. Role Editor Modal - MODIFIED: Added name and email editing
         const RoleEditorModal = ({ user, isOpen, onClose, onSave }) => {
+            const [localUser, setLocalUser] = useState(user || {});
             const [crmRole, setCrmRole] = useState(user?.permissions?.crm_role || 'none');
             const [attRole, setAttRole] = useState(user?.permissions?.att_role || 'none');
 
             useEffect(() => {
                 if(user) {
+                    setLocalUser(user);
                     setCrmRole(user.permissions?.crm_role || 'none');
                     setAttRole(user.permissions?.att_role || 'none');
                 }
@@ -184,18 +188,26 @@
                 if (crmRole !== 'none') apps.push('crm');
                 if (attRole !== 'none') apps.push('attendance');
 
-                onSave(user.id, apps, perms);
+                // Pass updated name and email along with permissions
+                onSave(localUser.id, localUser.name, localUser.email, apps, perms);
             };
 
             return (
                 <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4">
                     <div className="bg-white w-full max-w-lg rounded-2xl p-6 shadow-2xl">
                         <div className="text-center mb-4 border-b pb-4">
-                            <div className="font-bold text-xl text-brand-900">{user.name}</div>
+                            <div className="font-bold text-xl text-brand-900">تعديل صلاحيات: {user.name}</div>
                             <div className="text-xs text-gray-500">{user.email}</div>
                         </div>
 
                         <div className="space-y-4">
+                            {/* Name & Email Editing */}
+                            <div className="border rounded-xl p-4 space-y-3">
+                                <h4 className="font-bold text-md text-brand-900">بيانات الموظف</h4>
+                                <input className="w-full border rounded p-3" placeholder="الاسم الثلاثي" value={localUser.name} onChange={e=>setLocalUser({...localUser, name:e.target.value})} />
+                                <input className="w-full border rounded p-3 text-right date-en" placeholder="البريد الإلكتروني" value={localUser.email} onChange={e=>setLocalUser({...localUser, email:e.target.value})} />
+                            </div>
+
                             {/* CRM System */}
                             <div className="border rounded-xl p-4">
                                 <div className="flex items-center gap-2 mb-3 text-crm-600 font-bold"><Icon name="layout-grid"/> نظام CRM</div>
@@ -233,17 +245,22 @@
 
             const displayUsers = users.filter(u => u.id !== currentUser.id);
 
+            // FIX: Ensure correct data structure is passed for a new user, and handle success without throwing error.
             const handleSaveNew = (userData) => {
                 if(!userData.uid) return alert('UID مطلوب');
-                set(ref(db, `users/${userData.uid}`), { ...userData, role: 'user' }).then(() => {
+                set(ref(db, `users/${userData.uid}`), { name: userData.name, email: userData.email, role: 'user', allowedApps: [], permissions: {crm_role: 'none', att_role: 'none'} }).then(() => {
                     setAddModal(false);
-                    // Automatically open edit modal for permissions
-                    setEditUser({ ...userData, id: userData.uid }); 
+                    // Automatically open edit modal for permissions (now correctly uses the saved data)
+                    setEditUser({ id: userData.uid, name: userData.name, email: userData.email, role: 'user', allowedApps: [], permissions: {crm_role: 'none', att_role: 'none'} }); 
+                }).catch(err => {
+                    console.error("Error saving new user:", err);
+                    alert("فشل حفظ المستخدم الجديد.");
                 });
             };
 
-            const handleSaveRoles = (uid, apps, perms) => {
-                update(ref(db, `users/${uid}`), { allowedApps: apps, permissions: perms });
+            // MODIFIED: Accepts name and email to allow editing.
+            const handleSaveRoles = (uid, name, email, apps, perms) => {
+                update(ref(db, `users/${uid}`), { name: name, email: email, allowedApps: apps, permissions: perms });
                 setEditUser(null);
             };
 
@@ -350,7 +367,7 @@
         const CRMReports = ({ clients, users, currentUser }) => {
             const [startDate, setStartDate] = useState(''); const [endDate, setEndDate] = useState(''); 
             const filteredClients = clients.filter(c => { const d = c.dateAdded ? c.dateAdded.slice(0, 10) : ''; return (startDate ? d >= startDate : true) && (endDate ? d <= endDate : true); }); 
-            // Corrected: Report logic strictly based on assignedTo
+            // Report logic strictly based on assignedTo
             const reportData = users.map(u => { const userClients = filteredClients.filter(c => c.assignedTo === u.name); return { id: u.id, name: u.name, total: userClients.length, sold: userClients.filter(c => c.status === 'Sold').length, deposit: userClients.filter(c => c.status === 'Deposit').length, inProgress: userClients.filter(c => ['New','Contacted1','Contacted2','Contacted3'].includes(c.status)).length }; });
             const canExport = currentUser.role === 'admin' || currentUser.permissions?.crm_role === 'supervisor';
             const handleExportReports = () => {
@@ -362,14 +379,36 @@
 
         const CRMClientList = ({ clients, users, currentUser, onAdd, onEdit, onImport }) => {
             const [search, setSearch] = useState(''); const [filterStatus, setFilterStatus] = useState(''); const [filterAssignee, setFilterAssignee] = useState(''); const [itemsPerPage, setItemsPerPage] = useState(10); const [currentPage, setCurrentPage] = useState(1); const [deleteId, setDeleteId] = useState(null); const assignees = useMemo(() => [...new Set(clients.map(c => c.assignedTo).filter(Boolean))], [clients]);
+            
+            // MODIFIED: Logic to allow CRM Supervisor to see ALL clients, regardless of assignment.
+            const isAdmin = currentUser.role === 'admin'; 
+            const isSupervisor = currentUser.permissions?.crm_role === 'supervisor'; 
+            const isEmployee = currentUser.permissions?.crm_role === 'employee';
+            
             const filtered = clients.filter(c => { 
-                if(currentUser.role !== 'admin' && currentUser.permissions?.crm_role === 'employee' && c.assignedTo !== currentUser.name && c.addedBy !== currentUser.email) return false;
+                // Supervisor or Admin sees all
+                if(isAdmin || isSupervisor) {
+                    const s = safeStr(search).toLowerCase(); 
+                    return (safeStr(c.name).toLowerCase().includes(s) || safeStr(c.phone).includes(s)) && 
+                           (filterStatus ? c.status === filterStatus : true) && 
+                           (filterAssignee ? c.assignedTo === filterAssignee : true); 
+                }
+                
+                // Employee only sees clients assigned to them or added by them
+                if (isEmployee && (c.assignedTo !== currentUser.name && c.addedBy !== currentUser.email)) return false;
+
                 const s = safeStr(search).toLowerCase(); 
-                return (safeStr(c.name).toLowerCase().includes(s) || safeStr(c.phone).includes(s)) && (filterStatus ? c.status === filterStatus : true) && (filterAssignee ? c.assignedTo === filterAssignee : true); 
+                return (safeStr(c.name).toLowerCase().includes(s) || safeStr(c.phone).includes(s)) && 
+                       (filterStatus ? c.status === filterStatus : true) && 
+                       (filterAssignee ? c.assignedTo === filterAssignee : true); 
             });
+            
             useEffect(() => { setCurrentPage(1); }, [search, filterStatus, filterAssignee, itemsPerPage]); 
             const displayedClients = itemsPerPage === 'All' ? filtered : filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage); 
-            const isAdmin = currentUser.role === 'admin'; const isSupervisor = currentUser.permissions?.crm_role === 'supervisor'; const canDelete = isAdmin || isSupervisor; const canExport = isAdmin; 
+            
+            const canDelete = isAdmin || isSupervisor; 
+            const canExport = isAdmin; // Export logic remains admin only, as per previous configuration
+            
             const handleExport = () => { const excelData = filtered.map(c => ({ 'الاسم': c.name, 'رقم الهاتف': c.phone, 'المشاريع': safeArr(c.projects).join(', '), 'الحالة': STATUS_LIST.find(s=>s.key===c.status)?.label||c.status, 'الموظف': c.assignedTo||'-', 'المنشئ': c.addedBy||'-', 'تاريخ الإضافة': c.dateAdded ? new Date(c.dateAdded).toLocaleDateString('en-GB') : '-' })); exportToExcel(excelData, "Clients"); }; 
             const handleImportFile = (e) => { const file = e.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = (evt) => { const bstr = evt.target.result; const wb = XLSX.read(bstr, {type:'binary'}); const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]); onImport(data); }; reader.readAsBinaryString(file); }; 
             const confirmDelete = () => { if(deleteId) { remove(ref(db, `clients/${deleteId}`)); setDeleteId(null); } };
@@ -396,12 +435,15 @@
             const notesEndRef = useRef(null);
             const [activeTab, setActiveTab] = useState('notes'); // New state for tabs
             
+            // MODIFIED: Filter users to include only those with CRM access for assignment
+            const crmUsers = useMemo(() => users.filter(u => u.permissions?.crm_access || u.role === 'admin'), [users]);
+            
             useEffect(() => { 
                 if(client) { 
                     setD({ ...client, history: client.history ? Object.values(client.history) : [] }); 
                     setNotes(client.notes ? Object.values(client.notes) : []); 
                 } else { 
-                    setD({ name: '', phone: '', projects: [], status: 'New', assignedTo: currentUser.role==='employee'?currentUser.name:'', source: 'مباشر', nextFollowUp: '', history: [] }); 
+                    setD({ name: '', phone: '', projects: [], status: 'New', assignedTo: currentUser.permissions?.crm_role === 'employee' ? currentUser.name : '', source: 'مباشر', nextFollowUp: '', history: [] }); 
                     setNotes([]); 
                 } 
             }, [client]); 
@@ -438,7 +480,8 @@
                 onSave(client ? d : { ...d, history: updatedHistory, notes: notes }, logData);
             };
 
-            const canAssign = currentUser.role === 'admin' || currentUser.role === 'supervisor';
+            // MODIFIED: Supervisor/Admin can assign. Employee cannot change assignment.
+            const canAssign = currentUser.role === 'admin' || currentUser.permissions?.crm_role === 'supervisor';
             
             return ( 
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -458,7 +501,14 @@
                             <select className="w-full bg-gray-50 border rounded-lg p-3" value={safeStr(d.source)} onChange={e=>setD({...d, source:e.target.value})}>{CLIENT_SOURCES.map(s=><option key={s} value={s}>{s}</option>)}</select>
                             <input className="w-full bg-gray-50 border rounded-lg p-3" placeholder="رقم الوحدة" value={safeStr(d.unitNumber)} onChange={e=>setD({...d, unitNumber:e.target.value})} />
                             <select className="w-full bg-gray-50 border rounded-lg p-3" value={safeStr(d.status)} onChange={e=>setD({...d, status:e.target.value})}>{STATUS_LIST.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}</select>
-                            <select className="w-full bg-gray-50 border rounded-lg p-3 disabled:opacity-50" value={safeStr(d.assignedTo)} onChange={e=>setD({...d, assignedTo:e.target.value})} disabled={!canAssign}><option value="">بدون إسناد</option>{users.map(u=><option key={u.id} value={u.name}>{u.name}</option>)}</select>
+                            
+                            {/* MODIFIED: Use filtered crmUsers list for assignment */}
+                            <select className="w-full bg-gray-50 border rounded-lg p-3 disabled:opacity-50" value={safeStr(d.assignedTo)} onChange={e=>setD({...d, assignedTo:e.target.value})} disabled={!canAssign}>
+                                <option value="">بدون إسناد</option>
+                                {crmUsers.map(u => (
+                                    <option key={u.id} value={u.name}>{u.name}</option>
+                                ))}
+                            </select>
                             
                             <div>
                                 <label className="text-xs font-bold block mb-1 text-amber-600">تاريخ المتابعة القادم</label>
@@ -732,7 +782,9 @@
             const handleSaveClient = (data, existing, log) => { 
                 const payload = { ...data, assignedTo: safeStr(data.assignedTo), projects: safeArr(data.projects) }; 
                 if (existing) {
-                    update(ref(db, `clients/${existing.id}`), payload);
+                    // Remove history and notes keys for cleaner update payload, as they are managed separately (push/update)
+                    const { history, notes, ...updatePayload } = payload;
+                    update(ref(db, `clients/${existing.id}`), updatePayload);
                     if(log) push(ref(db, `clients/${existing.id}/history`), log);
                 } else { 
                     push(ref(db, 'clients'), { ...payload, dateAdded: new Date().toISOString(), addedBy: dbUser.email }); 
