@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { push, update, ref } from 'firebase/database';
 import { db } from '../firebase';
