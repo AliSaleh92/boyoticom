@@ -498,7 +498,20 @@
                 // Initialize map ONLY ONCE
                 if (!mapObj.current) { 
                     mapObj.current = L.map(mapRef.current).setView([center.lat, center.lng], 15); 
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapObj.current); 
+                    
+                    // --- LAYERS SETUP ---
+                    const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' });
+                    const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Tiles © Esri' });
+
+                    // Add default layer
+                    osm.addTo(mapObj.current);
+
+                    // Add Layer Control
+                    const baseMaps = {
+                        "خريطة شوارع": osm,
+                        "قمر صناعي": satellite
+                    };
+                    L.control.layers(baseMaps).addTo(mapObj.current);
                     
                     const icon = L.icon({ iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png', shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41] }); 
                     
@@ -562,7 +575,20 @@
                 // Initialize Map
                 if (!mapObj.current) {
                     mapObj.current = L.map(mapRef.current).setView([24.7136, 46.6753], 11);
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapObj.current);
+
+                    // --- LAYERS SETUP ---
+                    const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' });
+                    const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Tiles © Esri' });
+
+                    // Add default layer
+                    osm.addTo(mapObj.current);
+
+                    // Add Layer Control
+                    const baseMaps = {
+                        "خريطة شوارع": osm,
+                        "قمر صناعي": satellite
+                    };
+                    L.control.layers(baseMaps).addTo(mapObj.current);
                 }
 
                 // Update Markers
