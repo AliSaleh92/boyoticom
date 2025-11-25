@@ -408,60 +408,47 @@
             );
         };
         
-        // --- 5. CRM APP CONTAINER ---
-        const CRMApp = ({ user, clients, users, onSaveClient, onImport, onBack }) => {
-            const [page, setPage] = useState('dashboard'); 
-            const [modalOpen, setModalOpen] = useState(false); 
-            const [editClient, setEditClient] = useState(null); 
-            const [sidebarOpen, setSidebarOpen] = useState(false);
-
-            const isAdmin = user.role === 'admin'; 
-            const isSupervisor = user.permissions?.crm_role === 'supervisor'; 
-            const canSeeReports = isAdmin || isSupervisor || user.permissions?.crm_reports; 
-            const canBackup = isAdmin; 
-
-            return ( 
-                <div className="flex min-h-screen bg-slate-50">
-                    {/* Sidebar Overlay */}
-                    {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setSidebarOpen(false)}></div>}
-                    
-                    {/* Sidebar */}
-                    <aside className={`fixed inset-y-0 right-0 z-50 w-64 bg-white border-l transform transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:h-screen ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-                        <div className="p-6 flex justify-between items-center gap-2 font-black text-xl text-brand-900 border-b">
-                            <div className="flex items-center gap-2"><Logo size={32} /> بيوتكم</div>
-                            <button onClick={() => setSidebarOpen(false)} className="md:hidden text-gray-500"><Icon name="x" /></button>
-                        </div>
-                        <nav className="flex-1 p-4 space-y-2">
-                            <button onClick={()=>{setPage('dashboard');setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='dashboard'?'bg-brand-900 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="layout-dashboard"/> لوحة التحكم</button>
-                            <button onClick={()=>{setPage('clients');setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='clients'?'bg-brand-900 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="users"/> العملاء</button>
-                            {canSeeReports && (<button onClick={()=>{setPage('reports');setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='reports'?'bg-brand-900 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="bar-chart-2"/> التقارير</button>)}
-                            {canBackup && (<button onClick={()=>{setPage('backup');setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='backup'?'bg-brand-900 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="settings"/> الإعدادات</button>)}
-                        </nav>
-                        <div className="p-4 border-t">
-                            <button onClick={onBack} className="w-full bg-gray-100 text-gray-600 p-2 rounded-lg font-bold flex items-center justify-center gap-2"><Icon name="grid" size={16}/> تبديل التطبيق</button>
-                        </div>
-                    </aside>
-
-                    {/* Main Content */}
-                    <main className="flex-1 flex flex-col h-screen overflow-hidden">
-                        <CRMHeader title={page==='dashboard'?'لوحة التحكم':page==='clients'?'العملاء':page==='reports'?'التقارير':'الإعدادات'} clients={clients} onToggleSidebar={()=>setSidebarOpen(true)} />
-                        <div className="flex-1 overflow-y-auto p-6">
-                            <div className="max-w-5xl mx-auto">
-                                {page === 'dashboard' && <CRMDashboard clients={clients} currentUser={user} />}
-                                {page === 'clients' && <CRMClientList clients={clients} users={users} currentUser={user} onAdd={()=>{setEditClient(null);setModalOpen(true)}} onEdit={(c)=>{setEditClient(c);setModalOpen(true)}} onImport={onImport} />}
-                                {page === 'reports' && canSeeReports && <CRMReports clients={clients} users={users} currentUser={user} />}
-                                {page === 'backup' && canBackup && <CRMBackup clients={clients} users={users} onImport={onImport} />}
-                            </div>
-                        </div>
-                    </main>
-                    
-                    {modalOpen && <CRMClientModal isOpen={modalOpen} onClose={()=>setModalOpen(false)} client={editClient} onSave={(d, log)=>{onSaveClient(d, editClient, log);setModalOpen(false)}} users={users} currentUser={user} />}
-                </div> 
-            );
+        const CRMBackup = ({ clients, users, onImport }) => {
+             const handleImportFile = (e) => { const file = e.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = (evt) => { const bstr = evt.target.result; const wb = XLSX.read(bstr, {type:'binary'}); const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]); onImport(data); }; reader.readAsBinaryString(file); }; 
+             const downloadTemplate = () => { const headers = [{ 'الاسم': 'اسم تجريبي', 'رقم الهاتف': '0500000000', 'المشروع': 'بيوتكم 10' }]; exportToExcel(headers, "Import_Template"); };
+             return ( <div className="bg-white p-6 rounded-xl shadow-sm border space-y-4"><h3 className="font-bold text-lg mb-4">إدارة البيانات</h3><button onClick={() => { const data = { clients, users, date: new Date().toISOString() }; const blob = new Blob([JSON.stringify(data)], { type: "application/json" }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = "backup.json"; link.click(); }} className="w-full bg-brand-900 text-white p-4 rounded-xl flex justify-center gap-2 font-bold"><Icon name="download" /> تحميل نسخة احتياطية كاملة (JSON)</button><div className="h-px bg-gray-100 my-4"></div><h3 className="font-bold text-lg mb-4">استيراد العملاء</h3><div className="grid grid-cols-2 gap-4"><button onClick={downloadTemplate} className="w-full bg-gray-100 text-gray-700 p-4 rounded-xl flex justify-center gap-2 font-bold hover:bg-gray-200 transition"><Icon name="file-spreadsheet" /> تحميل نموذج الاستيراد</button><div className="relative overflow-hidden w-full"><button className="w-full bg-indigo-600 text-white p-4 rounded-xl flex justify-center gap-2 font-bold hover:bg-indigo-700 transition"><Icon name="upload" /> رفع ملف العملاء (Excel)</button><input type="file" accept=".xlsx" onChange={handleImportFile} className="absolute inset-0 opacity-0 cursor-pointer"/></div></div></div> );
         };
 
         // --- 6. ATTENDANCE SYSTEM ---
-        const MapZoneEditor = ({ center, radius, onChange }) => { const mapRef = useRef(null); const mapObj = useRef(null); const markerObj = useRef(null); const circleObj = useRef(null); useEffect(() => { if (!mapRef.current) return; if (!mapObj.current) { mapObj.current = L.map(mapRef.current).setView([center.lat, center.lng], 15); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapObj.current); const icon = L.icon({ iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png', shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41] }); markerObj.current = L.marker([center.lat, center.lng], { icon, draggable: true }).addTo(mapObj.current); circleObj.current = L.circle([center.lat, center.lng], { color: '#CE9B52', fillColor: '#CE9B52', fillOpacity: 0.2, radius: radius }).addTo(mapObj.current); const update = (lat, lng) => { markerObj.current.setLatLng([lat, lng]); circleObj.current.setLatLng([lat, lng]); onChange({ lat, lng }, radius); }; mapObj.current.on('click', (e) => update(e.latlng.lat, e.latlng.lng)); markerObj.current.on('dragend', (e) => { const l = e.target.getLatLng(); update(l.lat, l.lng); }); } }, []); useEffect(() => { if(circleObj.current) circleObj.current.setRadius(radius); }, [radius]); return <div ref={mapRef} className="w-full h-64 rounded-xl z-0" />; };
+        const MapZoneEditor = ({ center, radius, onChange }) => { 
+            const mapRef = useRef(null); 
+            const mapObj = useRef(null); 
+            const markerObj = useRef(null); 
+            const circleObj = useRef(null); 
+            
+            useEffect(() => { 
+                if (!mapRef.current) return; 
+                if (!mapObj.current) { 
+                    mapObj.current = L.map(mapRef.current).setView([center.lat, center.lng], 15); 
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapObj.current); 
+                    const icon = L.icon({ iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png', shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41] }); 
+                    markerObj.current = L.marker([center.lat, center.lng], { icon, draggable: true }).addTo(mapObj.current); 
+                    circleObj.current = L.circle([center.lat, center.lng], { color: '#CE9B52', fillColor: '#CE9B52', fillOpacity: 0.2, radius: radius }).addTo(mapObj.current); 
+                    const update = (lat, lng) => { markerObj.current.setLatLng([lat, lng]); circleObj.current.setLatLng([lat, lng]); onChange({ lat, lng }, radius); }; 
+                    mapObj.current.on('click', (e) => update(e.latlng.lat, e.latlng.lng)); 
+                    markerObj.current.on('dragend', (e) => { const l = e.target.getLatLng(); update(l.lat, l.lng); }); 
+                } 
+            }, []); 
+            
+            useEffect(() => { if(circleObj.current) circleObj.current.setRadius(radius); }, [radius]); 
+            
+            // FIX: Update map center and marker when center prop changes
+            useEffect(() => {
+                if(mapObj.current && markerObj.current && circleObj.current) {
+                    const newLatLng = [center.lat, center.lng];
+                    markerObj.current.setLatLng(newLatLng);
+                    circleObj.current.setLatLng(newLatLng);
+                    mapObj.current.setView(newLatLng); 
+                }
+            }, [center]);
+
+            return <div ref={mapRef} className="w-full h-64 rounded-xl z-0" />; 
+        };
         const calculateDistance = (lat1, lon1, lat2, lon2) => { const R = 6371e3; const φ1 = lat1 * Math.PI/180; const φ2 = lat2 * Math.PI/180; const Δφ = (lat2-lat1) * Math.PI/180; const Δλ = (lon2-lon1) * Math.PI/180; const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2); return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); };
 
         // -- New Permission Modal --
@@ -525,7 +512,15 @@
 
         const AttendanceReports = ({ logs, users, zones, permissions }) => {
             const [startDate, setStartDate] = useState(''); const [endDate, setEndDate] = useState('');
-            const reportData = logs.slice().reverse().filter(l => { const logDate = l.timestamp.slice(0, 10); return (!startDate || logDate >= startDate) && (!endDate || logDate <= endDate); }).reduce((acc, log) => { const date = log.timestamp.slice(0, 10); const key = `${log.uid}-${date}`; if (!acc[key]) acc[key] = { uid: log.uid, date: date, user: users.find(u=>u.id===log.uid)?.name, checkIn: '-', checkOut: '-', late: 0, early: 0, hours: 0, inStatus: '', outStatus: '' }; if (log.type === 'IN') { acc[key].checkIn = log.timestamp; acc[key].inStatus = log.locationStatus; } if (log.type === 'OUT') { acc[key].checkOut = log.timestamp; acc[key].outStatus = log.locationStatus; } return acc; }, {});
+            const [selectedUser, setSelectedUser] = useState(''); // New Filter State
+
+            const reportData = logs.slice().reverse().filter(l => { 
+                const logDate = l.timestamp.slice(0, 10); 
+                // Apply filters
+                const dateMatch = (!startDate || logDate >= startDate) && (!endDate || logDate <= endDate); 
+                const userMatch = !selectedUser || l.uid === selectedUser;
+                return dateMatch && userMatch;
+            }).reduce((acc, log) => { const date = log.timestamp.slice(0, 10); const key = `${log.uid}-${date}`; if (!acc[key]) acc[key] = { uid: log.uid, date: date, user: users.find(u=>u.id===log.uid)?.name, checkIn: '-', checkOut: '-', late: 0, early: 0, hours: 0, inStatus: '', outStatus: '' }; if (log.type === 'IN') { acc[key].checkIn = log.timestamp; acc[key].inStatus = log.locationStatus; } if (log.type === 'OUT') { acc[key].checkOut = log.timestamp; acc[key].outStatus = log.locationStatus; } return acc; }, {});
             
             const processedRows = Object.values(reportData).map(row => {
                 let lateText = '-', earlyText = '-', hoursText = '-', deduction = '-';
@@ -551,7 +546,19 @@
 
             return (
                 <div className="space-y-4">
-                    <div className="bg-white p-4 rounded-xl shadow-sm border flex flex-wrap gap-4 items-center"><div className="flex items-center gap-2"><span className="font-bold text-gray-600 text-sm">من:</span><input type="date" className="border rounded-lg p-2 text-sm" value={startDate} onChange={e=>setStartDate(e.target.value)} /></div><div className="flex items-center gap-2"><span className="font-bold text-gray-600 text-sm">إلى:</span><input type="date" className="border rounded-lg p-2 text-sm" value={endDate} onChange={e=>setEndDate(e.target.value)} /></div>{(startDate || endDate) && <button onClick={()=>{setStartDate('');setEndDate('')}} className="text-xs text-red-500 font-bold">مسح</button>}<button onClick={()=>exportToExcel(processedRows, 'Attendance')} className="mr-auto bg-green-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 text-sm"><Icon name="file-spreadsheet" size={16}/> تصدير</button></div>
+                    <div className="bg-white p-4 rounded-xl shadow-sm border flex flex-wrap gap-4 items-center">
+                        {/* Filter Inputs */}
+                        <div className="flex items-center gap-2"><span className="font-bold text-gray-600 text-sm">الموظف:</span>
+                            <select className="border rounded-lg p-2 text-sm w-40" value={selectedUser} onChange={e=>setSelectedUser(e.target.value)}>
+                                <option value="">الكل</option>
+                                {users.filter(u => u.role !== 'admin').map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                            </select>
+                        </div>
+                        <div className="flex items-center gap-2"><span className="font-bold text-gray-600 text-sm">من:</span><input type="date" className="border rounded-lg p-2 text-sm" value={startDate} onChange={e=>setStartDate(e.target.value)} /></div>
+                        <div className="flex items-center gap-2"><span className="font-bold text-gray-600 text-sm">إلى:</span><input type="date" className="border rounded-lg p-2 text-sm" value={endDate} onChange={e=>setEndDate(e.target.value)} /></div>
+                        {(startDate || endDate || selectedUser) && <button onClick={()=>{setStartDate('');setEndDate('');setSelectedUser('')}} className="text-xs text-red-500 font-bold">مسح</button>}
+                        <button onClick={()=>exportToExcel(processedRows, 'Attendance')} className="mr-auto bg-green-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 text-sm"><Icon name="file-spreadsheet" size={16}/> تصدير</button>
+                    </div>
                     <div className="bg-white rounded-xl shadow-sm border overflow-hidden"><table className="w-full text-right text-sm"><thead className="bg-gray-50 text-brand-900 font-bold"><tr><th className="p-3">الموظف</th><th className="p-3">التاريخ</th><th className="p-3">دخول</th><th className="p-3 text-red-600">تأخير</th><th className="p-3">خروج</th><th className="p-3 text-orange-600">مبكر</th><th className="p-3 font-black">ساعات العمل</th><th className="p-3 text-red-800">الجزاء / الخصم</th></tr></thead><tbody className="divide-y">{processedRows.map((r, i) => (<tr key={i} className="hover:bg-gray-50"><td className="p-3 font-bold">{r.user}</td><td className="p-3 date-en">{r.date}</td><td className="p-3"><span className="date-en block">{r.checkIn !== '-' ? formatTime(r.checkIn) : '-'}</span>{r.inStatus === 'outside_zone' && <span className="text-[10px] text-red-500 font-bold block">(خارج النطاق)</span>}</td><td className="p-3 text-red-600 font-bold">{r.lateText}</td><td className="p-3"><span className="date-en block">{r.checkOut !== '-' ? formatTime(r.checkOut) : '-'}</span>{r.outStatus === 'outside_zone' && <span className="text-[10px] text-red-500 font-bold block">(خارج النطاق)</span>}</td><td className="p-3 text-orange-600 font-bold">{r.earlyText}</td><td className="p-3 font-black bg-gray-50">{r.hoursText}</td><td className={`p-3 text-xs font-bold ${r.deduction.includes('الاستئذان') ? 'text-green-600' : 'text-red-800'}`}>{r.deduction}</td></tr>))}</tbody></table></div></div>
             );
         };
@@ -661,7 +668,7 @@
                         </div>
                         <nav className="flex-1 p-4 space-y-2">
                             <button onClick={()=>{setPage('my_attendance'); setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='my_attendance'?'bg-accent-600 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="fingerprint"/> تسجيلي</button>
-                            {canSeeReports && (<><button onClick={()=>{setPage('live'); setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='live'?'bg-accent-600 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="activity"/> مباشر (Live)</button><button onClick={()=>{setPage('reports'); setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='reports'?'bg-accent-600 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="file-text"/> التقارير والخصومات</button><button onClick={()=>{setPage('perms'); setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='perms'?'bg-accent-600 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="check-square"/> إدارة الاستئذانات</button></>)}
+                            {canSeeReports && (<><button onClick={()=>{setPage('live'); setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='live'?'bg-accent-600 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="activity"/> مباشر (Live)</button><button onClick={()=>{setPage('reports'); setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='reports'?'bg-accent-600 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="file-text"/> التقارير</button><button onClick={()=>{setPage('perms'); setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='perms'?'bg-accent-600 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="check-square"/> إدارة الاستئذانات</button></>)}
                             {canManageZones && <button onClick={()=>{setPage('zones'); setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='zones'?'bg-accent-600 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="map"/> النطاقات</button>}
                         </nav>
                         <div className="p-4 border-t"><button onClick={onBack} className="w-full bg-gray-100 text-gray-600 p-2 rounded-lg font-bold flex items-center justify-center gap-2"><Icon name="grid" size={16}/> تبديل التطبيق</button></div>
@@ -681,32 +688,68 @@
                             <div className="max-w-2xl mx-auto text-center space-y-6">
                                 <div className={`p-8 rounded-3xl shadow-lg border-4 transition-colors duration-300 ${myStatus==='inside'?'bg-green-50 border-green-500':myStatus==='outside'?'bg-red-50 border-red-500':'bg-gray-50 border-gray-300'}`}>
                                     <div className="text-6xl mb-4">{myStatus==='inside'?'📍':myStatus==='outside'?'🚫':'❓'}</div>
-                                    <h3 className="text-2xl font-black mb-2">{myStatus==='inside'?'الموقع الجغرافي صحيح (يمكنك التحضير الآن)':myStatus==='outside'?'أنت خارج نطاق العمل':'جاري تحديد الموقع...'}</h3>
+                                    <h3 className="text-2xl font-black mb-2">{myStatus==='inside'?'أنت في الموقع الصحيح':myStatus==='outside'?'أنت خارج نطاق العمل':'جاري تحديد الموقع...'}</h3>
+                                    
                                     <div className="text-gray-500 space-y-1">
                                         <p>{currentZone ? `النطاق المصرح: ${currentZone.name}` : 'لم يتم ربطك بنطاق عمل، راجع المشرف'}</p>
                                         {currentZone && dist !== null && (<p className="text-sm font-bold dir-ltr"><span className="text-brand-900">Current Dist: {dist}m</span> | <span className="text-gray-400">Allowed: {currentZone.radius}m</span></p>)}
                                     </div>
+
+                                    {/* New Status Indicator */}
+                                    <div className="mt-4 pt-4 border-t border-gray-200">
+                                        <span className="text-sm font-bold text-gray-500 block mb-2">حالة الدوام اليوم:</span>
+                                        {todayLog.out ? (
+                                            <span className="inline-block bg-gray-200 text-gray-600 px-4 py-2 rounded-full font-black">تم الانصراف 👋</span>
+                                        ) : todayLog.in ? (
+                                            <span className="inline-block bg-green-100 text-green-700 px-4 py-2 rounded-full font-black animate-pulse">حاضر الآن ✅</span>
+                                        ) : (
+                                            <span className="inline-block bg-yellow-50 text-yellow-600 px-4 py-2 rounded-full font-black">لم يبدأ بعد ⏳</span>
+                                        )}
+                                    </div>
                                 </div>
+
                                 <div className="grid grid-cols-2 gap-4">
-                                    <button onClick={()=>initiateAttendance('IN')} disabled={todayLog.in} className="relative bg-green-600 text-white py-6 rounded-2xl font-black text-xl shadow-xl hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center gap-2 group overflow-hidden">
+                                    <button onClick={()=>initiateAttendance('IN')} disabled={todayLog.in || todayLog.out} className="relative bg-green-600 text-white py-6 rounded-2xl font-black text-xl shadow-xl hover:bg-green-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed flex flex-col items-center gap-2 group overflow-hidden transition-all">
                                         <div className="absolute top-2 right-2 bg-white/20 px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></div> مباشر</div>
                                         <Icon name="log-in" size={32}/> تسجيل دخول 
                                         <span className="text-sm font-normal opacity-80">{todayLog.in ? formatTime(todayLog.in.timestamp) : '--:--'}</span>
                                     </button>
-                                    <button onClick={()=>initiateAttendance('OUT')} disabled={!todayLog.in} className="relative bg-red-600 text-white py-6 rounded-2xl font-black text-xl shadow-xl hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center gap-2 overflow-hidden">
+                                    
+                                    <button onClick={()=>initiateAttendance('OUT')} disabled={!todayLog.in || todayLog.out} className="relative bg-red-600 text-white py-6 rounded-2xl font-black text-xl shadow-xl hover:bg-red-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed flex flex-col items-center gap-2 overflow-hidden transition-all">
                                         <div className="absolute top-2 right-2 bg-white/20 px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-green-300 animate-pulse"></div> مباشر</div>
                                         <Icon name="log-out" size={32}/> انصراف 
                                         <span className="text-sm font-normal opacity-80">{todayLog.out ? formatTime(todayLog.out.timestamp) : '--:--'}</span>
                                     </button>
                                 </div>
+                                
                                 <button onClick={()=>setPermModalOpen(true)} className="w-full bg-white border-2 border-accent-500 text-accent-600 py-4 rounded-2xl font-bold hover:bg-accent-50 transition flex items-center justify-center gap-2"><Icon name="file-text"/> طلب استئذان / خروج</button>
+                                
                                 {todayLog.in && (<div className="bg-white p-4 rounded-xl shadow-sm border flex justify-between items-center"><span className="font-bold text-gray-600">ساعات العمل اليوم:</span><span className="font-black text-2xl text-accent-600 date-en">{todayLog.out ? calculateDuration(todayLog.in.timestamp, todayLog.out.timestamp) : 'جاري الحساب...'}</span></div>)}
                             </div>
                         )}
                         {page === 'zones' && (<div><button onClick={openAddModal} className="bg-accent-600 text-white px-6 py-3 rounded-xl font-bold mb-6 shadow-lg">+ إضافة نطاق جديد</button><div className="grid gap-4">{zones.map(z => (<div key={z.id} className="bg-white p-5 rounded-2xl shadow-sm border flex justify-between items-center"><div><h4 className="font-bold text-lg text-brand-900">{z.name}</h4><div className="text-sm text-gray-500 date-en">{z.startTime} - {z.endTime}</div></div><div className="flex items-center gap-3"><span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm font-bold">{safeArr(z.assignedUsers).length} موظف</span><button onClick={()=>openEditModal(z)} className="bg-gray-100 p-2 rounded-lg hover:bg-gray-200 text-brand-900"><Icon name="pencil" size={16}/></button></div></div>))}</div></div>)}
                         {page === 'reports' && <AttendanceReports logs={logs} users={usersList} zones={zones} permissions={permissions} />}
                         {page === 'perms' && <PermissionsManager permissions={permissions} />}
-                        {page === 'live' && (<div className="grid grid-cols-1 md:grid-cols-3 gap-4">{usersList.filter(u => u.id !== 'admin').map(u => { const lastLog = logs.filter(l => l.uid === u.id).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp))[0]; const isOnline = lastLog?.type === 'IN' && new Date(lastLog.timestamp).toDateString() === new Date().toDateString(); return ( <div key={u.id} className="bg-white p-5 rounded-2xl shadow-sm border flex items-center gap-4"><div className={`w-4 h-4 rounded-full ${isOnline?'bg-green-500 animate-pulse':'bg-gray-300'}`}></div><div><div className="font-bold text-brand-900">{u.name}</div><div className="text-xs text-gray-500">{isOnline ? `دخل منذ ${formatTime(lastLog.timestamp)}` : 'غير متواجد'}</div></div></div> ) })}</div>)}
+                        {page === 'live' && (<div className="grid grid-cols-1 md:grid-cols-3 gap-4">{usersList.filter(u => u.id !== 'admin').map(u => { 
+                            const lastLog = logs.filter(l => l.uid === u.id).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp))[0]; 
+                            const isOnline = lastLog?.type === 'IN' && new Date(lastLog.timestamp).toDateString() === new Date().toDateString(); 
+                            const isOutside = lastLog?.locationStatus === 'outside_zone';
+                            
+                            return ( 
+                                <div key={u.id} className="bg-white p-5 rounded-2xl shadow-sm border flex items-center gap-4 relative overflow-hidden">
+                                    {isOnline && (
+                                        <div className={`absolute top-0 left-0 px-2 py-1 text-[10px] font-bold text-white ${isOutside ? 'bg-red-500' : 'bg-green-500'} rounded-br-lg`}>
+                                            {isOutside ? 'خارج النطاق' : 'داخل النطاق'}
+                                        </div>
+                                    )}
+                                    <div className={`w-4 h-4 rounded-full ${isOnline?'bg-green-500 animate-pulse':'bg-gray-300'}`}></div>
+                                    <div>
+                                        <div className="font-bold text-brand-900">{u.name}</div>
+                                        <div className="text-xs text-gray-500">{isOnline ? `دخل منذ ${formatTime(lastLog.timestamp)}` : 'غير متواجد'}</div>
+                                    </div>
+                                </div> 
+                            ) 
+                        })}</div>)}
                     </main>
                     <ZoneModal isOpen={modalOpen} onClose={()=>setModalOpen(false)} users={usersList} zones={zones} onSave={handleSaveZone} zoneToEdit={editingZone} />
                     <PermissionModal isOpen={permModalOpen} onClose={()=>setPermModalOpen(false)} onSend={handlePermissionRequest} />
