@@ -6,64 +6,99 @@ import { Icon, safeStr, safeArr, calculateDuration, formatTime, exportToExcel, L
 import { Zone, AttendanceLog, User, PermissionRequest } from '../types';
 
 const MapZoneEditor = ({ center, radius, onChange }: any) => { 
-    const mapRef = useRef<HTMLDivElement>(null); 
-    const mapObj = useRef<L.Map | null>(null); 
-    const markerObj = useRef<L.Marker | null>(null); 
-    const circleObj = useRef<L.Circle | null>(null); 
-    
-    const propsRef = useRef({ radius, onChange, center });
-    propsRef.current = { radius, onChange, center };
+    const mapRef = useRef<HTMLDivElement>(null);
+    const mapInstance = useRef<L.Map | null>(null);
+    const markerRef = useRef<L.Marker | null>(null);
+    const circleRef = useRef<L.Circle | null>(null);
 
-    useEffect(() => { 
-        if (!mapRef.current) return; 
-        
-        if (!mapObj.current) { 
-            mapObj.current = L.map(mapRef.current).setView([center.lat, center.lng], 15); 
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapObj.current); 
-            
-            const icon = L.icon({ iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png', shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41] }); 
-            
-            markerObj.current = L.marker([center.lat, center.lng], { icon, draggable: true }).addTo(mapObj.current); 
-            circleObj.current = L.circle([center.lat, center.lng], { color: '#CE9B52', fillColor: '#CE9B52', fillOpacity: 0.2, radius: radius }).addTo(mapObj.current); 
-            
-            const handleUpdate = (lat: number, lng: number) => { 
-                const currentRadius = propsRef.current.radius;
-                const currentOnChange = propsRef.current.onChange;
-                
-                if(markerObj.current) markerObj.current.setLatLng([lat, lng]); 
-                if(circleObj.current) circleObj.current.setLatLng([lat, lng]); 
-                
-                currentOnChange({ lat, lng }, currentRadius); 
-            }; 
-
-            mapObj.current.on('click', (e) => handleUpdate(e.latlng.lat, e.latlng.lng)); 
-            markerObj.current.on('dragend', (e) => { const l = e.target.getLatLng(); handleUpdate(l.lat, l.lng); }); 
-        } else {
-             mapObj.current.setView([center.lat, center.lng], 15);
-        }
-    }, []); 
-    
-    useEffect(() => { 
-        if(circleObj.current) circleObj.current.setRadius(radius); 
-    }, [radius]); 
-    
     useEffect(() => {
-        if(mapObj.current && markerObj.current && circleObj.current) {
-            const newLatLng: [number, number] = [center.lat, center.lng];
-            const currentLatLng = markerObj.current.getLatLng();
+        if (!mapRef.current) return;
+
+        // تهيئة الخريطة عند أول تشغيل
+        if (!mapInstance.current) {
+            mapInstance.current = L.map(mapRef.current).setView([center.lat, center.lng], 15);
             
-            if (Math.abs(currentLatLng.lat - center.lat) > 0.0001 || Math.abs(currentLatLng.lng - center.lng) > 0.0001) {
-                 markerObj.current.setLatLng(newLatLng);
-                 circleObj.current.setLatLng(newLatLng);
-                 mapObj.current.setView(newLatLng); 
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(mapInstance.current);
+        }
+
+        const map = mapInstance.current;
+
+        // تحديث العلامة (Marker)
+        if (!markerRef.current) {
+            // محاولة استخدام أيقونة افتراضية أو بسيطة لتجنب مشاكل الصور المفقودة
+            const defaultIcon = L.divIcon({
+                className: 'bg-transparent',
+                html: '<div style="background-color: #2C3340; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"></div>',
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
+            });
+
+            markerRef.current = L.marker([center.lat, center.lng], { 
+                draggable: true,
+                icon: defaultIcon 
+            }).addTo(map);
+
+            markerRef.current.on('dragend', (e) => {
+                const ll = e.target.getLatLng();
+                onChange({ lat: ll.lat, lng: ll.lng }, radius);
+            });
+        } else {
+            markerRef.current.setLatLng([center.lat, center.lng]);
+        }
+
+        // تحديث الدائرة (Circle)
+        if (!circleRef.current) {
+            circleRef.current = L.circle([center.lat, center.lng], { 
+                radius: radius,
+                color: '#CE9B52',
+                fillColor: '#CE9B52',
+                fillOpacity: 0.35,
+                weight: 2
+            }).addTo(map);
+        } else {
+            circleRef.current.setLatLng([center.lat, center.lng]);
+            circleRef.current.setRadius(radius);
+        }
+
+        // تحديث عند النقر على الخريطة
+        const onMapClick = (e: L.LeafletMouseEvent) => {
+             onChange({ lat: e.latlng.lat, lng: e.latlng.lng }, radius);
+        };
+        map.off('click');
+        map.on('click', onMapClick);
+        
+        // إعادة التوجيه للمركز
+        map.setView([center.lat, center.lng]);
+
+    }, [center.lat, center.lng, radius, onChange]);
+
+    // تنظيف الخريطة عند إغلاق المكون
+    useEffect(() => {
+        return () => {
+            if (mapInstance.current) {
+                mapInstance.current.remove();
+                mapInstance.current = null;
+                markerRef.current = null;
+                circleRef.current = null;
             }
         }
-    }, [center.lat, center.lng]);
+    }, []);
 
-    return <div ref={mapRef} className="w-full h-64 rounded-xl z-0" />; 
+    return <div ref={mapRef} className="w-full h-64 rounded-xl overflow-hidden border border-gray-200 z-0" />;
 };
 
-const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => { const R = 6371e3; const φ1 = lat1 * Math.PI/180; const φ2 = lat2 * Math.PI/180; const Δφ = (lat2-lat1) * Math.PI/180; const Δλ = (lon2-lon1) * Math.PI/180; const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2); return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); };
+// حساب المسافة بين نقطتين
+const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => { 
+    const R = 6371e3; 
+    const φ1 = lat1 * Math.PI/180; 
+    const φ2 = lat2 * Math.PI/180; 
+    const Δφ = (lat2-lat1) * Math.PI/180; 
+    const Δλ = (lon2-lon1) * Math.PI/180; 
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2); 
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+};
 
 const PermissionModal = ({ isOpen, onClose, onSend }: any) => {
     const [reason, setReason] = useState('');
