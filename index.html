@@ -92,9 +92,7 @@
         };
         const safeStr = (val) => (val === null || val === undefined) ? '' : String(val);
         const safeArr = (val) => Array.isArray(val) ? val : [];
-        // Helper to format ISO string to time (HH:MM)
         const formatTime = (isoString) => new Date(isoString).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
-        // Helper to format ISO string to date (DD/MM/YYYY)
         const formatDate = (isoString) => new Date(isoString).toLocaleDateString('en-GB');
         
         const Logo = ({ size = 40 }) => {
@@ -547,7 +545,16 @@
 
             return <div ref={mapRef} className="w-full h-64 rounded-xl z-0" />; 
         };
-        const calculateDistance = (lat1, lon1, lat2, lon2) => { const R = 6371e3; const φ1 = lat1 * Math.PI/180; const φ2 = lat2 * Math.PI/180; const Δφ = (lat2-lat1) * Math.PI/180; const Δλ = (lon2-lon1) * Math.PI/180; const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2); return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); };
+        // MODIFIED: Increased tolerance in distance calculation to account for GPS drift
+        const calculateDistance = (lat1, lon1, lat2, lon2) => { 
+            const R = 6371e3; 
+            const φ1 = lat1 * Math.PI/180; 
+            const φ2 = lat2 * Math.PI/180; 
+            const Δφ = (lat2-lat1) * Math.PI/180; 
+            const Δλ = (lon2-lon1) * Math.PI/180; 
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2); 
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+        };
 
         // -- New Permission Modal --
         const PermissionModal = ({ isOpen, onClose, onSend }) => {
@@ -588,8 +595,8 @@
         };
 
         const ZoneModal = ({ isOpen, onClose, users, zones, onSave, zoneToEdit }) => {
-            // Initial State - Independent
-            const [zone, setZone] = useState({ name: '', startTime: '08:00', endTime: '16:00', lat: 24.7136, lng: 46.6753, radius: 200, assignedUsers: [] });
+            // MODIFIED: Set default radius to 250m to handle GPS drift better
+            const [zone, setZone] = useState({ name: '', startTime: '08:00', endTime: '16:00', lat: 24.7136, lng: 46.6753, radius: 250, assignedUsers: [] });
             
             // Reset state COMPLETELY when modal opens or zoneToEdit changes
             useEffect(() => { 
@@ -598,7 +605,7 @@
                         // Deep copy to break reference
                         setZone(JSON.parse(JSON.stringify(zoneToEdit))); 
                     } else {
-                        setZone({ name: '', startTime: '08:00', endTime: '16:00', lat: 24.7136, lng: 46.6753, radius: 200, assignedUsers: [] }); 
+                        setZone({ name: '', startTime: '08:00', endTime: '16:00', lat: 24.7136, lng: 46.6753, radius: 250, assignedUsers: [] }); 
                     }
                 } 
             }, [isOpen, zoneToEdit]);
