@@ -1,5 +1,7 @@
 {
-  "name": "boyoticom CRM",
-  "description": "نظام إدارة علاقات العملاء الخاص بشركة بيوتكم العقارية",
-  "requestFramePermissions": []
+  "name": "Boyoticom Portal",
+  "description": "A unified employee portal for CRM and Attendance management, featuring real-time tracking, reporting, and role-based access control.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
 }

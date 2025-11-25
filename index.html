@@ -23,7 +23,7 @@
       .animate-slide-up { animation: slide-up 0.3s ease-out forwards; }
     </style>
     
-    <!-- Tailwind CSS (Kept for quick styling support if PostCSS is not fully configured) -->
+    <!-- Tailwind CSS (Kept for compatibility) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -49,13 +49,17 @@
     "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
     "xlsx": "https://aistudiocdn.com/xlsx@^0.18.5",
     "recharts": "https://aistudiocdn.com/recharts@^3.5.0",
-    "leaflet": "https://aistudiocdn.com/leaflet@^1.9.4"
+    "leaflet": "https://aistudiocdn.com/leaflet@^1.9.4",
+    "vite": "https://aistudiocdn.com/vite@^7.2.4",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1"
   }
 }
 </script>
+<link rel="stylesheet" href="/index.css">
 </head>
 <body class="notranslate">
     <div id="root"></div>
     <script type="module" src="/src/index.tsx"></script>
+<script type="module" src="/index.tsx"></script>
 </body>
 </html>
