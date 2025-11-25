@@ -92,9 +92,7 @@
         };
         const safeStr = (val) => (val === null || val === undefined) ? '' : String(val);
         const safeArr = (val) => Array.isArray(val) ? val : [];
-        // Helper to format ISO string to time (HH:MM)
         const formatTime = (isoString) => new Date(isoString).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
-        // Helper to format ISO string to date (DD/MM/YYYY)
         const formatDate = (isoString) => new Date(isoString).toLocaleDateString('en-GB');
         
         const Logo = ({ size = 40 }) => {
@@ -132,9 +130,7 @@
             );
         };
 
-        // --- 2. USER MANAGEMENT (SEPARATED MODALS FOR STABILITY) ---
-        
-        // A. Add User Modal
+        // --- 2. USER MANAGEMENT ---
         const AddUserModal = ({ isOpen, onClose, onSave }) => {
             const [newUser, setNewUser] = useState({ name: '', email: '', uid: '' });
             if(!isOpen) return null;
@@ -154,7 +150,6 @@
             );
         };
 
-        // B. Role Editor Modal - MODIFIED: Added name and email editing
         const RoleEditorModal = ({ user, isOpen, onClose, onSave }) => {
             const [localUser, setLocalUser] = useState(user || {});
             const [crmRole, setCrmRole] = useState(user?.permissions?.crm_role || 'none');
@@ -176,19 +171,16 @@
                     crm_role: crmRole,
                     crm_reports: crmRole === 'supervisor',
                     crm_delete: crmRole === 'supervisor',
-                    crm_export: false, // Only admin
+                    crm_export: false, 
                     
                     att_access: attRole !== 'none',
                     att_role: attRole,
                     att_reports: attRole === 'supervisor',
                     att_zones: attRole === 'supervisor'
                 };
-                
                 const apps = [];
                 if (crmRole !== 'none') apps.push('crm');
                 if (attRole !== 'none') apps.push('attendance');
-
-                // Pass updated name and email along with permissions
                 onSave(localUser.id, localUser.name, localUser.email, apps, perms);
             };
 
@@ -199,16 +191,12 @@
                             <div className="font-bold text-xl text-brand-900">تعديل صلاحيات: {user.name}</div>
                             <div className="text-xs text-gray-500">{user.email}</div>
                         </div>
-
                         <div className="space-y-4">
-                            {/* Name & Email Editing */}
                             <div className="border rounded-xl p-4 space-y-3">
                                 <h4 className="font-bold text-md text-brand-900">بيانات الموظف</h4>
                                 <input className="w-full border rounded p-3" placeholder="الاسم الثلاثي" value={localUser.name} onChange={e=>setLocalUser({...localUser, name:e.target.value})} />
                                 <input className="w-full border rounded p-3 text-right date-en" placeholder="البريد الإلكتروني" value={localUser.email} onChange={e=>setLocalUser({...localUser, email:e.target.value})} />
                             </div>
-
-                            {/* CRM System */}
                             <div className="border rounded-xl p-4">
                                 <div className="flex items-center gap-2 mb-3 text-crm-600 font-bold"><Icon name="layout-grid"/> نظام CRM</div>
                                 <div className="grid grid-cols-3 gap-2">
@@ -217,8 +205,6 @@
                                     <button onClick={()=>setCrmRole('supervisor')} className={`p-2 rounded border text-sm ${crmRole==='supervisor'?'bg-crm-600 text-white':'bg-white'}`}>مشرف</button>
                                 </div>
                             </div>
-
-                            {/* Attendance System */}
                             <div className="border rounded-xl p-4">
                                 <div className="flex items-center gap-2 mb-3 text-accent-600 font-bold"><Icon name="clock"/> نظام الحضور</div>
                                 <div className="grid grid-cols-3 gap-2">
@@ -228,7 +214,6 @@
                                 </div>
                             </div>
                         </div>
-
                         <div className="flex gap-2 mt-6 pt-4 border-t">
                             <button onClick={onClose} className="flex-1 bg-gray-100 py-3 rounded-xl font-bold">إلغاء</button>
                             <button onClick={handleSave} className="flex-1 bg-brand-900 text-white py-3 rounded-xl font-bold">حفظ الصلاحيات</button>
@@ -238,27 +223,19 @@
             );
         };
 
-        // --- MAIN USER MANAGER (LIST) ---
         const UserManagerMain = ({ users, currentUser, onClose }) => {
             const [addModal, setAddModal] = useState(false);
             const [editUser, setEditUser] = useState(null);
-
             const displayUsers = users.filter(u => u.id !== currentUser.id);
 
-            // FIX: Ensure correct data structure is passed for a new user, and handle success without throwing error.
             const handleSaveNew = (userData) => {
                 if(!userData.uid) return alert('UID مطلوب');
                 set(ref(db, `users/${userData.uid}`), { name: userData.name, email: userData.email, role: 'user', allowedApps: [], permissions: {crm_role: 'none', att_role: 'none'} }).then(() => {
                     setAddModal(false);
-                    // Automatically open edit modal for permissions (now correctly uses the saved data)
                     setEditUser({ id: userData.uid, name: userData.name, email: userData.email, role: 'user', allowedApps: [], permissions: {crm_role: 'none', att_role: 'none'} }); 
-                }).catch(err => {
-                    console.error("Error saving new user:", err);
-                    alert("فشل حفظ المستخدم الجديد.");
-                });
+                }).catch(err => { console.error("Error", err); alert("فشل حفظ المستخدم الجديد."); });
             };
 
-            // MODIFIED: Accepts name and email to allow editing.
             const handleSaveRoles = (uid, name, email, apps, perms) => {
                 update(ref(db, `users/${uid}`), { name: name, email: email, allowedApps: apps, permissions: perms });
                 setEditUser(null);
@@ -271,7 +248,6 @@
                             <h3 className="text-xl font-black text-brand-900 flex items-center gap-2"><Icon name="users"/> <span>إدارة الموظفين</span></h3>
                             <button onClick={onClose} className="bg-gray-100 p-2 rounded-full hover:bg-gray-200"><Icon name="x"/></button>
                         </div>
-                        
                         <div className="space-y-4">
                             <button onClick={() => setAddModal(true)} className="w-full bg-brand-900 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow"><Icon name="user-plus"/> <span>إضافة موظف جديد</span></button>
                             <div className="space-y-2 mt-4">
@@ -292,7 +268,6 @@
                             </div>
                         </div>
                     </div>
-
                     <AddUserModal isOpen={addModal} onClose={()=>setAddModal(false)} onSave={handleSaveNew} />
                     <RoleEditorModal user={editUser} isOpen={!!editUser} onClose={()=>setEditUser(null)} onSave={handleSaveRoles} />
                 </div>
@@ -351,13 +326,11 @@
             const isAdmin = currentUser.role === 'admin';
             const isSupervisor = currentUser.permissions?.crm_role === 'supervisor';
             const isEmployee = currentUser.permissions?.crm_role === 'employee';
-
             const relevantClients = clients.filter(c => {
                 if (isAdmin || isSupervisor) return true;
                 if (isEmployee) return c.assignedTo === currentUser.name;
                 return false;
             });
-
             const totalClients = relevantClients.length; const today = new Date().toISOString().slice(0,10); const reminders = relevantClients.filter(c => c.nextFollowUp === today); const statusData = STATUS_LIST.map(s => ({ name: s.label, count: relevantClients.filter(c => c.status === s.key).length, key: s.key, color: s.color })); const projectStats = {}; relevantClients.forEach(c => safeArr(c.projects).forEach(p => { const n = safeStr(p); if(n) projectStats[n] = (projectStats[n]||0)+1; })); const projectData = Object.entries(projectStats).map(([name, value]) => ({ name, value })); const COLORS = ['#2C3340', '#CE9B52', '#E6BC76', '#94a3b8', '#475569', '#64748b'];
             return (
                 <div className="space-y-6"><div className="grid grid-cols-1 md:grid-cols-3 gap-4"><div className="bg-gradient-to-r from-brand-900 to-brand-800 text-white p-6 rounded-2xl shadow-lg flex justify-between items-center"><div><h2 className="text-lg font-bold opacity-80 mb-1">إجمالي العملاء</h2><div className="text-4xl font-black">{totalClients}</div></div><div className="bg-white/10 p-4 rounded-full"><Icon name="users" size={32} /></div></div><div className="bg-white p-6 rounded-2xl shadow-lg border border-amber-100 md:col-span-2 relative overflow-hidden"><div className="absolute top-0 left-0 w-full h-1 bg-amber-400"></div><div className="flex justify-between items-start mb-4"><h3 className="font-bold text-brand-900 flex items-center gap-2"><Icon name="bell" className="text-amber-500"/> تذكيرات اليوم ({reminders.length})</h3></div>{reminders.length > 0 ? <div className="flex gap-3 overflow-x-auto pb-2">{reminders.map(c => (<div key={c.id} className="min-w-[200px] bg-gray-50 p-3 rounded-lg border border-gray-100 text-sm"><div className="font-bold text-brand-900 mb-1">{c.name}</div><div className="text-xs text-gray-500 mb-2 date-en">{c.phone}</div></div>))}</div> : <div className="text-center text-gray-400 text-sm py-2">لا توجد متابعات</div>}</div></div><div><h3 className="font-bold text-brand-900 mb-4 flex items-center gap-2"><Icon name="activity" size={18}/> حالة العملاء</h3><div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">{statusData.map(s => (<div key={s.key} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-md transition"><div className="text-xs text-gray-500 font-bold mb-2">{s.name}</div><div className="flex justify-between items-end"><div className="text-2xl font-black text-brand-900">{s.count}</div><div className={`w-2 h-2 rounded-full ${s.color.split(' ')[0].replace('bg-', 'bg-')}`}></div></div></div>))}</div></div>{window.Recharts && ( <div className="grid grid-cols-1 lg:grid-cols-2 gap-6"><div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100"><h3 className="font-bold text-brand-900 mb-4 text-sm">توزيع المشاريع</h3><div className="h-64" dir="ltr"><ResponsiveContainer><PieChart><Pie data={projectData} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={5} dataKey="value">{projectData.map((e,i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}</Pie><Tooltip/><Legend/></PieChart></ResponsiveContainer></div></div><div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100"><h3 className="font-bold text-brand-900 mb-4 text-sm">نظرة عامة</h3><div className="h-64" dir="ltr"><ResponsiveContainer><BarChart data={statusData}><CartesianGrid strokeDasharray="3 3" vertical={false}/><XAxis dataKey="name" hide/><YAxis/><Tooltip/><Bar dataKey="count" fill="#2C3340" radius={[4,4,0,0]} barSize={30}/></BarChart></ResponsiveContainer></div></div></div> )}</div>
@@ -366,52 +339,25 @@
 
         const CRMReports = ({ clients, users, currentUser }) => {
             const [startDate, setStartDate] = useState(''); const [endDate, setEndDate] = useState(''); 
-            
-            // MODIFIED: Filter users to only include those with CRM access or Admins
             const relevantUsers = useMemo(() => users.filter(u => u.role === 'admin' || u.permissions?.crm_access), [users]);
-
             const filteredClients = clients.filter(c => { const d = c.dateAdded ? c.dateAdded.slice(0, 10) : ''; return (startDate ? d >= startDate : true) && (endDate ? d <= endDate : true); }); 
-            
-            // Report logic based on filtered users
             const reportData = relevantUsers.map(u => { const userClients = filteredClients.filter(c => c.assignedTo === u.name); return { id: u.id, name: u.name, total: userClients.length, sold: userClients.filter(c => c.status === 'Sold').length, deposit: userClients.filter(c => c.status === 'Deposit').length, inProgress: userClients.filter(c => ['New','Contacted1','Contacted2','Contacted3'].includes(c.status)).length }; });
-            
             const canExport = currentUser.role === 'admin' || currentUser.permissions?.crm_role === 'supervisor';
-            const handleExportReports = () => {
-                exportToExcel(reportData, "Employee_Performance_Reports");
-            };
-
+            const handleExportReports = () => { exportToExcel(reportData, "Employee_Performance_Reports"); };
             return ( <div className="space-y-6"><div className="bg-white p-4 rounded-xl shadow-sm border flex flex-wrap items-center gap-4"><div className="flex items-center gap-2"><span className="text-sm font-bold text-gray-500">من:</span><input type="date" className="bg-gray-50 border rounded-lg px-3 py-2 outline-none text-sm date-en" value={startDate} onChange={e=>setStartDate(e.target.value)} /></div><div className="flex items-center gap-2"><span className="text-sm font-bold text-gray-500">إلى:</span><input type="date" className="bg-gray-50 border rounded-lg px-3 py-2 outline-none text-sm date-en" value={endDate} onChange={e=>setEndDate(e.target.value)} /></div>{(startDate||endDate)&&<button onClick={()=>{setStartDate('');setEndDate('')}} className="text-xs text-red-500 hover:underline font-bold">إلغاء</button>}{canExport && <button onClick={handleExportReports} className="mr-auto bg-green-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2"><Icon name="file-spreadsheet" size={16}/> تصدير التقرير</button>}</div><div className="bg-white rounded-xl shadow-sm border overflow-hidden"><table className="w-full text-right"><thead className="bg-gray-50 text-sm font-bold text-brand-900"><tr><th className="p-4">الموظف (المسند إليه)</th><th className="p-4 text-center">إجمالي العملاء</th><th className="p-4 text-center text-emerald-600">تم البيع</th><th className="p-4 text-center text-amber-600">عربون</th><th className="p-4 text-center text-blue-600">قيد المتابعة</th></tr></thead><tbody className="divide-y">{reportData.map(r=><tr key={r.id} className="hover:bg-gray-50"><td className="p-4"><div className="font-bold text-brand-900">{r.name}</div></td><td className="p-4 text-center font-bold">{r.total}</td><td className="p-4 text-center font-bold text-emerald-600">{r.sold}</td><td className="p-4 text-center font-bold text-amber-600">{r.deposit}</td><td className="p-4 text-center font-bold text-blue-600">{r.inProgress}</td></tr>)}</tbody></table></div></div> );
         };
 
         const CRMClientList = ({ clients, users, currentUser, onAdd, onEdit, onImport }) => {
             const [search, setSearch] = useState(''); const [filterStatus, setFilterStatus] = useState(''); const [filterAssignee, setFilterAssignee] = useState(''); const [itemsPerPage, setItemsPerPage] = useState(10); const [currentPage, setCurrentPage] = useState(1); const [deleteId, setDeleteId] = useState(null); const assignees = useMemo(() => [...new Set(clients.map(c => c.assignedTo).filter(Boolean))], [clients]);
-            
-            const isAdmin = currentUser.role === 'admin'; 
-            const isSupervisor = currentUser.permissions?.crm_role === 'supervisor'; 
-            const isEmployee = currentUser.permissions?.crm_role === 'employee';
-            
+            const isAdmin = currentUser.role === 'admin'; const isSupervisor = currentUser.permissions?.crm_role === 'supervisor'; const isEmployee = currentUser.permissions?.crm_role === 'employee';
             const filtered = clients.filter(c => { 
-                if(isAdmin || isSupervisor) {
-                    const s = safeStr(search).toLowerCase(); 
-                    return (safeStr(c.name).toLowerCase().includes(s) || safeStr(c.phone).includes(s)) && 
-                           (filterStatus ? c.status === filterStatus : true) && 
-                           (filterAssignee ? c.assignedTo === filterAssignee : true); 
-                }
-                
+                if(isAdmin || isSupervisor) { const s = safeStr(search).toLowerCase(); return (safeStr(c.name).toLowerCase().includes(s) || safeStr(c.phone).includes(s)) && (filterStatus ? c.status === filterStatus : true) && (filterAssignee ? c.assignedTo === filterAssignee : true); }
                 if (isEmployee && (c.assignedTo !== currentUser.name && c.addedBy !== currentUser.email)) return false;
-
-                const s = safeStr(search).toLowerCase(); 
-                return (safeStr(c.name).toLowerCase().includes(s) || safeStr(c.phone).includes(s)) && 
-                       (filterStatus ? c.status === filterStatus : true) && 
-                       (filterAssignee ? c.assignedTo === filterAssignee : true); 
+                const s = safeStr(search).toLowerCase(); return (safeStr(c.name).toLowerCase().includes(s) || safeStr(c.phone).includes(s)) && (filterStatus ? c.status === filterStatus : true) && (filterAssignee ? c.assignedTo === filterAssignee : true); 
             });
-            
             useEffect(() => { setCurrentPage(1); }, [search, filterStatus, filterAssignee, itemsPerPage]); 
             const displayedClients = itemsPerPage === 'All' ? filtered : filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage); 
-            
-            const canDelete = isAdmin || isSupervisor; 
-            const canExport = isAdmin; 
-            
+            const canDelete = isAdmin || isSupervisor; const canExport = isAdmin; 
             const handleExport = () => { const excelData = filtered.map(c => ({ 'الاسم': c.name, 'رقم الهاتف': c.phone, 'المشاريع': safeArr(c.projects).join(', '), 'الحالة': STATUS_LIST.find(s=>s.key===c.status)?.label||c.status, 'الموظف': c.assignedTo||'-', 'المنشئ': c.addedBy||'-', 'تاريخ الإضافة': c.dateAdded ? new Date(c.dateAdded).toLocaleDateString('en-GB') : '-' })); exportToExcel(excelData, "Clients"); }; 
             const handleImportFile = (e) => { const file = e.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = (evt) => { const bstr = evt.target.result; const wb = XLSX.read(bstr, {type:'binary'}); const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]); onImport(data); }; reader.readAsBinaryString(file); }; 
             const confirmDelete = () => { if(deleteId) { remove(ref(db, `clients/${deleteId}`)); setDeleteId(null); } };
@@ -426,24 +372,9 @@
                     </div>
                     <div className="bg-white p-3 rounded-xl shadow-sm border flex flex-wrap gap-2 items-center">
                         <input className="flex-1 bg-gray-50 rounded-lg px-3 py-2 outline-none min-w-[150px] text-sm" placeholder="بحث..." value={search} onChange={e=>setSearch(e.target.value)} />
-                        
-                        {/* MODIFIED: Pagination Dropdown */}
-                        <select className="bg-gray-50 rounded-lg px-3 py-2 outline-none text-sm" value={itemsPerPage} onChange={e=>setItemsPerPage(e.target.value === 'All' ? 'All' : Number(e.target.value))}>
-                            <option value={10}>10 صفوف</option>
-                            <option value={50}>50 صف</option>
-                            <option value={100}>100 صف</option>
-                            <option value="All">الكل</option>
-                        </select>
-
+                        <select className="bg-gray-50 rounded-lg px-3 py-2 outline-none text-sm" value={itemsPerPage} onChange={e=>setItemsPerPage(e.target.value === 'All' ? 'All' : Number(e.target.value))}> <option value={10}>10 صفوف</option> <option value={50}>50 صف</option> <option value={100}>100 صف</option> <option value="All">الكل</option> </select>
                         <select className="bg-gray-50 rounded-lg px-3 py-2 outline-none text-sm" value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}><option value="">كل الحالات</option>{STATUS_LIST.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}</select>
-                        
-                        {/* MODIFIED: Hide "Filter by Assignee" for Employees */}
-                        {!isEmployee && (
-                            <select className="bg-gray-50 rounded-lg px-3 py-2 outline-none text-sm" value={filterAssignee} onChange={e=>setFilterAssignee(e.target.value)}>
-                                <option value="">كل الموظفين</option>
-                                {assignees.map(a=><option key={a} value={a}>{a}</option>)}
-                            </select>
-                        )}
+                        {!isEmployee && ( <select className="bg-gray-50 rounded-lg px-3 py-2 outline-none text-sm" value={filterAssignee} onChange={e=>setFilterAssignee(e.target.value)}> <option value="">كل الموظفين</option> {assignees.map(a=><option key={a} value={a}>{a}</option>)} </select> )}
                     </div>
                     <div className="bg-white rounded-xl shadow-sm border overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-right"><thead className="bg-gray-50 text-sm font-bold text-brand-900"><tr><th className="p-4">الاسم</th><th className="p-4">المشاريع</th><th className="p-4">الحالة</th><th className="p-4">الموظف المسند</th><th className="p-4">المنشئ</th><th className="p-4">تاريخ الإضافة</th><th className="p-4">تاريخ المتابعة</th><th className="p-4"></th></tr></thead><tbody className="divide-y">{displayedClients.length > 0 ? displayedClients.map(c => (<tr key={c.id} className="hover:bg-gray-50 group"><td className="p-4"><div className="font-bold text-brand-900">{safeStr(c.name)}</div><div className="flex items-center gap-2 mt-1"><span className="text-xs text-gray-500 date-en">{safeStr(c.phone)}</span><a href={`https://wa.me/966${safeStr(c.phone).substring(1)}`} target="_blank" className="bg-green-50 text-green-600 p-1.5 rounded-full"><Icon name="message-circle" size={14} /></a><a href={`tel:${safeStr(c.phone)}`} className="bg-blue-50 text-blue-600 p-1.5 rounded-full"><Icon name="phone" size={14} /></a></div></td><td className="p-4 text-sm text-gray-600">{safeArr(c.projects).map((p,i)=><div key={i}>• {safeStr(p)}</div>)}</td><td className="p-4"><span className={`px-2 py-1 rounded text-xs border ${STATUS_LIST.find(s=>s.key===c.status)?.color}`}>{STATUS_LIST.find(s=>s.key===c.status)?.label}</span></td><td className="p-4 text-sm text-gray-600">{safeStr(c.assignedTo)}</td><td className="p-4 text-sm text-gray-500">{safeStr(c.addedBy)}</td><td className="p-4 text-sm text-gray-500 date-en">{c.dateAdded ? new Date(c.dateAdded).toLocaleDateString('en-GB') : '-'}</td><td className="p-4 text-xs text-amber-600 font-bold date-en">{c.nextFollowUp||'-'}</td><td className="p-4 flex items-center gap-2"><button onClick={()=>onEdit(c)} className="text-brand-900 hover:bg-gray-100 p-2 rounded"><Icon name="edit" size={16}/></button>{canDelete && <button onClick={()=>setDeleteId(c.id)} className="text-red-500 hover:bg-red-50 p-2 rounded"><Icon name="trash-2" size={16}/></button>}</td></tr>)) : <tr><td colSpan="8" className="p-8 text-center text-gray-400">لا توجد نتائج</td></tr>}</tbody></table></div></div>
                     {deleteId && <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"><div className="bg-white p-6 rounded-xl shadow-lg max-w-sm w-full text-center"><h3 className="text-lg font-bold mb-2">هل أنت متأكد؟</h3><div className="flex gap-3 justify-center mt-4"><button onClick={confirmDelete} className="bg-red-600 text-white px-4 py-2 rounded-lg">حذف</button><button onClick={()=>setDeleteId(null)} className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg">إلغاء</button></div></div></div>}
@@ -453,160 +384,19 @@
 
         const CRMClientModal = ({ isOpen, onClose, client, onSave, users, currentUser }) => {
             const [d, setD] = useState({ name: '', phone: '', projects: [], status: 'New', assignedTo: currentUser.role==='employee'?currentUser.name:'', source: 'مباشر', nextFollowUp: '', history: [] }); 
-            const [newNote, setNewNote] = useState(''); 
-            const [notes, setNotes] = useState([]); 
-            const notesEndRef = useRef(null);
-            const [activeTab, setActiveTab] = useState('notes'); // New state for tabs
-            
-            // MODIFIED: Filter users to include only those with CRM access for assignment
+            const [newNote, setNewNote] = useState(''); const [notes, setNotes] = useState([]); const notesEndRef = useRef(null); const [activeTab, setActiveTab] = useState('notes');
             const crmUsers = useMemo(() => users.filter(u => u.permissions?.crm_access || u.role === 'admin'), [users]);
-            
-            useEffect(() => { 
-                if(client) { 
-                    setD({ ...client, history: client.history ? Object.values(client.history) : [] }); 
-                    setNotes(client.notes ? Object.values(client.notes) : []); 
-                } else { 
-                    setD({ name: '', phone: '', projects: [], status: 'New', assignedTo: currentUser.permissions?.crm_role === 'employee' ? currentUser.name : '', source: 'مباشر', nextFollowUp: '', history: [] }); 
-                    setNotes([]); 
-                } 
-            }, [client]); 
-            
+            useEffect(() => { if(client) { setD({ ...client, history: client.history ? Object.values(client.history) : [] }); setNotes(client.notes ? Object.values(client.notes) : []); } else { setD({ name: '', phone: '', projects: [], status: 'New', assignedTo: currentUser.permissions?.crm_role === 'employee' ? currentUser.name : '', source: 'مباشر', nextFollowUp: '', history: [] }); setNotes([]); } }, [client]); 
             useEffect(() => { notesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [notes, isOpen]);
-            
             const toggleProject = (p) => { const curr = safeArr(d.projects); setD({ ...d, projects: curr.includes(p) ? curr.filter(x=>x!==p) : [...curr, p] }); };
-            
-            const handleAddNote = () => { 
-                if(!newNote.trim()) return; 
-                const noteData = { text: newNote, date: new Date().toISOString(), author: currentUser.name }; 
-                setNotes([...notes, noteData]); 
-                // Log the action
-                const logData = { action: 'إضافة ملاحظة', user: currentUser.name, date: new Date().toISOString() };
-                setD(prev => ({...prev, history: [...(prev.history||[]), logData]}));
-                
-                if(client) {
-                    push(ref(db, `clients/${client.id}/notes`), noteData);
-                    push(ref(db, `clients/${client.id}/history`), logData);
-                } 
-                setNewNote(''); 
-            };
-            
-            const handleSaveInternal = () => {
-                // Determine log action
-                let logAction = 'تحديث البيانات';
-                if (!client) logAction = 'إنشاء عميل جديد';
-                else if (d.status !== client.status) logAction = `تغيير الحالة إلى ${STATUS_LIST.find(s=>s.key===d.status)?.label}`;
-                else if (d.assignedTo !== client.assignedTo) logAction = `إسناد إلى ${d.assignedTo}`;
-
-                const logData = { action: logAction, user: currentUser.name, date: new Date().toISOString() };
-                const updatedHistory = [...(d.history||[]), logData];
-                
-                onSave(client ? d : { ...d, history: updatedHistory, notes: notes }, logData);
-            };
-
-            // MODIFIED: Supervisor/Admin can assign. Employee cannot change assignment.
+            const handleAddNote = () => { if(!newNote.trim()) return; const noteData = { text: newNote, date: new Date().toISOString(), author: currentUser.name }; setNotes([...notes, noteData]); const logData = { action: 'إضافة ملاحظة', user: currentUser.name, date: new Date().toISOString() }; setD(prev => ({...prev, history: [...(prev.history||[]), logData]})); if(client) { push(ref(db, `clients/${client.id}/notes`), noteData); push(ref(db, `clients/${client.id}/history`), logData); } setNewNote(''); };
+            const handleSaveInternal = () => { let logAction = 'تحديث البيانات'; if (!client) logAction = 'إنشاء عميل جديد'; else if (d.status !== client.status) logAction = `تغيير الحالة إلى ${STATUS_LIST.find(s=>s.key===d.status)?.label}`; else if (d.assignedTo !== client.assignedTo) logAction = `إسناد إلى ${d.assignedTo}`; const logData = { action: logAction, user: currentUser.name, date: new Date().toISOString() }; const updatedHistory = [...(d.history||[]), logData]; onSave(client ? d : { ...d, history: updatedHistory, notes: notes }, logData); };
             const canAssign = currentUser.role === 'admin' || currentUser.permissions?.crm_role === 'supervisor';
-            
             return ( 
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                     <div className="bg-white w-full max-w-3xl rounded-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-6">
-                        
-                        {/* Column 1: Client Details (Inputs) */}
-                        <div className="space-y-4">
-                            <h3 className="font-bold text-lg">{client?'تعديل العميل':'إضافة عميل'}</h3>
-                            <input className="w-full bg-gray-50 border rounded-lg p-3" placeholder="الاسم" value={safeStr(d.name)} onChange={e=>setD({...d, name:e.target.value})} />
-                            <input className="w-full bg-gray-50 border rounded-lg p-3 date-en text-right" placeholder="05xxxxxxxx" value={safeStr(d.phone)} onChange={e=>setD({...d, phone:e.target.value})} />
-                            
-                            <div>
-                                <label className="text-xs font-bold block mb-2">المشاريع</label>
-                                <div className="grid grid-cols-2 gap-2">{PROJECT_LIST.map(p => (<button key={p} onClick={()=>toggleProject(p)} className={`p-2 rounded text-xs border ${safeArr(d.projects).includes(p)?'bg-brand-900 text-white':'bg-white'}`}>{p}</button>))}</div>
-                            </div>
-                            
-                            <select className="w-full bg-gray-50 border rounded-lg p-3" value={safeStr(d.source)} onChange={e=>setD({...d, source:e.target.value})}>{CLIENT_SOURCES.map(s=><option key={s} value={s}>{s}</option>)}</select>
-                            <input className="w-full bg-gray-50 border rounded-lg p-3" placeholder="رقم الوحدة" value={safeStr(d.unitNumber)} onChange={e=>setD({...d, unitNumber:e.target.value})} />
-                            <select className="w-full bg-gray-50 border rounded-lg p-3" value={safeStr(d.status)} onChange={e=>setD({...d, status:e.target.value})}>{STATUS_LIST.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}</select>
-                            
-                            {/* MODIFIED: Use filtered crmUsers list for assignment */}
-                            <select className="w-full bg-gray-50 border rounded-lg p-3 disabled:opacity-50" value={safeStr(d.assignedTo)} onChange={e=>setD({...d, assignedTo:e.target.value})} disabled={!canAssign}>
-                                <option value="">بدون إسناد</option>
-                                {crmUsers.map(u => (
-                                    <option key={u.id} value={u.name}>{u.name}</option>
-                                ))}
-                            </select>
-                            
-                            <div>
-                                <label className="text-xs font-bold block mb-1 text-amber-600">تاريخ المتابعة القادم</label>
-                                <input type="date" className="w-full bg-amber-50 border border-amber-200 rounded-lg p-3 date-en" value={d.nextFollowUp || ''} onChange={e=>setD({...d, nextFollowUp:e.target.value})} />
-                            </div>
-                            
-                        </div>
-                        
-                        {/* Column 2: Tabs (Notes & History) */}
-                        <div className="flex flex-col h-full">
-                            
-                            {/* Tab Header */}
-                            <div className="flex justify-between items-center mb-4 border-b">
-                                <div className="flex gap-4">
-                                    <button onClick={() => setActiveTab('notes')} className={`font-bold text-lg pb-2 transition ${activeTab === 'notes' ? 'text-brand-900 border-b-2 border-brand-900' : 'text-gray-500'}`}>
-                                        <Icon name="notebook-pen" size={18} className="inline-block ml-2"/> الملاحظات
-                                    </button>
-                                    <button onClick={() => setActiveTab('history')} className={`font-bold text-lg pb-2 transition ${activeTab === 'history' ? 'text-brand-900 border-b-2 border-brand-900' : 'text-gray-500'}`}>
-                                        <Icon name="history" size={18} className="inline-block ml-2"/> سجل الأحداث
-                                    </button>
-                                </div>
-                                <button onClick={onClose} className="md:hidden p-1"><Icon name="x"/></button>
-                            </div>
-
-                            {/* Notes Tab Content */}
-                            {activeTab === 'notes' && (
-                                <div className="flex-1 flex flex-col min-h-0">
-                                    <div className="flex-1 bg-gray-50 border rounded-xl p-4 mb-4 overflow-y-auto max-h-[400px] space-y-3">
-                                        {notes.length === 0 && <div className="text-center text-gray-400 text-sm mt-10">لا توجد ملاحظات بعد</div>}
-                                        {notes.map((n, i) => (
-                                            <div key={i} className="bg-white p-3 rounded-lg border shadow-sm text-sm">
-                                                <p className="text-gray-800 mb-2">{n.text}</p>
-                                                <div className="flex justify-between text-xs text-gray-400">
-                                                    <span>{n.author}</span>
-                                                    <span className="date-en">{new Date(n.date).toLocaleDateString('en-GB')} {new Date(n.date).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}</span>
-                                                </div>
-                                            </div>
-                                        ))}
-                                        <div ref={notesEndRef} />
-                                    </div>
-                                    <div className="flex gap-2 mb-6">
-                                        <input className="flex-1 border rounded-lg p-2 text-sm" placeholder="اكتب ملاحظة..." value={newNote} onChange={e=>setNewNote(e.target.value)} onKeyPress={e=>e.key==='Enter'&&handleAddNote()} />
-                                        <button onClick={handleAddNote} className="bg-gray-200 hover:bg-gray-300 p-2 rounded-lg"><Icon name="send" size={16}/></button>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* History Tab Content */}
-                            {activeTab === 'history' && client && (
-                                <div className="flex-1 bg-gray-50 border rounded-xl p-4 mb-4 overflow-y-auto max-h-[400px]">
-                                    <div className="text-xs space-y-2">
-                                        {safeArr(d.history).slice().reverse().map((h, i) => (
-                                            <div key={i} className="flex justify-between items-start border-b pb-2 last:border-0 last:pb-0">
-                                                <span className="font-bold text-gray-700 w-3/5">{h.action}</span>
-                                                <div className="text-gray-500 text-left w-2/5">
-                                                    <div className='text-[11px]'>{h.user}</div>
-                                                    <div className="date-en text-[10px] text-gray-400">
-                                                        {new Date(h.date).toLocaleDateString('en-GB')} 
-                                                        <span className='mr-1'>{new Date(h.date).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                        {safeArr(d.history).length === 0 && <div className="text-center text-gray-400 text-sm mt-10">لا يوجد سجل أحداث لهذا العميل.</div>}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Action Buttons (fixed at the bottom) */}
-                            <div className="mt-auto flex gap-3">
-                                <button onClick={onClose} className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-200">إلغاء</button>
-                                <button onClick={handleSaveInternal} className="flex-1 bg-brand-900 text-white py-3 rounded-lg font-bold hover:bg-brand-800 shadow-lg">حفظ البيانات</button>
-                            </div>
-                        </div>
-
+                        <div className="space-y-4"><h3 className="font-bold text-lg">{client?'تعديل العميل':'إضافة عميل'}</h3><input className="w-full bg-gray-50 border rounded-lg p-3" placeholder="الاسم" value={safeStr(d.name)} onChange={e=>setD({...d, name:e.target.value})} /><input className="w-full bg-gray-50 border rounded-lg p-3 date-en text-right" placeholder="05xxxxxxxx" value={safeStr(d.phone)} onChange={e=>setD({...d, phone:e.target.value})} /><div><label className="text-xs font-bold block mb-2">المشاريع</label><div className="grid grid-cols-2 gap-2">{PROJECT_LIST.map(p => (<button key={p} onClick={()=>toggleProject(p)} className={`p-2 rounded text-xs border ${safeArr(d.projects).includes(p)?'bg-brand-900 text-white':'bg-white'}`}>{p}</button>))}</div></div><select className="w-full bg-gray-50 border rounded-lg p-3" value={safeStr(d.source)} onChange={e=>setD({...d, source:e.target.value})}>{CLIENT_SOURCES.map(s=><option key={s} value={s}>{s}</option>)}</select><input className="w-full bg-gray-50 border rounded-lg p-3" placeholder="رقم الوحدة" value={safeStr(d.unitNumber)} onChange={e=>setD({...d, unitNumber:e.target.value})} /><select className="w-full bg-gray-50 border rounded-lg p-3" value={safeStr(d.status)} onChange={e=>setD({...d, status:e.target.value})}>{STATUS_LIST.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}</select><select className="w-full bg-gray-50 border rounded-lg p-3 disabled:opacity-50" value={safeStr(d.assignedTo)} onChange={e=>setD({...d, assignedTo:e.target.value})} disabled={!canAssign}> <option value="">بدون إسناد</option> {crmUsers.map(u => ( <option key={u.id} value={u.name}>{u.name}</option> ))} </select><div><label className="text-xs font-bold block mb-1 text-amber-600">تاريخ المتابعة القادم</label><input type="date" className="w-full bg-amber-50 border border-amber-200 rounded-lg p-3 date-en" value={d.nextFollowUp || ''} onChange={e=>setD({...d, nextFollowUp:e.target.value})} /></div></div>
+                        <div className="flex flex-col h-full"><div className="flex justify-between items-center mb-4 border-b"><div className="flex gap-4"><button onClick={() => setActiveTab('notes')} className={`font-bold text-lg pb-2 transition ${activeTab === 'notes' ? 'text-brand-900 border-b-2 border-brand-900' : 'text-gray-500'}`}><Icon name="notebook-pen" size={18} className="inline-block ml-2"/> الملاحظات</button><button onClick={() => setActiveTab('history')} className={`font-bold text-lg pb-2 transition ${activeTab === 'history' ? 'text-brand-900 border-b-2 border-brand-900' : 'text-gray-500'}`}><Icon name="history" size={18} className="inline-block ml-2"/> سجل الأحداث</button></div><button onClick={onClose} className="md:hidden p-1"><Icon name="x"/></button></div>{activeTab === 'notes' && (<div className="flex-1 flex flex-col min-h-0"><div className="flex-1 bg-gray-50 border rounded-xl p-4 mb-4 overflow-y-auto max-h-[400px] space-y-3">{notes.length === 0 && <div className="text-center text-gray-400 text-sm mt-10">لا توجد ملاحظات بعد</div>}{notes.map((n, i) => (<div key={i} className="bg-white p-3 rounded-lg border shadow-sm text-sm"><p className="text-gray-800 mb-2">{n.text}</p><div className="flex justify-between text-xs text-gray-400"><span>{n.author}</span><span className="date-en">{new Date(n.date).toLocaleDateString('en-GB')} {new Date(n.date).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}</span></div></div>))}<div ref={notesEndRef} /></div><div className="flex gap-2 mb-6"><input className="flex-1 border rounded-lg p-2 text-sm" placeholder="اكتب ملاحظة..." value={newNote} onChange={e=>setNewNote(e.target.value)} onKeyPress={e=>e.key==='Enter'&&handleAddNote()} /><button onClick={handleAddNote} className="bg-gray-200 hover:bg-gray-300 p-2 rounded-lg"><Icon name="send" size={16}/></button></div></div>)}{activeTab === 'history' && client && (<div className="flex-1 bg-gray-50 border rounded-xl p-4 mb-4 overflow-y-auto max-h-[400px]"><div className="text-xs space-y-2">{safeArr(d.history).slice().reverse().map((h, i) => (<div key={i} className="flex justify-between items-start border-b pb-2 last:border-0 last:pb-0"><span className="font-bold text-gray-700 w-3/5">{h.action}</span><div className="text-gray-500 text-left w-2/5"><div className='text-[11px]'>{h.user}</div><div className="date-en text-[10px] text-gray-400">{new Date(h.date).toLocaleDateString('en-GB')} <span className='mr-1'>{new Date(h.date).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}</span></div></div></div>))}{safeArr(d.history).length === 0 && <div className="text-center text-gray-400 text-sm mt-10">لا يوجد سجل أحداث لهذا العميل.</div>}</div></div>)}<div className="mt-auto flex gap-3"><button onClick={onClose} className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-200">إلغاء</button><button onClick={handleSaveInternal} className="flex-1 bg-brand-900 text-white py-3 rounded-lg font-bold hover:bg-brand-800 shadow-lg">حفظ البيانات</button></div></div>
                     </div>
                 </div>
             );
@@ -614,180 +404,198 @@
         
         const CRMBackup = ({ clients, users, onImport }) => {
              const handleImportFile = (e) => { const file = e.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = (evt) => { const bstr = evt.target.result; const wb = XLSX.read(bstr, {type:'binary'}); const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]); onImport(data); }; reader.readAsBinaryString(file); }; 
-             const downloadTemplate = () => {
-                 const headers = [{ 'الاسم': 'اسم تجريبي', 'رقم الهاتف': '0500000000', 'المشروع': 'بيوتكم 10' }];
-                 exportToExcel(headers, "Import_Template");
-             };
-
-             return ( 
-                <div className="bg-white p-6 rounded-xl shadow-sm border space-y-4">
-                    <h3 className="font-bold text-lg mb-4">إدارة البيانات</h3>
-                    <button onClick={() => { const data = { clients, users, date: new Date().toISOString() }; const blob = new Blob([JSON.stringify(data)], { type: "application/json" }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = "backup.json"; link.click(); }} className="w-full bg-brand-900 text-white p-4 rounded-xl flex justify-center gap-2 font-bold"><Icon name="download" /> تحميل نسخة احتياطية كاملة (JSON)</button>
-                    <div className="h-px bg-gray-100 my-4"></div>
-                    <h3 className="font-bold text-lg mb-4">استيراد العملاء</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                        <button onClick={downloadTemplate} className="w-full bg-gray-100 text-gray-700 p-4 rounded-xl flex justify-center gap-2 font-bold hover:bg-gray-200 transition"><Icon name="file-spreadsheet" /> تحميل نموذج الاستيراد</button>
-                        <div className="relative overflow-hidden w-full">
-                            <button className="w-full bg-indigo-600 text-white p-4 rounded-xl flex justify-center gap-2 font-bold hover:bg-indigo-700 transition"><Icon name="upload" /> رفع ملف العملاء (Excel)</button>
-                            <input type="file" accept=".xlsx" onChange={handleImportFile} className="absolute inset-0 opacity-0 cursor-pointer"/>
-                        </div>
-                    </div>
-                </div> 
-            );
-        };
-
-        // --- 5. CRM APP CONTAINER ---
-        const CRMApp = ({ user, clients, users, onSaveClient, onImport, onBack }) => {
-            const [page, setPage] = useState('dashboard'); const [modalOpen, setModalOpen] = useState(false); const [editClient, setEditClient] = useState(null); const [sidebarOpen, setSidebarOpen] = useState(false);
-            const getPageTitle = () => { switch(page) { case 'dashboard': return 'لوحة التحكم'; case 'clients': return 'العملاء والطلبات'; case 'reports': return 'التقارير'; case 'backup': return 'الإعدادات'; default: return ''; }};
-            const isAdmin = user.role === 'admin'; const isSupervisor = user.permissions?.crm_role === 'supervisor'; const canSeeReports = isAdmin || isSupervisor || user.permissions?.crm_reports; const canBackup = isAdmin; 
-            return ( <div className="flex min-h-screen bg-slate-50"><aside className={`fixed md:sticky top-0 h-screen w-72 bg-white border-l z-50 transition-transform ${sidebarOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}`}><div className="p-6 h-full flex flex-col"><div className="flex items-center gap-2 mb-8 text-brand-900 font-black text-xl"><Logo size={40} /> بيوتكم</div><nav className="flex-1 space-y-1"><button onClick={()=>{setPage('dashboard');setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='dashboard'?'bg-brand-900 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="layout-dashboard"/> لوحة التحكم</button><button onClick={()=>{setPage('clients');setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='clients'?'bg-brand-900 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="users"/> العملاء</button>{canSeeReports && (<button onClick={()=>{setPage('reports');setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='reports'?'bg-brand-900 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="bar-chart-2"/> التقارير</button>)}{canBackup && (<button onClick={()=>{setPage('backup');setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='backup'?'bg-brand-900 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="settings"/> الإعدادات</button>)}</nav><div className="border-t pt-4 mt-auto"><button onClick={onBack} className="w-full bg-gray-50 border border-gray-200 text-gray-700 p-2 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-gray-100 transition mb-4"><Icon name="grid" size={16}/> تبديل التطبيق</button><div className="flex items-center gap-2 mb-4"><div className="w-8 h-8 rounded-full bg-brand-900 text-white flex items-center justify-center text-xs">{safeStr(user.name).charAt(0)}</div><div><div className="text-sm font-bold text-brand-900">{safeStr(user.name)}</div><div className="text-xs text-gray-500">{user.role==='admin'?'مسؤول':user.permissions?.crm_role==='supervisor'?'مشرف':'موظف'}</div></div></div></div></div></aside><main className="flex-1 flex flex-col h-screen overflow-hidden"><CRMHeader title={page==='dashboard'?'لوحة التحكم':page==='clients'?'العملاء':page==='reports'?'التقارير':'الإعدادات'} clients={clients} onToggleSidebar={()=>setSidebarOpen(true)} /><div className="flex-1 overflow-y-auto p-6"><div className="max-w-5xl mx-auto">{page === 'dashboard' && <CRMDashboard clients={clients} currentUser={user} />}{page === 'clients' && <CRMClientList clients={clients} users={users} currentUser={user} onAdd={()=>{setEditClient(null);setModalOpen(true)}} onEdit={(c)=>{setEditClient(c);setModalOpen(true)}} onImport={onImport} />}{page === 'reports' && canSeeReports && <CRMReports clients={clients} users={users} currentUser={user} />}{page === 'backup' && canBackup && <CRMBackup clients={clients} users={users} onImport={onImport} />}</div></div></main>{modalOpen && <CRMClientModal isOpen={modalOpen} onClose={()=>setModalOpen(false)} client={editClient} onSave={(d, log)=>{onSaveClient(d, editClient, log);setModalOpen(false)}} users={users} currentUser={user} />}</div> );
+             const downloadTemplate = () => { const headers = [{ 'الاسم': 'اسم تجريبي', 'رقم الهاتف': '0500000000', 'المشروع': 'بيوتكم 10' }]; exportToExcel(headers, "Import_Template"); };
+             return ( <div className="bg-white p-6 rounded-xl shadow-sm border space-y-4"><h3 className="font-bold text-lg mb-4">إدارة البيانات</h3><button onClick={() => { const data = { clients, users, date: new Date().toISOString() }; const blob = new Blob([JSON.stringify(data)], { type: "application/json" }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = "backup.json"; link.click(); }} className="w-full bg-brand-900 text-white p-4 rounded-xl flex justify-center gap-2 font-bold"><Icon name="download" /> تحميل نسخة احتياطية كاملة (JSON)</button><div className="h-px bg-gray-100 my-4"></div><h3 className="font-bold text-lg mb-4">استيراد العملاء</h3><div className="grid grid-cols-2 gap-4"><button onClick={downloadTemplate} className="w-full bg-gray-100 text-gray-700 p-4 rounded-xl flex justify-center gap-2 font-bold hover:bg-gray-200 transition"><Icon name="file-spreadsheet" /> تحميل نموذج الاستيراد</button><div className="relative overflow-hidden w-full"><button className="w-full bg-indigo-600 text-white p-4 rounded-xl flex justify-center gap-2 font-bold hover:bg-indigo-700 transition"><Icon name="upload" /> رفع ملف العملاء (Excel)</button><input type="file" accept=".xlsx" onChange={handleImportFile} className="absolute inset-0 opacity-0 cursor-pointer"/></div></div></div> );
         };
 
         // --- 6. ATTENDANCE SYSTEM ---
         const MapZoneEditor = ({ center, radius, onChange }) => { const mapRef = useRef(null); const mapObj = useRef(null); const markerObj = useRef(null); const circleObj = useRef(null); useEffect(() => { if (!mapRef.current) return; if (!mapObj.current) { mapObj.current = L.map(mapRef.current).setView([center.lat, center.lng], 15); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapObj.current); const icon = L.icon({ iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png', shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41] }); markerObj.current = L.marker([center.lat, center.lng], { icon, draggable: true }).addTo(mapObj.current); circleObj.current = L.circle([center.lat, center.lng], { color: '#CE9B52', fillColor: '#CE9B52', fillOpacity: 0.2, radius: radius }).addTo(mapObj.current); const update = (lat, lng) => { markerObj.current.setLatLng([lat, lng]); circleObj.current.setLatLng([lat, lng]); onChange({ lat, lng }, radius); }; mapObj.current.on('click', (e) => update(e.latlng.lat, e.latlng.lng)); markerObj.current.on('dragend', (e) => { const l = e.target.getLatLng(); update(l.lat, l.lng); }); } }, []); useEffect(() => { if(circleObj.current) circleObj.current.setRadius(radius); }, [radius]); return <div ref={mapRef} className="w-full h-64 rounded-xl z-0" />; };
         const calculateDistance = (lat1, lon1, lat2, lon2) => { const R = 6371e3; const φ1 = lat1 * Math.PI/180; const φ2 = lat2 * Math.PI/180; const Δφ = (lat2-lat1) * Math.PI/180; const Δλ = (lon2-lon1) * Math.PI/180; const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2); return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); };
 
-        // -- Zone Modal --
-        const ZoneModal = ({ isOpen, onClose, users, zones, onSave, zoneToEdit }) => {
-            const [zone, setZone] = useState({ name: '', startTime: '08:00', endTime: '16:00', lat: 24.7136, lng: 46.6753, radius: 200, assignedUsers: [] });
-            
-            useEffect(() => { if (isOpen) { if (zoneToEdit) setZone(zoneToEdit); else setZone({ name: '', startTime: '08:00', endTime: '16:00', lat: 24.7136, lng: 46.6753, radius: 200, assignedUsers: [] }); } }, [isOpen, zoneToEdit]);
-            if(!isOpen) return null;
-
-            const toggleUser = (uid) => {
-                const current = safeArr(zone.assignedUsers);
-                const otherZones = zones.filter(z => z.id !== (zone.id || 'new')); // Exclude current zone if editing
-                const isAssignedElsewhere = otherZones.some(z => safeArr(z.assignedUsers).includes(uid));
-                
-                if (isAssignedElsewhere && !current.includes(uid)) {
-                    return alert("هذا الموظف مسجل في نطاق آخر بالفعل. لا يمكن تسجيله في نطاقين.");
-                }
-                setZone({...zone, assignedUsers: current.includes(uid) ? current.filter(id=>id!==uid) : [...current, uid] });
-            };
-
+        // -- New Permission Modal --
+        const PermissionModal = ({ isOpen, onClose, onSend }) => {
+            const [reason, setReason] = useState('');
+            if (!isOpen) return null;
             return (
-                <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
-                    <div className="bg-white w-full max-w-2xl rounded-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto animate-in fade-in slide-in-from-bottom-4">
-                        <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-lg">{zoneToEdit ? 'تعديل النطاق' : 'إضافة نطاق جديد'}</h3><button onClick={onClose}><Icon name="x"/></button></div>
-                        <div className="grid md:grid-cols-2 gap-4 mb-4">
-                            <input className="border p-2 rounded-lg" placeholder="اسم النطاق (مثلاً: الفرع الرئيسي)" value={zone.name} onChange={e=>setZone({...zone, name:e.target.value})}/>
-                            <div className="flex gap-2">
-                                <div className="flex-1"><label className="text-xs block">بداية الدوام</label><input type="time" className="w-full border p-2 rounded-lg" value={zone.startTime} onChange={e=>setZone({...zone, startTime:e.target.value})}/></div>
-                                <div className="flex-1"><label className="text-xs block">نهاية الدوام</label><input type="time" className="w-full border p-2 rounded-lg" value={zone.endTime} onChange={e=>setZone({...zone, endTime:e.target.value})}/></div>
-                            </div>
+                <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4">
+                    <div className="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl animate-slide-up">
+                        <h3 className="font-bold text-lg mb-4">طلب استئذان / خروج</h3>
+                        <textarea className="w-full border rounded-xl p-3 mb-4 h-32 resize-none focus:ring-2 focus:ring-accent-500 outline-none" placeholder="سبب الاستئذان..." value={reason} onChange={e=>setReason(e.target.value)}/>
+                        <div className="flex gap-2">
+                            <button onClick={onClose} className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200">إلغاء</button>
+                            <button onClick={()=>{onSend(reason); setReason('');}} className="flex-1 bg-accent-600 text-white py-3 rounded-xl font-bold hover:bg-accent-700">إرسال الطلب</button>
                         </div>
-                        <div className="mb-4">
-                             <label className="text-xs block mb-1 font-bold">تحديد الموقع والقطر ({zone.radius}م)</label>
-                             <MapZoneEditor center={{lat: zone.lat, lng: zone.lng}} radius={zone.radius} onChange={(c, r) => setZone({...zone, lat: c.lat, lng: c.lng, radius: r})} />
-                             <input type="range" min="50" max="2000" step="50" className="w-full mt-2 accent-accent-600" value={zone.radius} onChange={e=>setZone({...zone, radius: Number(e.target.value)})} />
-                        </div>
-                        <div className="mb-4 border-t pt-4">
-                            <label className="font-bold block mb-2">الموظفين المصرح لهم في هذا النطاق:</label>
-                            <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border rounded-lg bg-gray-50">
-                                {users.filter(u => u.id !== 'admin').map(u => {
-                                    const isAssignedHere = safeArr(zone.assignedUsers).includes(u.id);
-                                    const otherZones = zones.filter(z => z.id !== (zone.id || 'new'));
-                                    const isAssignedElsewhere = otherZones.some(z => safeArr(z.assignedUsers).includes(u.id));
-                                    return (
-                                        <label key={u.id} className={`flex items-center gap-2 p-2 rounded border cursor-pointer ${isAssignedElsewhere ? 'bg-gray-100 opacity-50 cursor-not-allowed' : 'bg-white hover:bg-gray-100'}`}>
-                                            <input type="checkbox" checked={isAssignedHere} onChange={()=>toggleUser(u.id)} disabled={isAssignedElsewhere} className="accent-accent-600"/>
-                                            <span className="text-sm">{u.name} {isAssignedElsewhere && '(مسجل بنطاق آخر)'}</span>
-                                        </label>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                        <button onClick={() => onSave(zone)} className="w-full bg-accent-600 text-white py-3 rounded-xl font-bold">حفظ النطاق</button>
                     </div>
                 </div>
             );
         };
 
-        // -- Advanced Reports Component --
-        const AttendanceReports = ({ logs, users, zones }) => {
-            const [startDate, setStartDate] = useState('');
-            const [endDate, setEndDate] = useState('');
-            
-            const reportData = logs.slice().reverse().filter(l => {
-                const logDate = l.timestamp.slice(0, 10);
-                return (!startDate || logDate >= startDate) && (!endDate || logDate <= endDate);
-            }).reduce((acc, log) => {
-                const date = log.timestamp.slice(0, 10);
-                const key = `${log.uid}-${date}`;
-                if (!acc[key]) acc[key] = { uid: log.uid, date: date, user: users.find(u=>u.id===log.uid)?.name, checkIn: '-', checkOut: '-', late: 0, early: 0, hours: 0 };
-                if (log.type === 'IN') acc[key].checkIn = log.timestamp;
-                if (log.type === 'OUT') acc[key].checkOut = log.timestamp;
-                return acc;
-            }, {});
+        // -- New Confirmation Modal for Outside Zone --
+        const ConfirmOutsideModal = ({ isOpen, onClose, onConfirm }) => {
+            if (!isOpen) return null;
+            return (
+                <div className="fixed inset-0 bg-black/50 z-[80] flex items-center justify-center p-4">
+                    <div className="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl text-center animate-slide-up">
+                        <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Icon name="alert-triangle" size={32}/>
+                        </div>
+                        <h3 className="font-bold text-lg mb-2 text-brand-900">تنبيه: أنت خارج النطاق!</h3>
+                        <p className="text-gray-500 mb-6">سيتم تسجيل هذا الإجراء مع ملاحظة أنك خارج النطاق الجغرافي المسموح. هل تريد المتابعة؟</p>
+                        <div className="flex gap-2">
+                            <button onClick={onClose} className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200">إلغاء</button>
+                            <button onClick={onConfirm} className="flex-1 bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700 shadow-lg">نعم، سجل</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
 
+        const ZoneModal = ({ isOpen, onClose, users, zones, onSave, zoneToEdit }) => {
+            const [zone, setZone] = useState({ name: '', startTime: '08:00', endTime: '16:00', lat: 24.7136, lng: 46.6753, radius: 200, assignedUsers: [] });
+            useEffect(() => { if (isOpen) { if (zoneToEdit) setZone(zoneToEdit); else setZone({ name: '', startTime: '08:00', endTime: '16:00', lat: 24.7136, lng: 46.6753, radius: 200, assignedUsers: [] }); } }, [isOpen, zoneToEdit]);
+            if(!isOpen) return null;
+            const toggleUser = (uid) => {
+                const current = safeArr(zone.assignedUsers);
+                const otherZones = zones.filter(z => z.id !== (zone.id || 'new')); 
+                const isAssignedElsewhere = otherZones.some(z => safeArr(z.assignedUsers).includes(uid));
+                if (isAssignedElsewhere && !current.includes(uid)) return alert("هذا الموظف مسجل في نطاق آخر بالفعل. لا يمكن تسجيله في نطاقين.");
+                setZone({...zone, assignedUsers: current.includes(uid) ? current.filter(id=>id!==uid) : [...current, uid] });
+            };
+            return (
+                <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+                    <div className="bg-white w-full max-w-2xl rounded-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+                        <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-lg">{zoneToEdit ? 'تعديل النطاق' : 'إضافة نطاق جديد'}</h3><button onClick={onClose}><Icon name="x"/></button></div>
+                        <div className="grid md:grid-cols-2 gap-4 mb-4"><input className="border p-2 rounded-lg" placeholder="اسم النطاق" value={zone.name} onChange={e=>setZone({...zone, name:e.target.value})}/><div className="flex gap-2"><div className="flex-1"><label className="text-xs block">بداية الدوام</label><input type="time" className="w-full border p-2 rounded-lg" value={zone.startTime} onChange={e=>setZone({...zone, startTime:e.target.value})}/></div><div className="flex-1"><label className="text-xs block">نهاية الدوام</label><input type="time" className="w-full border p-2 rounded-lg" value={zone.endTime} onChange={e=>setZone({...zone, endTime:e.target.value})}/></div></div></div><div className="mb-4"><label className="text-xs block mb-1 font-bold">تحديد الموقع والقطر ({zone.radius}م)</label><MapZoneEditor center={{lat: zone.lat, lng: zone.lng}} radius={zone.radius} onChange={(c, r) => setZone({...zone, lat: c.lat, lng: c.lng, radius: r})} /><input type="range" min="50" max="2000" step="50" className="w-full mt-2 accent-accent-600" value={zone.radius} onChange={e=>setZone({...zone, radius: Number(e.target.value)})} /></div><div className="mb-4 border-t pt-4"><label className="font-bold block mb-2">الموظفين المصرح لهم:</label><div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border rounded-lg bg-gray-50">{users.filter(u => u.id !== 'admin').map(u => { const isAssignedHere = safeArr(zone.assignedUsers).includes(u.id); const otherZones = zones.filter(z => z.id !== (zone.id || 'new')); const isAssignedElsewhere = otherZones.some(z => safeArr(z.assignedUsers).includes(u.id)); return ( <label key={u.id} className={`flex items-center gap-2 p-2 rounded border cursor-pointer ${isAssignedElsewhere ? 'bg-gray-100 opacity-50 cursor-not-allowed' : 'bg-white hover:bg-gray-100'}`}><input type="checkbox" checked={isAssignedHere} onChange={()=>toggleUser(u.id)} disabled={isAssignedElsewhere} className="accent-accent-600"/><span className="text-sm">{u.name} {isAssignedElsewhere && '(مسجل بنطاق آخر)'}</span></label> ); })}</div></div><button onClick={() => onSave(zone)} className="w-full bg-accent-600 text-white py-3 rounded-xl font-bold">حفظ النطاق</button>
+                    </div>
+                </div>
+            );
+        };
+
+        const AttendanceReports = ({ logs, users, zones, permissions }) => {
+            const [startDate, setStartDate] = useState(''); const [endDate, setEndDate] = useState('');
+            const reportData = logs.slice().reverse().filter(l => { const logDate = l.timestamp.slice(0, 10); return (!startDate || logDate >= startDate) && (!endDate || logDate <= endDate); }).reduce((acc, log) => { const date = log.timestamp.slice(0, 10); const key = `${log.uid}-${date}`; if (!acc[key]) acc[key] = { uid: log.uid, date: date, user: users.find(u=>u.id===log.uid)?.name, checkIn: '-', checkOut: '-', late: 0, early: 0, hours: 0, inStatus: '', outStatus: '' }; if (log.type === 'IN') { acc[key].checkIn = log.timestamp; acc[key].inStatus = log.locationStatus; } if (log.type === 'OUT') { acc[key].checkOut = log.timestamp; acc[key].outStatus = log.locationStatus; } return acc; }, {});
+            
             const processedRows = Object.values(reportData).map(row => {
                 let lateText = '-', earlyText = '-', hoursText = '-', deduction = '-';
                 const zone = zones.find(z => safeArr(z.assignedUsers).includes(row.uid));
+                // Find approved permission for this user and date
+                const hasPermission = permissions.find(p => p.uid === row.uid && p.date === row.date && p.status === 'approved');
 
                 if (row.checkIn !== '-' && zone) {
-                    const shiftStart = new Date(`${row.date}T${zone.startTime}`);
-                    const actualIn = new Date(row.checkIn);
-                    const diffLate = (actualIn - shiftStart) / 60000; 
-                    if (diffLate > 15) {
-                        lateText = `${Math.round(diffLate)} دقيقة`;
-                        if (diffLate > 60) deduction = 'خصم يوم';
-                        else if (diffLate > 30) deduction = 'خصم نصف يوم';
-                        else deduction = 'تنبيه (تأخير)';
-                    }
+                    const shiftStart = new Date(`${row.date}T${zone.startTime}`); const actualIn = new Date(row.checkIn); const diffLate = (actualIn - shiftStart) / 60000; 
+                    if (diffLate > 15) { lateText = `${Math.round(diffLate)} دقيقة`; if (diffLate > 60) deduction = 'خصم يوم'; else if (diffLate > 30) deduction = 'خصم نصف يوم'; else deduction = 'تنبيه (تأخير)'; }
                 }
                 if (row.checkOut !== '-' && zone) {
-                    const shiftEnd = new Date(`${row.date}T${zone.endTime}`);
-                    const actualOut = new Date(row.checkOut);
-                    const diffEarly = (shiftEnd - actualOut) / 60000;
+                    const shiftEnd = new Date(`${row.date}T${zone.endTime}`); const actualOut = new Date(row.checkOut); const diffEarly = (shiftEnd - actualOut) / 60000;
                     if (diffEarly > 0) earlyText = `${Math.round(diffEarly)} دقيقة`;
                 }
                 if (row.checkIn !== '-' && row.checkOut !== '-') hoursText = calculateDuration(row.checkIn, row.checkOut);
+                
+                // Override deduction if permission approved
+                if(hasPermission) deduction = `تم الاستئذان: ${hasPermission.reason}`;
+
                 return { ...row, lateText, earlyText, hoursText, deduction };
             });
 
             return (
                 <div className="space-y-4">
-                    <div className="bg-white p-4 rounded-xl shadow-sm border flex flex-wrap gap-4 items-center">
-                        <div className="flex items-center gap-2"><span className="font-bold text-gray-600 text-sm">من:</span><input type="date" className="border rounded-lg p-2 text-sm" value={startDate} onChange={e=>setStartDate(e.target.value)} /></div>
-                        <div className="flex items-center gap-2"><span className="font-bold text-gray-600 text-sm">إلى:</span><input type="date" className="border rounded-lg p-2 text-sm" value={endDate} onChange={e=>setEndDate(e.target.value)} /></div>
-                        {(startDate || endDate) && <button onClick={()=>{setStartDate('');setEndDate('')}} className="text-xs text-red-500 font-bold">مسح</button>}
-                        <button onClick={()=>exportToExcel(processedRows, 'Attendance')} className="mr-auto bg-green-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 text-sm"><Icon name="file-spreadsheet" size={16}/> تصدير</button>
-                    </div>
-                    <div className="bg-white rounded-xl shadow-sm border overflow-hidden"><table className="w-full text-right text-sm"><thead className="bg-gray-50 text-brand-900 font-bold"><tr><th className="p-3">الموظف</th><th className="p-3">التاريخ</th><th className="p-3">دخول</th><th className="p-3 text-red-600">تأخير</th><th className="p-3">خروج</th><th className="p-3 text-orange-600">مبكر</th><th className="p-3 font-black">ساعات العمل</th><th className="p-3 text-red-800">الجزاء / الخصم</th></tr></thead><tbody className="divide-y">{processedRows.map((r, i) => (<tr key={i} className="hover:bg-gray-50"><td className="p-3 font-bold">{r.user}</td><td className="p-3 date-en">{r.date}</td><td className="p-3 date-en">{r.checkIn !== '-' ? formatTime(r.checkIn) : '-'}</td><td className="p-3 text-red-600 font-bold">{r.lateText}</td><td className="p-3 date-en">{r.checkOut !== '-' ? formatTime(r.checkOut) : '-'}</td><td className="p-3 text-orange-600 font-bold">{r.earlyText}</td><td className="p-3 font-black bg-gray-50">{r.hoursText}</td><td className="p-3 text-red-800 text-xs font-bold">{r.deduction}</td></tr>))}</tbody></table></div></div>
+                    <div className="bg-white p-4 rounded-xl shadow-sm border flex flex-wrap gap-4 items-center"><div className="flex items-center gap-2"><span className="font-bold text-gray-600 text-sm">من:</span><input type="date" className="border rounded-lg p-2 text-sm" value={startDate} onChange={e=>setStartDate(e.target.value)} /></div><div className="flex items-center gap-2"><span className="font-bold text-gray-600 text-sm">إلى:</span><input type="date" className="border rounded-lg p-2 text-sm" value={endDate} onChange={e=>setEndDate(e.target.value)} /></div>{(startDate || endDate) && <button onClick={()=>{setStartDate('');setEndDate('')}} className="text-xs text-red-500 font-bold">مسح</button>}<button onClick={()=>exportToExcel(processedRows, 'Attendance')} className="mr-auto bg-green-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 text-sm"><Icon name="file-spreadsheet" size={16}/> تصدير</button></div>
+                    <div className="bg-white rounded-xl shadow-sm border overflow-hidden"><table className="w-full text-right text-sm"><thead className="bg-gray-50 text-brand-900 font-bold"><tr><th className="p-3">الموظف</th><th className="p-3">التاريخ</th><th className="p-3">دخول</th><th className="p-3 text-red-600">تأخير</th><th className="p-3">خروج</th><th className="p-3 text-orange-600">مبكر</th><th className="p-3 font-black">ساعات العمل</th><th className="p-3 text-red-800">الجزاء / الخصم</th></tr></thead><tbody className="divide-y">{processedRows.map((r, i) => (<tr key={i} className="hover:bg-gray-50"><td className="p-3 font-bold">{r.user}</td><td className="p-3 date-en">{r.date}</td><td className="p-3"><span className="date-en block">{r.checkIn !== '-' ? formatTime(r.checkIn) : '-'}</span>{r.inStatus === 'outside_zone' && <span className="text-[10px] text-red-500 font-bold block">(خارج النطاق)</span>}</td><td className="p-3 text-red-600 font-bold">{r.lateText}</td><td className="p-3"><span className="date-en block">{r.checkOut !== '-' ? formatTime(r.checkOut) : '-'}</span>{r.outStatus === 'outside_zone' && <span className="text-[10px] text-red-500 font-bold block">(خارج النطاق)</span>}</td><td className="p-3 text-orange-600 font-bold">{r.earlyText}</td><td className="p-3 font-black bg-gray-50">{r.hoursText}</td><td className={`p-3 text-xs font-bold ${r.deduction.includes('الاستئذان') ? 'text-green-600' : 'text-red-800'}`}>{r.deduction}</td></tr>))}</tbody></table></div></div>
             );
         };
 
-        // -- Main Attendance App --
-        const AttendanceApp = ({ user, zones, usersList, logs, onBack }) => {
+        // -- Permissions Management for Supervisor --
+        const PermissionsManager = ({ permissions }) => {
+            const updateStatus = (id, status) => {
+                update(ref(db, `permissions/${id}`), { status });
+            };
+            const pending = permissions.filter(p => p.status === 'pending');
+            return (
+                <div className="space-y-4">
+                    <h3 className="font-bold text-xl text-brand-900">طلبات الاستئذان المعلقة</h3>
+                    <div className="grid gap-4">
+                        {pending.length === 0 && <div className="text-center p-8 text-gray-400">لا توجد طلبات جديدة</div>}
+                        {pending.map(p => (
+                            <div key={p.id} className="bg-white p-4 rounded-xl border shadow-sm flex justify-between items-center">
+                                <div>
+                                    <div className="font-bold text-brand-900">{p.userName}</div>
+                                    <div className="text-sm text-gray-500">{p.reason}</div>
+                                    <div className="text-xs text-gray-400 date-en mt-1">{p.date}</div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={()=>updateStatus(p.id, 'approved')} className="bg-green-100 text-green-700 px-3 py-1 rounded-lg text-sm font-bold hover:bg-green-200">موافقة</button>
+                                    <button onClick={()=>updateStatus(p.id, 'rejected')} className="bg-red-100 text-red-700 px-3 py-1 rounded-lg text-sm font-bold hover:bg-red-200">رفض</button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        const AttendanceApp = ({ user, zones, usersList, logs, permissions, onBack }) => {
             const isAdmin = user.role === 'admin'; const isSupervisor = user.permissions?.att_role === 'supervisor'; 
             const canSeeReports = isAdmin || isSupervisor || user.permissions?.att_reports; const canManageZones = isAdmin || user.permissions?.att_zones;
-            const [page, setPage] = useState(canSeeReports ? 'live' : 'my_attendance'); const [modalOpen, setModalOpen] = useState(false); const [editingZone, setEditingZone] = useState(null);
+            const [page, setPage] = useState(canSeeReports ? 'live' : 'my_attendance'); 
+            const [modalOpen, setModalOpen] = useState(false); 
+            const [editingZone, setEditingZone] = useState(null);
             const [myStatus, setMyStatus] = useState('loading'); const [currentZone, setCurrentZone] = useState(null); const [todayLog, setTodayLog] = useState({ in: null, out: null });
-            const [dist, setDist] = useState(null); // New state for distance
+            const [dist, setDist] = useState(null);
+            
+            // New States for Permission and Confirmation
+            const [permModalOpen, setPermModalOpen] = useState(false);
+            const [outsideConfirmOpen, setOutsideConfirmOpen] = useState(false);
+            const [pendingAction, setPendingAction] = useState(null); 
 
             useEffect(() => {
                 const foundZone = zones.find(z => safeArr(z.assignedUsers).includes(user.id)); setCurrentZone(foundZone);
                 const today = new Date().toDateString(); const myLogsToday = logs.filter(l => l.uid === user.id && new Date(l.timestamp).toDateString() === today); setTodayLog({ in: myLogsToday.find(l => l.type === 'IN'), out: myLogsToday.find(l => l.type === 'OUT') });
-                
                 if(foundZone) { 
-                    // Added options for high accuracy
                     const options = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
                     const id = navigator.geolocation.watchPosition(pos => { 
-                        const d = calculateDistance(pos.coords.latitude, pos.coords.longitude, foundZone.lat, foundZone.lng); 
-                        setDist(Math.round(d)); // Store distance
-                        setMyStatus(d <= foundZone.radius ? 'inside' : 'outside'); 
-                    }, err => {
-                        console.error(err);
-                        setMyStatus('error');
-                    }, options); 
-                    return () => navigator.geolocation.clearWatch(id); // Cleanup
-                } else { 
-                    setMyStatus('no_zone'); 
-                }
+                        const d = calculateDistance(pos.coords.latitude, pos.coords.longitude, foundZone.lat, foundZone.lng); setDist(Math.round(d)); setMyStatus(d <= foundZone.radius ? 'inside' : 'outside'); 
+                    }, err => { console.error(err); setMyStatus('error'); }, options); 
+                    return () => navigator.geolocation.clearWatch(id); 
+                } else { setMyStatus('no_zone'); }
             }, [zones, logs]);
 
-            const handleAttendance = (type) => { if(myStatus !== 'inside' && !isAdmin) return alert('يجب أن تكون داخل النطاق الجغرافي'); push(ref(db, 'attendance'), { uid: user.id, type, timestamp: new Date().toISOString() }); alert(`تم تسجيل ${type==='IN'?'الدخول':'الخروج'} بنجاح`); };
+            // --- Logic ---
+            const initiateAttendance = (type) => {
+                if (myStatus === 'inside') {
+                    handleAttendance(type, 'inside_zone');
+                } else {
+                    setPendingAction(type);
+                    setOutsideConfirmOpen(true);
+                }
+            };
+
+            const confirmOutside = () => {
+                if (pendingAction) {
+                    handleAttendance(pendingAction, 'outside_zone');
+                    setOutsideConfirmOpen(false);
+                    setPendingAction(null);
+                }
+            };
+
+            const handleAttendance = (type, locationStatus) => { 
+                push(ref(db, 'attendance'), { uid: user.id, type, timestamp: new Date().toISOString(), locationStatus }); 
+                alert(`تم تسجيل ${type==='IN'?'الدخول':'الخروج'} بنجاح (${locationStatus === 'outside_zone' ? 'خارج النطاق' : 'داخل النطاق'})`); 
+            };
+
+            const handlePermissionRequest = (reason) => {
+                if(!reason.trim()) return;
+                push(ref(db, 'permissions'), {
+                    uid: user.id,
+                    userName: user.name,
+                    reason,
+                    status: 'pending',
+                    timestamp: new Date().toISOString(),
+                    date: new Date().toISOString().slice(0, 10)
+                });
+                setPermModalOpen(false);
+                alert('تم إرسال طلب الاستئذان للمشرف');
+            };
+
             const handleSaveZone = (z) => { if(z.id) { const { id, ...data } = z; update(ref(db, `zones/${id}`), data); } else { push(ref(db, 'zones'), z); } setModalOpen(false); setEditingZone(null); };
             const openAddModal = () => { setEditingZone(null); setModalOpen(true); }; const openEditModal = (zone) => { setEditingZone(zone); setModalOpen(true); };
 
@@ -797,64 +605,59 @@
                         <div className="p-6 flex items-center gap-2 font-black text-xl text-brand-900 border-b"><Logo size={32} /> بيوتكم</div>
                         <nav className="flex-1 p-4 space-y-2">
                             <button onClick={()=>setPage('my_attendance')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='my_attendance'?'bg-accent-600 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="fingerprint"/> تسجيلي</button>
-                            {canSeeReports && (<><button onClick={()=>setPage('live')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='live'?'bg-accent-600 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="activity"/> مباشر (Live)</button><button onClick={()=>setPage('reports')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='reports'?'bg-accent-600 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="file-text"/> التقارير والخصومات</button></>)}
+                            {canSeeReports && (<><button onClick={()=>setPage('live')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='live'?'bg-accent-600 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="activity"/> مباشر (Live)</button><button onClick={()=>setPage('reports')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='reports'?'bg-accent-600 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="file-text"/> التقارير والخصومات</button><button onClick={()=>setPage('perms')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='perms'?'bg-accent-600 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="check-square"/> إدارة الاستئذانات</button></>)}
                             {canManageZones && <button onClick={()=>setPage('zones')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='zones'?'bg-accent-600 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="map"/> النطاقات</button>}
                         </nav>
                         <div className="p-4 border-t"><button onClick={onBack} className="w-full bg-gray-100 text-gray-600 p-2 rounded-lg font-bold flex items-center justify-center gap-2"><Icon name="grid" size={16}/> تبديل التطبيق</button></div>
                     </aside>
                     <main className="flex-1 p-8 overflow-y-auto">
                         <header className="flex justify-between items-center mb-8"><h2 className="text-2xl font-bold text-brand-900">{page==='my_attendance'?'تسجيل الحضور':page==='live'?'المتواجدون الآن':page==='reports'?'التقارير':'إدارة النطاقات'}</h2><div className="flex items-center gap-2"><div className="text-sm font-bold">{user.name}</div><div className="w-8 h-8 bg-accent-600 rounded-full text-white flex items-center justify-center">{user.name[0]}</div></div></header>
+                        
                         {page === 'my_attendance' && (
                             <div className="max-w-2xl mx-auto text-center space-y-6">
                                 <div className={`p-8 rounded-3xl shadow-lg border-4 transition-colors duration-300 ${myStatus==='inside'?'bg-green-50 border-green-500':myStatus==='outside'?'bg-red-50 border-red-500':'bg-gray-50 border-gray-300'}`}>
                                     <div className="text-6xl mb-4">{myStatus==='inside'?'📍':myStatus==='outside'?'🚫':'❓'}</div>
-                                    <h3 className="text-2xl font-black mb-2">{myStatus==='inside'?'أنت داخل نطاق العمل':myStatus==='outside'?'أنت خارج نطاق العمل':'جاري تحديد الموقع...'}</h3>
+                                    <h3 className="text-2xl font-black mb-2">{myStatus==='inside'?'الموقع الجغرافي صحيح (يمكنك التحضير الآن)':myStatus==='outside'?'أنت خارج نطاق العمل':'جاري تحديد الموقع...'}</h3>
                                     <div className="text-gray-500 space-y-1">
                                         <p>{currentZone ? `النطاق المصرح: ${currentZone.name}` : 'لم يتم ربطك بنطاق عمل، راجع المشرف'}</p>
-                                        {currentZone && dist !== null && (
-                                            <p className="text-sm font-bold dir-ltr">
-                                                <span className="text-brand-900">Current Dist: {dist}m</span> | <span className="text-gray-400">Allowed: {currentZone.radius}m</span>
-                                            </p>
-                                        )}
+                                        {currentZone && dist !== null && (<p className="text-sm font-bold dir-ltr"><span className="text-brand-900">Current Dist: {dist}m</span> | <span className="text-gray-400">Allowed: {currentZone.radius}m</span></p>)}
                                     </div>
                                 </div>
-                                
                                 <div className="grid grid-cols-2 gap-4">
-                                    <button onClick={()=>handleAttendance('IN')} disabled={myStatus!=='inside' || todayLog.in} className="relative bg-green-600 text-white py-6 rounded-2xl font-black text-xl shadow-xl hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center gap-2 group overflow-hidden">
+                                    <button onClick={()=>initiateAttendance('IN')} disabled={todayLog.in} className="relative bg-green-600 text-white py-6 rounded-2xl font-black text-xl shadow-xl hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center gap-2 group overflow-hidden">
                                         <div className="absolute top-2 right-2 bg-white/20 px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></div> مباشر</div>
-                                        <Icon name="log-in" size={32}/> 
-                                        تسجيل دخول 
+                                        <Icon name="log-in" size={32}/> تسجيل دخول 
                                         <span className="text-sm font-normal opacity-80">{todayLog.in ? formatTime(todayLog.in.timestamp) : '--:--'}</span>
                                     </button>
-                                    
-                                    <button onClick={()=>handleAttendance('OUT')} disabled={!todayLog.in} className="relative bg-red-600 text-white py-6 rounded-2xl font-black text-xl shadow-xl hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center gap-2 overflow-hidden">
+                                    <button onClick={()=>initiateAttendance('OUT')} disabled={!todayLog.in} className="relative bg-red-600 text-white py-6 rounded-2xl font-black text-xl shadow-xl hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center gap-2 overflow-hidden">
                                         <div className="absolute top-2 right-2 bg-white/20 px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-green-300 animate-pulse"></div> مباشر</div>
-                                        <Icon name="log-out" size={32}/> 
-                                        انصراف 
+                                        <Icon name="log-out" size={32}/> انصراف 
                                         <span className="text-sm font-normal opacity-80">{todayLog.out ? formatTime(todayLog.out.timestamp) : '--:--'}</span>
                                     </button>
                                 </div>
-
+                                <button onClick={()=>setPermModalOpen(true)} className="w-full bg-white border-2 border-accent-500 text-accent-600 py-4 rounded-2xl font-bold hover:bg-accent-50 transition flex items-center justify-center gap-2"><Icon name="file-text"/> طلب استئذان / خروج</button>
                                 {todayLog.in && (<div className="bg-white p-4 rounded-xl shadow-sm border flex justify-between items-center"><span className="font-bold text-gray-600">ساعات العمل اليوم:</span><span className="font-black text-2xl text-accent-600 date-en">{todayLog.out ? calculateDuration(todayLog.in.timestamp, todayLog.out.timestamp) : 'جاري الحساب...'}</span></div>)}
                             </div>
                         )}
                         {page === 'zones' && (<div><button onClick={openAddModal} className="bg-accent-600 text-white px-6 py-3 rounded-xl font-bold mb-6 shadow-lg">+ إضافة نطاق جديد</button><div className="grid gap-4">{zones.map(z => (<div key={z.id} className="bg-white p-5 rounded-2xl shadow-sm border flex justify-between items-center"><div><h4 className="font-bold text-lg text-brand-900">{z.name}</h4><div className="text-sm text-gray-500 date-en">{z.startTime} - {z.endTime}</div></div><div className="flex items-center gap-3"><span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm font-bold">{safeArr(z.assignedUsers).length} موظف</span><button onClick={()=>openEditModal(z)} className="bg-gray-100 p-2 rounded-lg hover:bg-gray-200 text-brand-900"><Icon name="pencil" size={16}/></button></div></div>))}</div></div>)}
-                        {page === 'reports' && <AttendanceReports logs={logs} users={usersList} zones={zones} />}
+                        {page === 'reports' && <AttendanceReports logs={logs} users={usersList} zones={zones} permissions={permissions} />}
+                        {page === 'perms' && <PermissionsManager permissions={permissions} />}
                         {page === 'live' && (<div className="grid grid-cols-1 md:grid-cols-3 gap-4">{usersList.filter(u => u.id !== 'admin').map(u => { const lastLog = logs.filter(l => l.uid === u.id).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp))[0]; const isOnline = lastLog?.type === 'IN' && new Date(lastLog.timestamp).toDateString() === new Date().toDateString(); return ( <div key={u.id} className="bg-white p-5 rounded-2xl shadow-sm border flex items-center gap-4"><div className={`w-4 h-4 rounded-full ${isOnline?'bg-green-500 animate-pulse':'bg-gray-300'}`}></div><div><div className="font-bold text-brand-900">{u.name}</div><div className="text-xs text-gray-500">{isOnline ? `دخل منذ ${formatTime(lastLog.timestamp)}` : 'غير متواجد'}</div></div></div> ) })}</div>)}
                     </main>
                     <ZoneModal isOpen={modalOpen} onClose={()=>setModalOpen(false)} users={usersList} zones={zones} onSave={handleSaveZone} zoneToEdit={editingZone} />
+                    <PermissionModal isOpen={permModalOpen} onClose={()=>setPermModalOpen(false)} onSend={handlePermissionRequest} />
+                    <ConfirmOutsideModal isOpen={outsideConfirmOpen} onClose={()=>setOutsideConfirmOpen(false)} onConfirm={confirmOutside} />
                 </div>
             );
         };
 
-        // --- 7. MAIN ORCHESTRATOR (UNCHANGED) ---
+        // --- 7. MAIN ORCHESTRATOR ---
         const App = () => {
-            const [user, setUser] = useState(null); const [dbUser, setDbUser] = useState(null); const [currentApp, setCurrentApp] = useState('portal'); const [clients, setClients] = useState([]); const [users, setUsers] = useState([]); const [zones, setZones] = useState([]); const [logs, setLogs] = useState([]); const [loading, setLoading] = useState(true);
-            useEffect(() => { const unsub = onAuthStateChanged(auth, u => { if (u) { setUser(u); onValue(ref(db, 'users'), s => { const data = s.val() || {}; const list = Object.keys(data).map(k => ({ id: k, ...data[k] })); setUsers(list); const profile = list.find(x => x.email.toLowerCase() === u.email.toLowerCase()); if (u.email.toLowerCase() === 'asleh@boyoticom.com') { setDbUser({ ...profile, id: u.uid, role: 'admin', name: 'Ali Saleh', email: u.email }); } else { setDbUser(profile ? { ...profile, id: u.uid } : { id: u.uid, email: u.email, role: 'employee', name: 'مستخدم جديد' }); } }); onValue(ref(db, 'clients'), s => setClients(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})).reverse() : [])); onValue(ref(db, 'zones'), s => setZones(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})) : [])); onValue(ref(db, 'attendance'), s => setLogs(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})) : [])); } else { setUser(null); setDbUser(null); } setLoading(false); }); return () => unsub(); }, []);
+            const [user, setUser] = useState(null); const [dbUser, setDbUser] = useState(null); const [currentApp, setCurrentApp] = useState('portal'); const [clients, setClients] = useState([]); const [users, setUsers] = useState([]); const [zones, setZones] = useState([]); const [logs, setLogs] = useState([]); const [permissions, setPermissions] = useState([]); const [loading, setLoading] = useState(true);
+            useEffect(() => { const unsub = onAuthStateChanged(auth, u => { if (u) { setUser(u); onValue(ref(db, 'users'), s => { const data = s.val() || {}; const list = Object.keys(data).map(k => ({ id: k, ...data[k] })); setUsers(list); const profile = list.find(x => x.email.toLowerCase() === u.email.toLowerCase()); if (u.email.toLowerCase() === 'asleh@boyoticom.com') { setDbUser({ ...profile, id: u.uid, role: 'admin', name: 'Ali Saleh', email: u.email }); } else { setDbUser(profile ? { ...profile, id: u.uid } : { id: u.uid, email: u.email, role: 'employee', name: 'مستخدم جديد' }); } }); onValue(ref(db, 'clients'), s => setClients(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})).reverse() : [])); onValue(ref(db, 'zones'), s => setZones(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})) : [])); onValue(ref(db, 'attendance'), s => setLogs(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})) : [])); onValue(ref(db, 'permissions'), s => setPermissions(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})) : [])); } else { setUser(null); setDbUser(null); } setLoading(false); }); return () => unsub(); }, []);
             const handleSaveClient = (data, existing, log) => { 
                 const payload = { ...data, assignedTo: safeStr(data.assignedTo), projects: safeArr(data.projects) }; 
                 if (existing) {
-                    // Remove history and notes keys for cleaner update payload, as they are managed separately (push/update)
                     const { history, notes, ...updatePayload } = payload;
                     update(ref(db, `clients/${existing.id}`), updatePayload);
                     if(log) push(ref(db, `clients/${existing.id}/history`), log);
@@ -867,7 +670,7 @@
             if (!user) return <Login />;
             if (!dbUser) return <div className="h-screen flex items-center justify-center"><div className="loader"></div></div>;
             if (currentApp === 'crm') return <CRMApp user={dbUser} clients={clients} users={users} onSaveClient={handleSaveClient} onImport={handleImport} onBack={() => setCurrentApp('portal')} />;
-            if (currentApp === 'attendance') return <AttendanceApp user={dbUser} zones={zones} usersList={users} logs={logs} onBack={() => setCurrentApp('portal')} />;
+            if (currentApp === 'attendance') return <AttendanceApp user={dbUser} zones={zones} usersList={users} logs={logs} permissions={permissions} onBack={() => setCurrentApp('portal')} />;
             return <Portal user={dbUser} users={users} onSelectApp={setCurrentApp} />;
         };
 
