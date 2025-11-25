@@ -1,212 +1,119 @@
 import React, { useState, useEffect } from 'react';
-import { Layout } from './components/Layout';
-import { Dashboard } from './components/Dashboard';
-import { ClientList } from './components/ClientList';
-import { Login } from './components/Login';
-import { ClientModal } from './components/ClientModal';
-import { Client, User } from './types';
-import { authService, dbService } from './services/firebaseService';
+import { onAuthStateChanged } from 'firebase/auth';
+import { ref, onValue, push, update } from 'firebase/database';
+import { auth, db } from './firebase';
 
-const App: React.FC = () => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState('dashboard');
-  
-  // Data State
-  const [clients, setClients] = useState<Client[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  
-  // UI State
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingClient, setEditingClient] = useState<Client | undefined>(undefined);
+import Login from './components/Login';
+import Portal from './components/Portal';
+import CRMApp from './components/CRM';
+import AttendanceApp from './components/Attendance';
+import { safeStr, safeArr } from './components/Shared';
+import { User, Client, Zone, AttendanceLog, PermissionRequest } from './types';
 
-  // Initialize Auth Listener & Data Subscriptions
-  useEffect(() => {
-    const unsubscribeAuth = authService.onAuthStateChanged((u) => {
-      setUser(u);
-      setLoading(false);
-    });
-
-    return () => unsubscribeAuth();
-  }, []);
-
-  // Fetch Data when User is Present
-  useEffect(() => {
-    if (user) {
-      const unsubscribeClients = dbService.getClients((data) => setClients(data));
-      const unsubscribeUsers = dbService.getUsers((data) => setUsers(data));
-
-      return () => {
-        unsubscribeClients();
-        unsubscribeUsers();
-      };
-    } else {
-      setClients([]);
-      setUsers([]);
-    }
-  }, [user]);
-
-  const handleLogout = () => {
-    authService.logout();
-  };
-
-  // CRUD Operations
-  const handleSaveClient = async (data: Partial<Client>) => {
-    try {
-      if (editingClient) {
-        // Update
-        await dbService.updateClient(editingClient.id, data);
-      } else {
-        // Create
-        const newClient = {
-          ...data,
-          dateAdded: new Date().toISOString(),
-          addedBy: user?.email || 'Unknown',
-          // If assignedTo is not set, and creator is employee, assign to self (handled in modal mostly, but safety check)
-          assignedTo: data.assignedTo || (user?.role === 'employee' ? user.name : '')
-        } as any;
-        await dbService.addClient(newClient);
-      }
-      setIsModalOpen(false);
-      setEditingClient(undefined);
-    } catch (e) {
-      alert('حدث خطأ أثناء الحفظ');
-      console.error(e);
-    }
-  };
-
-  const handleDeleteClient = async (id: string) => {
-    if (confirm('هل أنت متأكد من حذف هذا العميل؟ لا يمكن التراجع.')) {
-      await dbService.deleteClient(id);
-    }
-  };
-
-  const handleAddNote = async (clientId: string, text: string) => {
-    const client = clients.find(c => c.id === clientId);
-    if (!client || !user) return;
+const App = () => {
+    const [user, setUser] = useState<any>(null); 
+    const [dbUser, setDbUser] = useState<User | null>(null); 
+    const [originalAdmin, setOriginalAdmin] = useState<User | null>(null);
+    const [currentApp, setCurrentApp] = useState('portal'); 
     
-    const newNote = {
-      id: Date.now().toString(),
-      text,
-      author: user.name,
-      timestamp: new Date().toISOString()
+    // Data States
+    const [clients, setClients] = useState<Client[]>([]); 
+    const [users, setUsers] = useState<User[]>([]); 
+    const [zones, setZones] = useState<Zone[]>([]); 
+    const [logs, setLogs] = useState<AttendanceLog[]>([]); 
+    const [permissions, setPermissions] = useState<PermissionRequest[]>([]); 
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => { 
+        const unsub = onAuthStateChanged(auth, u => { 
+            if (u) { 
+                setUser(u); 
+                onValue(ref(db, 'users'), s => { 
+                    const data = s.val() || {}; 
+                    const list = Object.keys(data).map(k => ({ id: k, ...data[k] })); 
+                    setUsers(list); 
+                    
+                    if (!originalAdmin) {
+                        const profile = list.find((x: User) => x.email.toLowerCase() === u.email?.toLowerCase()); 
+                        if (u.email?.toLowerCase() === 'asleh@boyoticom.com') { 
+                            setDbUser({ ...profile, id: u.uid, role: 'admin', name: 'Ali Saleh', email: u.email } as User); 
+                        } else { 
+                            setDbUser(profile ? { ...profile, id: u.uid } : { id: u.uid, email: u.email || '', role: 'employee', name: 'مستخدم جديد' } as User); 
+                        }
+                    }
+                }); 
+                onValue(ref(db, 'clients'), s => setClients(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})).reverse() : [])); 
+                onValue(ref(db, 'zones'), s => setZones(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})) : [])); 
+                onValue(ref(db, 'attendance'), s => setLogs(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})) : [])); 
+                onValue(ref(db, 'permissions'), s => setPermissions(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})) : [])); 
+            } else { 
+                setUser(null); setDbUser(null); setOriginalAdmin(null);
+            } 
+            setLoading(false); 
+        }); 
+        return () => unsub(); 
+    }, [originalAdmin]); 
+
+    const handleLoginAs = (targetUser: User) => {
+        if(dbUser?.role !== 'admin') return;
+        setOriginalAdmin(dbUser);
+        setDbUser(targetUser);
+        setCurrentApp('portal');
+    };
+
+    const handleRevertLogin = () => {
+        if(originalAdmin) {
+            setDbUser(originalAdmin);
+            setOriginalAdmin(null);
+            setCurrentApp('portal');
+        }
+    };
+
+    const handleSaveClient = (data: Client, existing: Client | null, log: any) => { 
+        const payload = { ...data, assignedTo: safeStr(data.assignedTo), projects: safeArr(data.projects) }; 
+        if (existing) {
+            const { history, notes, ...updatePayload } = payload;
+            update(ref(db, `clients/${existing.id}`), updatePayload);
+            if(log) push(ref(db, `clients/${existing.id}/history`), log);
+        } else { 
+            push(ref(db, 'clients'), { ...payload, dateAdded: new Date().toISOString(), addedBy: dbUser?.email }); 
+        } 
     };
     
-    const updatedNotes = { ...(client.notes || {}), [newNote.id]: newNote };
-    await dbService.updateClient(clientId, { notes: updatedNotes });
-    
-    // Update local editing state if open to reflect immediately in UI
-    if (editingClient && editingClient.id === clientId) {
-        setEditingClient({ ...editingClient, notes: updatedNotes });
-    }
-  };
-
-  const handleAddTask = async (clientId: string, text: string) => {
-    const client = clients.find(c => c.id === clientId);
-    if (!client) return;
-
-    const newTask = {
-        id: Date.now().toString(),
-        text,
-        completed: false,
-        createdAt: new Date().toISOString()
+    const handleImport = (data: any[]) => { 
+        if(!confirm(`سيتم استيراد ${data.length} عميل. هل أنت متأكد؟`)) return; 
+        data.forEach(row => { 
+            push(ref(db, 'clients'), { 
+                name: row['الاسم']||row['Name']||'No Name', 
+                phone: row['رقم الهاتف']||row['Phone']||'', 
+                projects: [row['المشروع']||''], 
+                status: 'New', 
+                addedBy: dbUser?.email, 
+                dateAdded: new Date().toISOString() 
+            }); 
+        }); 
+        alert('تم الاستيراد بنجاح!'); 
     };
-    const updatedTasks = { ...(client.tasks || {}), [newTask.id]: newTask };
-    await dbService.updateClient(clientId, { tasks: updatedTasks });
     
-    if (editingClient && editingClient.id === clientId) {
-        setEditingClient({ ...editingClient, tasks: updatedTasks });
-    }
-  };
+    if (loading) return <div className="h-screen flex items-center justify-center"><div className="loader"></div></div>;
+    if (!user) return <Login />;
+    if (!dbUser) return <div className="h-screen flex items-center justify-center"><div className="loader"></div></div>;
 
-  const handleToggleTask = async (clientId: string, taskId: string, currentStatus: boolean) => {
-    const client = clients.find(c => c.id === clientId);
-    if (!client || !client.tasks) return;
-
-    const updatedTasks = {
-        ...client.tasks,
-        [taskId]: { ...client.tasks[taskId], completed: !currentStatus }
-    };
-    await dbService.updateClient(clientId, { tasks: updatedTasks });
-    
-    if (editingClient && editingClient.id === clientId) {
-        setEditingClient({ ...editingClient, tasks: updatedTasks });
-    }
-  };
-
-  const handleDeleteTask = async (clientId: string, taskId: string) => {
-      const client = clients.find(c => c.id === clientId);
-      if (!client || !client.tasks) return;
-
-      const updatedTasks = { ...client.tasks };
-      delete updatedTasks[taskId];
-      
-      await dbService.updateClient(clientId, { tasks: updatedTasks });
-      
-      if (editingClient && editingClient.id === clientId) {
-        setEditingClient({ ...editingClient, tasks: updatedTasks });
-    }
-  };
-
-  if (loading) return <div className="flex items-center justify-center h-screen bg-gray-50 text-brand-900 font-bold">جاري الاتصال بالنظام...</div>;
-
-  if (!user) return <Login />;
-
-  return (
-    <Layout 
-      user={user} 
-      onLogout={handleLogout} 
-      currentPage={currentPage}
-      onNavigate={setCurrentPage}
-    >
-      {currentPage === 'dashboard' && <Dashboard clients={clients} />}
-      
-      {currentPage === 'clients' && (
-        <ClientList 
-          clients={clients} 
-          users={users}
-          currentUser={user}
-          onAdd={() => { setEditingClient(undefined); setIsModalOpen(true); }}
-          onEdit={(c) => { setEditingClient(c); setIsModalOpen(true); }}
-          onDelete={handleDeleteClient}
-        />
-      )}
-
-      {currentPage === 'users' && (
-        <div className="bg-white p-8 rounded-2xl shadow-sm border text-center py-20">
-          <h2 className="text-xl font-bold text-gray-800">إدارة الموظفين</h2>
-          <p className="text-gray-500 mt-2">يجب إنشاء حسابات الموظفين من لوحة تحكم Firebase (Authentication).</p>
-          <p className="text-sm text-gray-400 mb-6">ستظهر الحسابات هنا بمجرد تسجيل دخولهم للنظام.</p>
-          <div className="mt-8 grid gap-4 max-w-2xl mx-auto">
-             {users.map(u => (
-                 <div key={u.id} className="flex justify-between p-4 border rounded-xl bg-gray-50">
-                     <div className="text-right">
-                         <div className="font-bold text-brand-900">{u.name}</div>
-                         <div className="text-sm text-gray-500 date-en">{u.email}</div>
-                     </div>
-                     <span className={`px-3 py-1 rounded-lg text-sm flex items-center h-fit ${u.role === 'admin' ? 'bg-brand-900 text-white' : 'bg-white border'}`}>
-                       {u.role === 'admin' ? 'مسؤول' : 'مستشار عقاري'}
-                     </span>
-                 </div>
-             ))}
-          </div>
-        </div>
-      )}
-
-      <ClientModal 
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        client={editingClient}
-        onSave={handleSaveClient}
-        users={users}
-        currentUser={user}
-        onAddNote={handleAddNote}
-        onAddTask={handleAddTask}
-        onToggleTask={handleToggleTask}
-        onDeleteTask={handleDeleteTask}
-      />
-    </Layout>
-  );
+    return (
+        <>
+            {originalAdmin && (
+                <div className="bg-orange-500 text-white px-4 py-2 text-center font-bold flex justify-between items-center sticky top-0 z-[60]">
+                    <span>⚠️ أنت الآن تتصفح بصلاحيات: {dbUser.name}</span>
+                    <button onClick={handleRevertLogin} className="bg-white text-orange-600 px-3 py-1 rounded text-xs font-black hover:bg-orange-50">العودة لحسابي</button>
+                </div>
+            )}
+            {(() => {
+                if (currentApp === 'crm') return <CRMApp user={dbUser} clients={clients} users={users} onSaveClient={handleSaveClient} onImport={handleImport} onBack={() => setCurrentApp('portal')} />;
+                if (currentApp === 'attendance') return <AttendanceApp user={dbUser} zones={zones} usersList={users} logs={logs} permissions={permissions} onBack={() => setCurrentApp('portal')} />;
+                return <Portal user={dbUser} users={users} onSelectApp={setCurrentApp} onLoginAs={handleLoginAs} />;
+            })()}
+        </>
+    );
 };
 
 export default App;
