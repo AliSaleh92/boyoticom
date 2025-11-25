@@ -764,11 +764,27 @@
             const canSeeReports = isAdmin || isSupervisor || user.permissions?.att_reports; const canManageZones = isAdmin || user.permissions?.att_zones;
             const [page, setPage] = useState(canSeeReports ? 'live' : 'my_attendance'); const [modalOpen, setModalOpen] = useState(false); const [editingZone, setEditingZone] = useState(null);
             const [myStatus, setMyStatus] = useState('loading'); const [currentZone, setCurrentZone] = useState(null); const [todayLog, setTodayLog] = useState({ in: null, out: null });
-            
+            const [dist, setDist] = useState(null); // New state for distance
+
             useEffect(() => {
                 const foundZone = zones.find(z => safeArr(z.assignedUsers).includes(user.id)); setCurrentZone(foundZone);
                 const today = new Date().toDateString(); const myLogsToday = logs.filter(l => l.uid === user.id && new Date(l.timestamp).toDateString() === today); setTodayLog({ in: myLogsToday.find(l => l.type === 'IN'), out: myLogsToday.find(l => l.type === 'OUT') });
-                if(foundZone) { navigator.geolocation.watchPosition(pos => { const d = calculateDistance(pos.coords.latitude, pos.coords.longitude, foundZone.lat, foundZone.lng); setMyStatus(d <= foundZone.radius ? 'inside' : 'outside'); }, err => setMyStatus('error')); } else { setMyStatus('no_zone'); }
+                
+                if(foundZone) { 
+                    // Added options for high accuracy
+                    const options = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
+                    const id = navigator.geolocation.watchPosition(pos => { 
+                        const d = calculateDistance(pos.coords.latitude, pos.coords.longitude, foundZone.lat, foundZone.lng); 
+                        setDist(Math.round(d)); // Store distance
+                        setMyStatus(d <= foundZone.radius ? 'inside' : 'outside'); 
+                    }, err => {
+                        console.error(err);
+                        setMyStatus('error');
+                    }, options); 
+                    return () => navigator.geolocation.clearWatch(id); // Cleanup
+                } else { 
+                    setMyStatus('no_zone'); 
+                }
             }, [zones, logs]);
 
             const handleAttendance = (type) => { if(myStatus !== 'inside' && !isAdmin) return alert('يجب أن تكون داخل النطاق الجغرافي'); push(ref(db, 'attendance'), { uid: user.id, type, timestamp: new Date().toISOString() }); alert(`تم تسجيل ${type==='IN'?'الدخول':'الخروج'} بنجاح`); };
@@ -788,7 +804,40 @@
                     </aside>
                     <main className="flex-1 p-8 overflow-y-auto">
                         <header className="flex justify-between items-center mb-8"><h2 className="text-2xl font-bold text-brand-900">{page==='my_attendance'?'تسجيل الحضور':page==='live'?'المتواجدون الآن':page==='reports'?'التقارير':'إدارة النطاقات'}</h2><div className="flex items-center gap-2"><div className="text-sm font-bold">{user.name}</div><div className="w-8 h-8 bg-accent-600 rounded-full text-white flex items-center justify-center">{user.name[0]}</div></div></header>
-                        {page === 'my_attendance' && (<div className="max-w-2xl mx-auto text-center space-y-6"><div className={`p-8 rounded-3xl shadow-lg border-4 ${myStatus==='inside'?'bg-green-50 border-green-500':myStatus==='outside'?'bg-red-50 border-red-500':'bg-gray-50 border-gray-300'}`}><div className="text-6xl mb-4">{myStatus==='inside'?'📍':myStatus==='outside'?'🚫':'❓'}</div><h3 className="text-2xl font-black mb-2">{myStatus==='inside'?'أنت داخل نطاق العمل':myStatus==='outside'?'أنت خارج نطاق العمل':'جاري تحديد الموقع...'}</h3><p className="text-gray-500">{currentZone ? `النطاق المصرح: ${currentZone.name}` : 'لم يتم ربطك بنطاق عمل، راجع المشرف'}</p></div><div className="grid grid-cols-2 gap-4"><button onClick={()=>handleAttendance('IN')} disabled={myStatus!=='inside' || todayLog.in} className="bg-green-600 text-white py-6 rounded-2xl font-black text-xl shadow-xl hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center gap-2"><Icon name="log-in" size={32}/> تسجيل دخول <span className="text-sm font-normal opacity-80">{todayLog.in ? formatTime(todayLog.in.timestamp) : '--:--'}</span></button><button onClick={()=>handleAttendance('OUT')} disabled={!todayLog.in} className="bg-red-600 text-white py-6 rounded-2xl font-black text-xl shadow-xl hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center gap-2"><Icon name="log-out" size={32}/> انصراف <span className="text-sm font-normal opacity-80">{todayLog.out ? formatTime(todayLog.out.timestamp) : '--:--'}</span></button></div>{todayLog.in && (<div className="bg-white p-4 rounded-xl shadow-sm border flex justify-between items-center"><span className="font-bold text-gray-600">ساعات العمل اليوم:</span><span className="font-black text-2xl text-accent-600 date-en">{todayLog.out ? calculateDuration(todayLog.in.timestamp, todayLog.out.timestamp) : 'جاري الحساب...'}</span></div>)}</div>)}
+                        {page === 'my_attendance' && (
+                            <div className="max-w-2xl mx-auto text-center space-y-6">
+                                <div className={`p-8 rounded-3xl shadow-lg border-4 transition-colors duration-300 ${myStatus==='inside'?'bg-green-50 border-green-500':myStatus==='outside'?'bg-red-50 border-red-500':'bg-gray-50 border-gray-300'}`}>
+                                    <div className="text-6xl mb-4">{myStatus==='inside'?'📍':myStatus==='outside'?'🚫':'❓'}</div>
+                                    <h3 className="text-2xl font-black mb-2">{myStatus==='inside'?'أنت داخل نطاق العمل':myStatus==='outside'?'أنت خارج نطاق العمل':'جاري تحديد الموقع...'}</h3>
+                                    <div className="text-gray-500 space-y-1">
+                                        <p>{currentZone ? `النطاق المصرح: ${currentZone.name}` : 'لم يتم ربطك بنطاق عمل، راجع المشرف'}</p>
+                                        {currentZone && dist !== null && (
+                                            <p className="text-sm font-bold dir-ltr">
+                                                <span className="text-brand-900">Current Dist: {dist}m</span> | <span className="text-gray-400">Allowed: {currentZone.radius}m</span>
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                                
+                                <div className="grid grid-cols-2 gap-4">
+                                    <button onClick={()=>handleAttendance('IN')} disabled={myStatus!=='inside' || todayLog.in} className="relative bg-green-600 text-white py-6 rounded-2xl font-black text-xl shadow-xl hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center gap-2 group overflow-hidden">
+                                        <div className="absolute top-2 right-2 bg-white/20 px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></div> مباشر</div>
+                                        <Icon name="log-in" size={32}/> 
+                                        تسجيل دخول 
+                                        <span className="text-sm font-normal opacity-80">{todayLog.in ? formatTime(todayLog.in.timestamp) : '--:--'}</span>
+                                    </button>
+                                    
+                                    <button onClick={()=>handleAttendance('OUT')} disabled={!todayLog.in} className="relative bg-red-600 text-white py-6 rounded-2xl font-black text-xl shadow-xl hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center gap-2 overflow-hidden">
+                                        <div className="absolute top-2 right-2 bg-white/20 px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-green-300 animate-pulse"></div> مباشر</div>
+                                        <Icon name="log-out" size={32}/> 
+                                        انصراف 
+                                        <span className="text-sm font-normal opacity-80">{todayLog.out ? formatTime(todayLog.out.timestamp) : '--:--'}</span>
+                                    </button>
+                                </div>
+
+                                {todayLog.in && (<div className="bg-white p-4 rounded-xl shadow-sm border flex justify-between items-center"><span className="font-bold text-gray-600">ساعات العمل اليوم:</span><span className="font-black text-2xl text-accent-600 date-en">{todayLog.out ? calculateDuration(todayLog.in.timestamp, todayLog.out.timestamp) : 'جاري الحساب...'}</span></div>)}
+                            </div>
+                        )}
                         {page === 'zones' && (<div><button onClick={openAddModal} className="bg-accent-600 text-white px-6 py-3 rounded-xl font-bold mb-6 shadow-lg">+ إضافة نطاق جديد</button><div className="grid gap-4">{zones.map(z => (<div key={z.id} className="bg-white p-5 rounded-2xl shadow-sm border flex justify-between items-center"><div><h4 className="font-bold text-lg text-brand-900">{z.name}</h4><div className="text-sm text-gray-500 date-en">{z.startTime} - {z.endTime}</div></div><div className="flex items-center gap-3"><span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm font-bold">{safeArr(z.assignedUsers).length} موظف</span><button onClick={()=>openEditModal(z)} className="bg-gray-100 p-2 rounded-lg hover:bg-gray-200 text-brand-900"><Icon name="pencil" size={16}/></button></div></div>))}</div></div>)}
                         {page === 'reports' && <AttendanceReports logs={logs} users={usersList} zones={zones} />}
                         {page === 'live' && (<div className="grid grid-cols-1 md:grid-cols-3 gap-4">{usersList.filter(u => u.id !== 'admin').map(u => { const lastLog = logs.filter(l => l.uid === u.id).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp))[0]; const isOnline = lastLog?.type === 'IN' && new Date(lastLog.timestamp).toDateString() === new Date().toDateString(); return ( <div key={u.id} className="bg-white p-5 rounded-2xl shadow-sm border flex items-center gap-4"><div className={`w-4 h-4 rounded-full ${isOnline?'bg-green-500 animate-pulse':'bg-gray-300'}`}></div><div><div className="font-bold text-brand-900">{u.name}</div><div className="text-xs text-gray-500">{isOnline ? `دخل منذ ${formatTime(lastLog.timestamp)}` : 'غير متواجد'}</div></div></div> ) })}</div>)}
