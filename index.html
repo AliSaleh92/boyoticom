@@ -1136,7 +1136,42 @@ c30VzdGF0aWNvbi5jb20LzUxMi85NTYzLzk1NjMzMjYucG5nIiwic2l6ZXMiOiI1MTJ4NTEyIiwidHlw
                         {(startDate || endDate || selectedUser) && <button onClick={()=>{setStartDate(todayStr);setEndDate(todayStr);setSelectedUser('')}} className="text-xs text-red-500 font-bold">مسح</button>}
                         <button onClick={handleExportReports} className="mr-auto bg-green-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 text-sm"><Icon name="file-spreadsheet" size={16}/> تصدير</button>
                     </div>
-                    <div className="bg-white rounded-xl shadow-sm border overflow-hidden"><table className="w-full text-right text-sm"><thead className="bg-gray-50 text-brand-900 font-bold"><tr><th className="p-3">الموظف</th><th className="p-3">التاريخ</th><th className="p-3">دخول</th><th className="p-3 text-red-600">تأخير</th><th className="p-3">خروج</th><th className="p-3 text-orange-600">مبكر</th><th className="p-3 font-black">ساعات العمل</th><th className="p-3 text-red-800">الجزاء / الخصم</th></tr></thead><tbody className="divide-y">{reportRows.map((r, i) => (<tr key={i} className={`hover:bg-gray-50 ${r.isOffDay ? 'bg-gray-50/50' : ''}`}><td className="p-3 font-bold">{r.user}</td><td className="p-3 date-en">{r.date}</td><td className="p-3"><span className="date-en block">{r.checkIn !== '-' ? formatTime(r.checkIn) : '-'}</span>{(r.inStatus === 'outside_zone' && r.checkIn !== '-') && <span className="text-[10px] text-red-500 font-bold block">(خارج النطاق)</span>}</td><td className="p-3 text-red-600 font-bold">{r.lateText}</td><td className="p-3"><span className="date-en block">{r.checkOut !== '-' ? formatTime(r.checkOut) : '-'}</span>{(r.outStatus === 'outside_zone' && r.checkOut !== '-') && <span className="text-[10px] text-red-500 font-bold block">(خارج النطاق)</span>}</td><td className="p-3 text-orange-600 font-bold">{r.earlyText}</td><td className="p-3 font-black bg-gray-50">{r.hoursText}</td><td className={`p-3 text-xs font-bold ${r.deduction.includes('الاستئذان') || r.deduction.includes('إجازة') ? 'text-green-600' : r.deduction.includes('غياب') ? 'text-red-800' : 'text-amber-700'}`}>{r.deduction}</td></tr>))}</tbody></table></div></div>
+                    <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                        <table className="w-full text-right text-sm">
+                            <thead className="bg-gray-50 text-brand-900 font-bold">
+                                <tr>
+                                    <th className="p-3">الموظف</th>
+                                    <th className="p-3">التاريخ</th>
+                                    <th className="p-3">دخول</th>
+                                    <th className="p-3 text-red-600">تأخير</th>
+                                    <th className="p-3">خروج</th>
+                                    <th className="p-3 text-orange-600">مبكر</th>
+                                    <th className="p-3 font-black">ساعات العمل</th>
+                                    <th className="p-3 text-red-800">الجزاء / الخصم</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y">
+                                {reportRows.map((r, i) => (
+                                    <tr key={i} className={`hover:bg-gray-50 ${r.isOffDay ? 'bg-gray-50/50' : ''}`}>
+                                        <td className="p-3 font-bold">{r.user}</td>
+                                        <td className="p-3 date-en">{r.date}</td>
+                                        <td className="p-3">
+                                            <span className="date-en block">{r.checkIn !== '-' ? formatTime(r.checkIn) : '-'}</span>
+                                            {(r.inStatus === 'outside_zone' && r.checkIn !== '-') && <span className="text-[10px] text-red-500 font-bold block">(خارج النطاق)</span>}
+                                        </td>
+                                        <td className="p-3 text-red-600 font-bold">{r.lateText}</td>
+                                        <td className="p-3">
+                                            <span className="date-en block">{r.checkOut !== '-' ? formatTime(r.checkOut) : '-'}</span>
+                                            {(r.outStatus === 'outside_zone' && r.checkOut !== '-') && <span className="text-[10px] text-red-500 font-bold block">(خارج النطاق)</span>}
+                                        </td>
+                                        <td className="p-3 text-orange-600 font-bold">{r.earlyText}</td>
+                                        <td className="p-3 font-black bg-gray-50">{r.hoursText}</td>
+                                        <td className={`p-3 text-xs font-bold ${r.deduction.includes('الاستئذان') || r.deduction.includes('إجازة') ? 'text-green-600' : r.deduction.includes('غياب') ? 'text-red-800' : 'text-amber-700'}`}>{r.deduction}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             );
         };
