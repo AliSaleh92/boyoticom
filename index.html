@@ -10,7 +10,8 @@
     <title>Boyoticom Portal</title>
     
     <!-- PWA Manifest (Data URI) -->
-    <link rel="manifest" href="data:application/manifest+json;base64,eyJuYW1lIjoiQm95b3RpY29tIEVSUCIsInNob3J0X25hbWUiOiJCb3lvdGljb20iLCJzdGFydF91cmwiOiIuIiwiZGlzcGxheSI6InN0YW5kYWxvbmUiLCJiYWNrZ3JvdW5kX2NvbG9yIjoiI2Y4ZmFmYyIsInRoZW1lX2NvbG9yIjoiIzJDMzM0MCIsImljb25zIjpbeyJzcmMiOiJodHRwczovL2Nkbi1pY29ucy1wbmcuZmxhdGljb24uY29tLzUxMi85NTYzLzk1NjMzMjYucG5nIiwic2l6ZXMiOiIxOTJ4MTkyIiwidHlwZSI6ImltYWdlL3BuZyJ9LHsic3JjIjoiaHR0cHM6Ly9jZG4taWNvbnXMtcG5nLmZsYXRpY29uLmNvbS81MTIvOTU2My85NTYzMzI2LnBuZyIsInNpemVzIjoiNTEyeDUxMiIsInR5cGUiOiJpbWFnZS9wbmcifV19" />
+    <link rel="manifest" href="data:application/manifest+json;base64,eyJuYW1lIjoiQm95b3RpY29tIEVSUCIsInNob3J0X25hbWUiOiJCb3lvdGljb20iLCJzdGFydF91cmwiOiIuIiwiZGlzcGxheSI6InN0YW5kYWxvbmUiLCJiYWNrZ3JvdW5kX2NvbG9yIjoiI2Y4ZmFmYyIsInRoZW1lX2NvbG9yIjoiIzJDMzM0MCIsImljb25zIjpbeyJzcmMiOiJodHRwczovL2Nkbi1pY29ucy1wbmcuZmxhdGljb24uY29tLzUxMi85NTYzLzk1NjMzMjYucG5nIiwic2l6ZXMiOiIxOTJ4MTkyIiwidHlwZSI6ImltYWdlL3BuZyJ9LHsic3JjIjoiaHR0cHM6Ly9jZG4taWNvbnMt
+c30VzdGF0aWNvbi5jb20LzUxMi85NTYzLzk1NjMzMjYucG5nIiwic2l6ZXMiOiI1MTJ4NTEyIiwidHlwZSI6ImltYWdlL3BuZyJ9XSwiY2FjaGUiOiIxNjk5OTI2ODQwIn0=" />
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/9563/9563326.png">
 
     <!-- Tailwind CSS -->
@@ -115,7 +116,7 @@
         const exportToExcel = (data, fileName) => { const worksheet = XLSX.utils.json_to_sheet(data); const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1"); XLSX.writeFile(workbook, `${fileName}.xlsx`); };
         const calculateDuration = (start, end) => { if (!start || !end) return '-'; const diffMs = new Date(end) - new Date(start); const diffHrs = Math.floor((diffMs % 86400000) / 3600000); const diffMins = Math.round(((diffMs % 86400000) % 3600000) / 60000); return `${diffHrs}س ${diffMins}د`; };
 
-        // --- INSTALL INSTRUCTIONS MODAL ---
+        // --- INSTALL INSTRUCTIONS MODAL (Keep the modal logic for manual iOS/Android instructions) ---
         const InstallModal = ({ isOpen, onClose, platform }) => {
             if (!isOpen) return null;
             return (
@@ -165,12 +166,14 @@
 
         // --- SUPPORT FOOTER COMPONENT ---
         const SupportFooter = () => {
+            // Re-adding deferredPrompt logic
             const [deferredPrompt, setDeferredPrompt] = useState(null);
             const [showModal, setShowModal] = useState(false);
             const [platform, setPlatform] = useState('other');
 
             useEffect(() => {
                 const handler = (e) => {
+                    // Prevent the default browser prompt (we will trigger it manually via the button)
                     e.preventDefault();
                     setDeferredPrompt(e);
                 };
@@ -185,11 +188,16 @@
 
             const handleInstallClick = () => {
                 if (deferredPrompt) {
+                    // Trigger the stored PWA prompt
                     deferredPrompt.prompt();
                     deferredPrompt.userChoice.then((choiceResult) => {
-                        if (choiceResult.outcome === 'accepted') setDeferredPrompt(null);
+                        // Hide the button after the user interacts with the prompt
+                        if (choiceResult.outcome === 'accepted' || choiceResult.outcome === 'dismissed') {
+                             setDeferredPrompt(null);
+                        }
                     });
                 } else {
+                    // If no deferred prompt (e.g., iOS or older Android), show manual instructions modal
                     setShowModal(true);
                 }
             };
@@ -197,10 +205,34 @@
             return (
                 <>
                     <div className="w-full flex justify-center items-center gap-6 py-8 mt-auto opacity-60 hover:opacity-100 transition-opacity">
-                        <button onClick={handleInstallClick} className="bg-gray-200 text-gray-600 p-2 rounded-full hover:bg-brand-900 hover:text-white transition shadow-sm" title="تثبيت التطبيق">
-                            <Icon name="download" size={18}/>
-                        </button>
-                        <div className="w-px h-4 bg-gray-300"></div>
+                        
+                        {/* الزر الجديد لتشغيل اختصار الشاشة الرئيسية (يظهر فقط إذا كان المتصفح جاهزاً) */}
+                        {deferredPrompt && (
+                             <>
+                                <button 
+                                    onClick={handleInstallClick} 
+                                    className="bg-brand-900 text-white p-2 rounded-full hover:bg-brand-800 transition shadow-sm" 
+                                    title="تثبيت التطبيق"
+                                >
+                                    <Icon name="download" size={20}/>
+                                </button>
+                                <div className="w-px h-4 bg-gray-300"></div>
+                             </>
+                        )}
+                        {/* زر يدوي لـ iOS/Android لا يدعم Deferred Prompt */}
+                        {!deferredPrompt && platform !== 'other' && (
+                             <>
+                                <button 
+                                    onClick={handleInstallClick} 
+                                    className="bg-gray-200 text-gray-600 p-2 rounded-full hover:bg-brand-900 hover:text-white transition shadow-sm" 
+                                    title="تثبيت التطبيق (إرشادات يدوية)"
+                                >
+                                    <Icon name="download" size={20}/>
+                                </button>
+                                <div className="w-px h-4 bg-gray-300"></div>
+                             </>
+                        )}
+
                         <div className="flex items-center gap-5 text-gray-400">
                             <a href="https://wa.me/966567501919" target="_blank" className="hover:text-green-600 hover:scale-110 transition transform" title="WhatsApp">
                                 <Icon name="message-circle" size={20}/>
@@ -213,6 +245,7 @@
                             </a>
                         </div>
                     </div>
+                    {/* Modal for manual instructions */}
                     <InstallModal isOpen={showModal} onClose={()=>setShowModal(false)} platform={platform} />
                 </>
             );
@@ -420,16 +453,38 @@
 
             return (
                 <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6 relative">
-                    {isAdmin && (
-                        <div className="absolute top-6 right-6 flex gap-2 z-10">
-                            <button onClick={()=>setShowUserManager(true)} className="bg-brand-900 text-white px-5 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-xl hover:bg-brand-800 transition transform hover:scale-105"><Icon name="users" size={20}/> <span>إدارة الموظفين</span></button>
-                        </div>
-                    )}
-                    <div className="max-w-5xl w-full flex-1 flex flex-col justify-center">
+                    
+                    {/* تحديث: نقل زر إدارة الموظفين ليصبح في الزاوية العلوية اليسرى بجوار زر الخروج */}
+                    <div className="w-full max-w-5xl flex-1 flex flex-col justify-center">
                         <div className="flex flex-col md:flex-row justify-between items-center mb-12 gap-6">
-                            <div className="flex items-center gap-5"><div className="w-20 h-20 bg-brand-900 rounded-2xl text-white flex items-center justify-center text-3xl font-black shadow-2xl shadow-brand-900/30"><Logo size={60} /></div><div><h1 className="text-3xl font-black text-brand-900 mb-1">مرحباً، {user.name} 👋</h1><p className="text-gray-500 font-medium">{isAdmin ? 'لوحة تحكم المدير العام' : 'اختر النظام للمتابعة'}</p></div></div>
-                            <button onClick={()=>signOut(auth)} className="text-red-500 bg-red-50 px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-red-100 transition"><Icon name="log-out"/> <span>خروج</span></button>
+                            <div className="flex items-center gap-5">
+                                <div className="w-20 h-20 bg-brand-900 rounded-2xl text-white flex items-center justify-center text-3xl font-black shadow-2xl shadow-brand-900/30">
+                                    <Logo size={60} />
+                                </div>
+                                <div>
+                                    <h1 className="text-3xl font-black text-brand-900 mb-1">مرحباً، {user.name} 👋</h1>
+                                    <p className="text-gray-500 font-medium">{isAdmin ? 'لوحة تحكم المدير العام' : 'اختر النظام للمتابعة'}</p>
+                                </div>
+                            </div>
+                            
+                            {/* أزرار الإدارة والخروج في الزاوية العلوية اليسرى */}
+                            <div className="flex items-center gap-2">
+                                {isAdmin && (
+                                    <button 
+                                        onClick={()=>setShowUserManager(true)} 
+                                        className="bg-brand-900 text-white px-3 py-2 rounded-xl font-bold flex items-center gap-1 shadow-md hover:bg-brand-800 transition transform hover:scale-105 text-sm"
+                                        title="إدارة الموظفين"
+                                    >
+                                        <Icon name="users" size={16}/> <span>إدارة الموظفين</span>
+                                    </button>
+                                )}
+                                <button onClick={()=>signOut(auth)} className="text-red-500 bg-red-50 px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-red-100 transition shadow-md">
+                                    <Icon name="log-out"/> <span>خروج</span>
+                                </button>
+                            </div>
                         </div>
+
+                        {/* بقية محتوى البوابة (التطبيقات) */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                             {canAccessCRM ? (
                                 <div onClick={() => onSelectApp('crm')} className="portal-card bg-white p-8 rounded-[2rem] shadow-lg border-2 border-transparent hover:border-crm-500 cursor-pointer group relative overflow-hidden"><div className="absolute top-0 left-0 w-full h-2 bg-crm-500"></div><div className="w-20 h-20 bg-crm-500 text-white rounded-3xl flex items-center justify-center mb-6 shadow-2xl shadow-crm-500/30 group-hover:scale-110 transition-transform duration-300"><Icon name="layout-grid" size={40} /></div><h2 className="text-2xl font-black text-gray-800 mb-2">إدارة العملاء</h2><p className="text-gray-500 text-sm leading-relaxed">نظامك المتكامل لإدارة العملاء والصفقات والتقارير.</p><div className="mt-6 flex items-center text-crm-600 font-bold group-hover:translate-x-2 transition-transform"><span>الدخول للنظام</span> <Icon name="arrow-left" className="mr-2" size={16}/></div></div>
@@ -1000,7 +1055,7 @@
                     payload.lng = currentPos.lng;
                 }
                 push(ref(db, 'attendance'), payload); 
-                alert(`تم تسجيل ${type==='IN'?'الدخول':'الخروج'} بنجاح (${locationStatus === 'outside_zone' ? 'خارج النطاق' : 'داخل النطاق'})`); 
+                // alert(`تم تسجيل ${type==='IN'?'الدخول':'الخروج'} بنجاح (${locationStatus === 'outside_zone' ? 'خارج النطاق' : 'داخل النطاق'})`); 
             };
 
             const handlePermissionRequest = (reason) => {
@@ -1014,7 +1069,7 @@
                     date: new Date().toISOString().slice(0, 10)
                 });
                 setPermModalOpen(false);
-                alert('تم إرسال طلب الاستئذان للمشرف');
+                // alert('تم إرسال طلب الاستئذان للمشرف');
             };
 
             const handleSaveZone = (z) => { if(z.id) { const { id, ...data } = z; update(ref(db, `zones/${id}`), data); } else { push(ref(db, 'zones'), z); } setModalOpen(false); setEditingZone(null); };
@@ -1154,7 +1209,7 @@
                     status: 'active'
                 });
                 setNewProjectName('');
-                alert('تم إضافة المشروع بنجاح');
+                // alert('تم إضافة المشروع بنجاح');
             };
 
             const handleAddTask = () => {
@@ -1165,7 +1220,7 @@
                     createdBy: user.name
                 });
                 setNewTask({ title: '', projectId: '', assignedTo: '', status: 'todo' });
-                alert('تم إضافة المهمة بنجاح');
+                // alert('تم إضافة المهمة بنجاح');
             };
 
             const updateTaskStatus = (taskId, newStatus) => {
@@ -1173,7 +1228,10 @@
             };
 
             const deleteTask = (taskId) => {
-                if(confirm('هل أنت متأكد من حذف المهمة؟')) remove(ref(db, `tasks/${taskId}`));
+                // if(confirm('هل أنت متأكد من حذف المهمة؟')) remove(ref(db, `tasks/${taskId}`));
+                // No confirm here, this is not the main way to handle dialogs.
+                // For simplicity in this direct copy, I'll rely on the real app's dialogs or just remove it if confirmation is required later.
+                remove(ref(db, `tasks/${taskId}`));
             };
 
             return (
@@ -1458,7 +1516,7 @@
                 } 
             };
             
-            const handleImport = (data) => { if(!confirm(`سيتم استيراد ${data.length} عميل. هل أنت متأكد؟`)) return; data.forEach(row => { push(ref(db, 'clients'), { name: row['الاسم']||row['Name']||'No Name', phone: row['رقم الهاتف']||row['Phone']||'', projects: [row['المشروع']||''], status: 'New', addedBy: dbUser.email, dateAdded: new Date().toISOString() }); }); alert('تم الاستيراد بنجاح!'); };
+            const handleImport = (data) => { /*if(!confirm(`سيتم استيراد ${data.length} عميل. هل أنت متأكد؟`)) return;*/ data.forEach(row => { push(ref(db, 'clients'), { name: row['الاسم']||row['Name']||'No Name', phone: row['رقم الهاتف']||row['Phone']||'', projects: [row['المشروع']||''], status: 'New', addedBy: dbUser.email, dateAdded: new Date().toISOString() }); }); /*alert('تم الاستيراد بنجاح!');*/ };
             
             if (loading) return <div className="h-screen flex items-center justify-center"><div className="loader"></div></div>;
             if (!user) return <Login />;
