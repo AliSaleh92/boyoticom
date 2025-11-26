@@ -573,7 +573,7 @@ c30VzdGF0aWNvbi5jb20LzUxMi85NTYzLzk1NjMzMjYucG5nIiwic2l6ZXMiOiI1MTJ4NTEyIiwidHlw
                         <select className="bg-gray-50 rounded-lg px-3 py-2 outline-none text-sm" value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}><option value="">كل الحالات</option>{STATUS_LIST.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}</select>
                         {!isEmployee && ( <select className="bg-gray-50 rounded-lg px-3 py-2 outline-none text-sm" value={filterAssignee} onChange={e=>setFilterAssignee(e.target.value)}> <option value="">كل الموظفين</option> {assignees.map(a=><option key={a} value={a}>{a}</option>)} </select> )}
                     </div>
-                    <div className="bg-white rounded-xl shadow-sm border overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-right"><thead className="bg-gray-50 text-sm font-bold text-brand-900"><tr><th className="p-4">الاسم</th><th className="p-4">المشاريع</th><th className="p-4">الحالة</th><th className="p-4">الموظف المسند</th><th className="p-4">المنشئ</th><th className="p-4">تاريخ الإضافة</th><th className="p-4">تاريخ المتابعة</th><th className="p-4"></th></tr></thead><tbody className="divide-y">{displayedClients.length > 0 ? displayedClients.map(c => (<tr key={c.id} className="hover:bg-gray-50 group"><td className="p-4"><div className="font-bold text-brand-900">{safeStr(c.name)}</div><div className="flex items-center gap-2 mt-1"><span className="text-xs text-gray-500 date-en">{safeStr(c.phone)}</span><a href={`https://wa.me/966${safeStr(c.phone).substring(1)}`} target="_blank" className="bg-green-50 text-green-600 p-1.5 rounded-full"><Icon name="message-circle" size={14} /></a><a href={`tel:${safeStr(c.phone)}`} className="bg-blue-50 text-blue-600 p-1.5 rounded-full"><Icon name="phone" size={14} /></a></div></td><td className="p-4 text-sm text-gray-600">{safeArr(c.projects).map((p,i)=><div key={i}>• {safeStr(p)}</div>)}</td><td className="p-4"><span className={`px-2 py-1 rounded text-xs border ${STATUS_LIST.find(s=>s.key===c.status)?.color}`}>{STATUS_LIST.find(s=>s.key===c.status)?.label}</span></td><td className="p-4 text-sm text-gray-600">{safeStr(c.assignedTo)}</td><td className="p-4 text-sm text-gray-500">{safeStr(c.addedBy)}</td><td className="p-4 text-sm text-gray-500 date-en">{c.dateAdded ? new Date(c.dateAdded).toLocaleDateString('en-GB') : '-'}</td><td className="p-4 text-xs text-amber-600 font-bold date-en">{c.nextFollowUp||'-'}</td><td className="p-4 flex items-center gap-2"><button onClick={()=>onEdit(c)} className="text-brand-900 hover:bg-gray-100 p-2 rounded"><Icon name="edit" size={16}/></button>{canDelete && <button onClick={()=>setDeleteId(c.id)} className="text-red-500 hover:bg-red-50 p-2 rounded"><Icon name="trash-2" size={16}/></button>}</td></tr>)) : <tr><td colSpan="8" className="p-8 text-center text-gray-400">لا توجد نتائج</td></tr>}</tbody></table></div></div>
+                    <div className="bg-white rounded-xl shadow-sm border overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-right"><thead className="bg-gray-50 text-sm font-bold text-brand-900"><tr><th className="p-4">الاسم</th><th className="p-4">المشاريع</th><th className="p-4">الحالة</th><th className="p-4">الموظف المسند</th><th className="p-4">تاريخ الإضافة</th><th className="p-4">تاريخ المتابعة</th><th className="p-4"></th></tr></thead><tbody className="divide-y">{displayedClients.length > 0 ? displayedClients.map(c => (<tr key={c.id} className="hover:bg-gray-50 group"><td className="p-4"><div className="font-bold text-brand-900">{safeStr(c.name)}</div><div className="flex items-center gap-2 mt-1"><span className="text-xs text-gray-500 date-en">{safeStr(c.phone)}</span><a href={`https://wa.me/966${safeStr(c.phone).substring(1)}`} target="_blank" className="bg-green-50 text-green-600 p-1.5 rounded-full"><Icon name="message-circle" size={14} /></a><a href={`tel:${safeStr(c.phone)}`} className="bg-blue-50 text-blue-600 p-1.5 rounded-full"><Icon name="phone" size={14} /></a></div></td><td className="p-4 text-sm text-gray-600">{safeArr(c.projects).map((p,i)=><div key={i}>• {safeStr(p)}</div>)}</td><td className="p-4"><span className={`px-2 py-1 rounded text-xs border ${STATUS_LIST.find(s=>s.key===c.status)?.color}`}>{STATUS_LIST.find(s=>s.key===c.status)?.label}</span></td><td className="p-4 text-sm text-gray-600">{safeStr(c.assignedTo)}</td><td className="p-4 text-sm text-gray-500">{safeStr(c.addedBy)}</td><td className="p-4 text-sm text-gray-500 date-en">{c.dateAdded ? new Date(c.dateAdded).toLocaleDateString('en-GB') : '-'}</td><td className="p-4 text-xs text-amber-600 font-bold date-en">{c.nextFollowUp||'-'}</td><td className="p-4 flex items-center gap-2"><button onClick={()=>onEdit(c)} className="text-brand-900 hover:bg-gray-100 p-2 rounded"><Icon name="edit" size={16}/></button>{canDelete && <button onClick={()=>setDeleteId(c.id)} className="text-red-500 hover:bg-red-50 p-2 rounded"><Icon name="trash-2" size={16}/></button>}</td></tr>)) : <tr><td colSpan="8" className="p-8 text-center text-gray-400">لا توجد نتائج</td></tr>}</tbody></table></div></div>
                     {deleteId && <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"><div className="bg-white p-6 rounded-xl shadow-lg max-w-sm w-full text-center"><h3 className="text-lg font-bold mb-2">هل أنت متأكد؟</h3><div className="flex gap-3 justify-center mt-4"><button onClick={confirmDelete} className="bg-red-600 text-white px-4 py-2 rounded-lg">حذف</button><button onClick={()=>setDeleteId(null)} className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg">إلغاء</button></div></div></div>}
                 </div>
             );
@@ -691,7 +691,7 @@ c30VzdGF0aWNvbi5jb20LzUxMi85NTYzLzk1NjMzMjYucG5nIiwic2l6ZXMiOiI1MTJ4NTEyIiwidHlw
                 
                 // Initialize map ONLY ONCE
                 if (!mapObj.current) { 
-                    mapObj.current = L.map(mapRef.current).setView([center.lat, center.lng], 15); 
+                    mapObj.current = L.map(mapRef.current).setView([center.lat, center.lng], 12); // Reduced zoom slightly
                     
                     // --- LAYERS SETUP ---
                     const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' });
@@ -728,7 +728,7 @@ c30VzdGF0aWNvbi5jb20LzUxMi85NTYzLzk1NjMzMjYucG5nIiwic2l6ZXMiOiI1MTJ4NTEyIiwidHlw
                     markerObj.current.on('dragend', (e) => { const l = e.target.getLatLng(); handleUpdate(l.lat, l.lng); }); 
                 } else {
                     // If map exists, just update view to center
-                     mapObj.current.setView([center.lat, center.lng], 15);
+                     mapObj.current.setView([center.lat, center.lng], 12);
                 }
             }, []); // Empty dependency array to run init only once
             
@@ -758,17 +758,19 @@ c30VzdGF0aWNvbi5jb20LzUxMi85NTYzLzk1NjMzMjYucG5nIiwic2l6ZXMiOiI1MTJ4NTEyIiwidHlw
         const calculateDistance = (lat1, lon1, lat2, lon2) => { const R = 6371e3; const φ1 = lat1 * Math.PI/180; const φ2 = lat2 * Math.PI/180; const Δφ = (lat2-lat1) * Math.PI/180; const Δλ = (lon2-lon1) * Math.PI/180; const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2); return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); };
 
         // --- NEW: Employee Map Component ---
-        const EmployeeMap = ({ users, logs }) => {
+        const EmployeeMap = ({ users, logs, onEmployeeClick }) => {
             const mapRef = useRef(null);
             const mapObj = useRef(null);
             const markersRef = useRef({}); 
+            const mapInitialized = useRef(false);
+            const initialCoords = [24.7136, 46.6753]; // Riyadh Coordinates
 
             useEffect(() => {
                 if (!mapRef.current) return;
                 
                 // Initialize Map
-                if (!mapObj.current) {
-                    mapObj.current = L.map(mapRef.current).setView([24.7136, 46.6753], 11);
+                if (!mapInitialized.current) {
+                    mapObj.current = L.map(mapRef.current).setView(initialCoords, 11);
 
                     // --- LAYERS SETUP ---
                     const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' });
@@ -783,6 +785,7 @@ c30VzdGF0aWNvbi5jb20LzUxMi85NTYzLzk1NjMzMjYucG5nIiwic2l6ZXMiOiI1MTJ4NTEyIiwidHlw
                         "قمر صناعي": satellite
                     };
                     L.control.layers(baseMaps).addTo(mapObj.current);
+                    mapInitialized.current = true;
                 }
 
                 // Update Markers
@@ -795,10 +798,10 @@ c30VzdGF0aWNvbi5jb20LzUxMi85NTYzLzk1NjMzMjYucG5nIiwic2l6ZXMiOiI1MTJ4NTEyIiwidHlw
 
                     if (lastLog) {
                         const isOnline = lastLog.type === 'IN' && new Date(lastLog.timestamp).toDateString() === new Date().toDateString();
-                        // Color logic: Green if online & inside, Red if online & outside, Gray if offline
-                        let color = '#9ca3af'; // gray-400
+                        
+                        let color = '#9ca3af'; 
                         if (isOnline) {
-                            color = lastLog.locationStatus === 'outside_zone' ? '#ef4444' : '#22c55e'; // red-500 : green-500
+                            color = lastLog.locationStatus === 'outside_zone' ? '#ef4444' : '#22c55e'; 
                         }
 
                         const iconHtml = `<div style="background-color: ${color}; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`;
@@ -808,29 +811,55 @@ c30VzdGF0aWNvbi5jb20LzUxMi85NTYzLzk1NjMzMjYucG5nIiwic2l6ZXMiOiI1MTJ4NTEyIiwidHlw
                             iconSize: [14, 14],
                             iconAnchor: [7, 7]
                         });
+                        
+                        const latLng = [lastLog.lat, lastLog.lng];
 
                         if (markersRef.current[u.id]) {
-                            markersRef.current[u.id].setLatLng([lastLog.lat, lastLog.lng]);
+                            markersRef.current[u.id].setLatLng(latLng);
                             markersRef.current[u.id].setIcon(icon);
                             markersRef.current[u.id].setPopupContent(`<div class="text-right"><div class="font-bold">${u.name}</div><div class="text-xs">${isOnline ? 'متواجد الآن' : 'آخر ظهور'}</div><div class="text-xs text-gray-500 date-en">${formatTime(lastLog.timestamp)}</div></div>`);
                         } else {
-                            const marker = L.marker([lastLog.lat, lastLog.lng], { icon }).addTo(mapObj.current);
+                            const marker = L.marker(latLng, { icon }).addTo(mapObj.current);
                             marker.bindPopup(`<div class="text-right"><div class="font-bold">${u.name}</div><div class="text-xs">${isOnline ? 'متواجد الآن' : 'آخر ظهور'}</div><div class="text-xs text-gray-500 date-en">${formatTime(lastLog.timestamp)}</div></div>`);
+                            
+                            // Event to handle map focus when marker is clicked (optional but good UX)
+                            marker.on('click', () => {
+                                mapObj.current.flyTo(latLng, 14); // Fly to location on marker click
+                            });
+
                             markersRef.current[u.id] = marker;
+                        }
+                    } else {
+                        // Remove marker if user has no relevant log anymore
+                        if (markersRef.current[u.id]) {
+                            mapObj.current.removeLayer(markersRef.current[u.id]);
+                            delete markersRef.current[u.id];
                         }
                     }
                 });
 
-                // Cleanup markers for users who have no logs anymore
-                Object.keys(markersRef.current).forEach(uid => {
-                    const hasLog = logs.some(l => l.uid === uid && l.lat);
-                    if (!hasLog) {
-                        mapObj.current.removeLayer(markersRef.current[uid]);
-                        delete markersRef.current[uid];
-                    }
-                });
-
             }, [users, logs]);
+            
+            // Effect to move map center when an employee is selected from the list
+            useEffect(() => {
+                if (onEmployeeClick && mapObj.current) {
+                    const employee = users.find(u => u.id === onEmployeeClick);
+                    if (employee) {
+                         const lastLog = logs.filter(l => l.uid === employee.id && l.lat && l.lng).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp))[0];
+                         if (lastLog) {
+                             mapObj.current.flyTo([lastLog.lat, lastLog.lng], 14);
+                             // Open the marker popup for immediate location view
+                             const marker = markersRef.current[employee.id];
+                             if (marker) {
+                                 marker.openPopup();
+                             }
+                         } else {
+                             // If no log, maybe focus on Riyadh or default view
+                             mapObj.current.flyTo(initialCoords, 11);
+                         }
+                    }
+                }
+            }, [onEmployeeClick, users, logs]);
 
             return <div className="bg-white p-2 rounded-2xl shadow-sm border mb-4"><div ref={mapRef} className="w-full h-80 rounded-xl z-0" /></div>;
         };
@@ -907,7 +936,7 @@ c30VzdGF0aWNvbi5jb20LzUxMi85NTYzLzk1NjMzMjYucG5nIiwic2l6ZXMiOiI1MTJ4NTEyIiwidHlw
                 <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
                     <div className="bg-white w-full max-w-2xl rounded-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
                         <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-lg">{zoneToEdit ? 'تعديل النطاق' : 'إضافة نطاق جديد'}</h3><button onClick={onClose}><Icon name="x"/></button></div>
-                        <div className="grid md:grid-cols-2 gap-4 mb-4"><input className="border p-2 rounded-lg" placeholder="اسم النطاق" value={zone.name} onChange={e=>setZone(prev=>({...prev, name:e.target.value}))}/><div className="flex gap-2"><div className="flex-1"><label className="text-xs block">بداية الدوام</label><input type="time" className="w-full border p-2 rounded-lg" value={zone.startTime} onChange={e=>setZone(prev=>({...prev, startTime:e.target.value}))}/></div><div className="flex-1"><label className="text-xs block">نهاية الدوام</label><input type="time" className="w-full border p-2 rounded-lg" value={zone.endTime} onChange={e=>setZone(prev=>({...prev, endTime:e.target.value}))}/></div></div></div><div className="mb-4"><label className="text-xs block mb-1 font-bold">تحديد الموقع والقطر ({zone.radius}م)</label><MapZoneEditor center={{lat: zone.lat, lng: zone.lng}} radius={zone.radius} onChange={(c, r) => setZone(prev => ({...prev, lat: c.lat, lng: c.lng, radius: r}))} /><input type="range" min="50" max="2000" step="50" className="w-full mt-2 accent-accent-600" value={zone.radius} onChange={e=>setZone(prev=>({...prev, radius: Number(e.target.value)}))} /></div><div className="mb-4 border-t pt-4"><label className="font-bold block mb-2">الموظفين المصرح لهم:</label><div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border rounded-lg bg-gray-50">{users.filter(u => u.id !== 'admin').map(u => { const isAssignedHere = safeArr(zone.assignedUsers).includes(u.id); const otherZones = zones.filter(z => z.id !== (zone.id || 'new')); const isAssignedElsewhere = otherZones.some(z => safeArr(z.assignedUsers).includes(u.id)); return ( <label key={u.id} className={`flex items-center gap-2 p-2 rounded border cursor-pointer ${isAssignedElsewhere ? 'bg-gray-100 opacity-50 cursor-not-allowed' : 'bg-white hover:bg-gray-100'}`}><input type="checkbox" checked={isAssignedHere} onChange={()=>toggleUser(u.id)} disabled={isAssignedElsewhere} className="accent-accent-600"/><span className="text-sm">{u.name} {isAssignedElsewhere && '(مسجل بنطاق آخر)'}</span></label> ); })}</div></div><button onClick={() => onSave(zone)} className="w-full bg-accent-600 text-white py-3 rounded-xl font-bold">حفظ النطاق</button>
+                        <div className="grid md:grid-cols-2 gap-4 mb-4"><input className="border p-2 rounded-lg" placeholder="اسم النطاق" value={zone.name} onChange={e=>setZone(prev=>({...prev, name:e.target.value}))}/><div className="flex gap-2"><div className="flex-1"><label className="text-xs block">بداية الدوام</label><input type="time" className="w-full border p-2 rounded-lg" value={zone.startTime} onChange={e=>setZone(prev=>({...prev, startTime:e.target.value}))}/></div><div className="flex-1"><label className="text-xs block">نهاية الدوام</label><input type="time" className="w-full border p-2 rounded-lg" value={zone.endTime} onChange={e=>setZone(prev=>({...prev, endTime:e.target.value}))}/></div></div></div><div className="mb-4"><label className="text-xs block mb-1 font-bold">تحديد الموقع والقطر ({zone.radius}م)</label><MapZoneEditor center={{lat: zone.lat, lng: zone.lng}} radius={zone.radius} onChange={(c, r) => setZone(prev => ({...prev, lat: c.lat, lng: c.lng, radius: r}))} /><input type="range" min="50" max="20000" step="500" className="w-full mt-2 accent-accent-600" value={zone.radius} onChange={e=>setZone(prev=>({...prev, radius: Number(e.target.value)}))} /></div><div className="mb-4 border-t pt-4"><label className="font-bold block mb-2">الموظفين المصرح لهم:</label><div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border rounded-lg bg-gray-50">{users.filter(u => u.id !== 'admin').map(u => { const isAssignedHere = safeArr(zone.assignedUsers).includes(u.id); const otherZones = zones.filter(z => z.id !== (zone.id || 'new')); const isAssignedElsewhere = otherZones.some(z => safeArr(z.assignedUsers).includes(u.id)); return ( <label key={u.id} className={`flex items-center gap-2 p-2 rounded border cursor-pointer ${isAssignedElsewhere ? 'bg-gray-100 opacity-50 cursor-not-allowed' : 'bg-white hover:bg-gray-100'}`}><input type="checkbox" checked={isAssignedHere} onChange={()=>toggleUser(u.id)} disabled={isAssignedElsewhere} className="accent-accent-600"/><span className="text-sm">{u.name} {isAssignedElsewhere && '(مسجل بنطاق آخر)'}</span></label> ); })}</div></div><button onClick={() => onSave(zone)} className="w-full bg-accent-600 text-white py-3 rounded-xl font-bold">حفظ النطاق</button>
                     </div>
                 </div>
             );
@@ -1013,6 +1042,9 @@ c30VzdGF0aWNvbi5jb20LzUxMi85NTYzLzk1NjMzMjYucG5nIiwic2l6ZXMiOiI1MTJ4NTEyIiwidHlw
             const [permModalOpen, setPermModalOpen] = useState(false);
             const [outsideConfirmOpen, setOutsideConfirmOpen] = useState(false);
             const [pendingAction, setPendingAction] = useState(null); 
+            
+            // New State for Employee Map interaction
+            const [mapFocusUser, setMapFocusUser] = useState(null);
 
             useEffect(() => {
                 const foundZone = zones.find(z => safeArr(z.assignedUsers).includes(user.id)); setCurrentZone(foundZone);
@@ -1149,27 +1181,33 @@ c30VzdGF0aWNvbi5jb20LzUxMi85NTYzLzk1NjMzMjYucG5nIiwic2l6ZXMiOiI1MTJ4NTEyIiwidHlw
                             {page === 'perms' && <PermissionsManager permissions={permissions} />}
                             {page === 'live' && (
                                 <>
-                                    <EmployeeMap users={usersList} logs={logs} />
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">{usersList.filter(u => u.id !== 'admin').map(u => { 
-                                        const lastLog = logs.filter(l => l.uid === u.id).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp))[0]; 
-                                        const isOnline = lastLog?.type === 'IN' && new Date(lastLog.timestamp).toDateString() === new Date().toDateString(); 
-                                        const isOutside = lastLog?.locationStatus === 'outside_zone';
-                                        
-                                        return ( 
-                                            <div key={u.id} className="bg-white p-5 rounded-2xl shadow-sm border flex items-center gap-4 relative overflow-hidden">
-                                                {isOnline && (
-                                                    <div className={`absolute top-0 left-0 px-2 py-1 text-[10px] font-bold text-white ${isOutside ? 'bg-red-500' : 'bg-green-500'} rounded-br-lg`}>
-                                                        {isOutside ? 'خارج النطاق' : 'داخل النطاق'}
+                                    <EmployeeMap users={usersList} logs={logs} onEmployeeClick={mapFocusUser} />
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        {usersList.filter(u => u.id !== 'admin').map(u => { 
+                                            const lastLog = logs.filter(l => l.uid === u.id).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp))[0]; 
+                                            const isOnline = lastLog?.type === 'IN' && new Date(lastLog.timestamp).toDateString() === new Date().toDateString(); 
+                                            const isOutside = lastLog?.locationStatus === 'outside_zone';
+                                            
+                                            return ( 
+                                                <div 
+                                                    key={u.id} 
+                                                    className="bg-white p-5 rounded-2xl shadow-sm border flex items-center gap-4 relative overflow-hidden cursor-pointer hover:bg-gray-50 transition"
+                                                    onClick={() => setMapFocusUser(u.id)}
+                                                >
+                                                    {isOnline && (
+                                                        <div className={`absolute top-0 left-0 px-2 py-1 text-[10px] font-bold text-white ${isOutside ? 'bg-red-500' : 'bg-green-500'} rounded-br-lg`}>
+                                                            {isOutside ? 'خارج النطاق' : 'داخل النطاق'}
+                                                        </div>
+                                                    )}
+                                                    <div className={`w-4 h-4 rounded-full ${isOnline?'bg-green-500 animate-pulse':'bg-gray-300'}`}></div>
+                                                    <div>
+                                                        <div className="font-bold text-brand-900">{u.name}</div>
+                                                        <div className="text-xs text-gray-500">{isOnline ? `دخل منذ ${formatTime(lastLog.timestamp)}` : 'غير متواجد'}</div>
                                                     </div>
-                                                )}
-                                                <div className={`w-4 h-4 rounded-full ${isOnline?'bg-green-500 animate-pulse':'bg-gray-300'}`}></div>
-                                                <div>
-                                                    <div className="font-bold text-brand-900">{u.name}</div>
-                                                    <div className="text-xs text-gray-500">{isOnline ? `دخل منذ ${formatTime(lastLog.timestamp)}` : 'غير متواجد'}</div>
-                                                </div>
-                                            </div> 
-                                        ) 
-                                    })}</div>
+                                                </div> 
+                                            ) 
+                                        })}
+                                    </div>
                                 </>
                             )}
                         </div>
@@ -1190,11 +1228,289 @@ c30VzdGF0aWNvbi5jb20LzUxMi85NTYzLzk1NjMzMjYucG5nIiwic2l6ZXMiOiI1MTJ4NTEyIiwidHlw
             );
         };
 
-        // --- 7. PROJECT MANAGEMENT APP ---
+        // --- 7. PROJECT MANAGEMENT COMPONENTS (PM App) ---
+
+        // Task Card Component for Kanban
+        const TaskCard = ({ task, users, projects, onEdit }) => {
+            const project = projects.find(p => p.id === task.projectId);
+            const assignees = safeArr(task.assignedTo).map(id => users.find(u => u.id === id)?.name || id);
+            const dateDue = task.dateDue || '-';
+
+            return (
+                <div 
+                    className="bg-white p-3 rounded-lg shadow-sm border hover:shadow-md transition group relative cursor-pointer"
+                    onClick={() => onEdit(task)}
+                >
+                    {/* زر التعديل (القلم) */}
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onEdit(task); }} 
+                        className="absolute top-2 left-2 text-pm-400 hover:text-pm-600 p-1 rounded-full bg-white transition z-10"
+                    >
+                        <Icon name="pencil" size={14}/>
+                    </button>
+
+                    <div className="font-bold text-brand-900 mb-1">{task.title}</div>
+                    
+                    {project && (
+                        <div className="text-xs text-gray-500 mb-2 bg-gray-50 inline-block px-1 rounded-full">{project.name}</div>
+                    )}
+                    
+                    <div className="flex justify-between items-center mt-2 text-xs">
+                        <div className="flex items-center gap-1 text-gray-600" title="المسند إليهم">
+                            <Icon name="users" size={12}/> 
+                            {assignees.length > 0 ? assignees.join(', ') : 'غير مسند'}
+                        </div>
+                        {task.dateDue && (
+                            <div className={`flex items-center gap-1 date-en font-bold ${new Date(dateDue) < new Date() ? 'text-red-500' : 'text-pm-600'}`} title="تاريخ الإنجاز">
+                                <Icon name="calendar" size={12}/>
+                                {dateDue}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        // Task Modal Component for Add/Edit
+        const TaskModal = ({ isOpen, onClose, task, onSave, users, projects, currentUser }) => {
+            const initialTaskData = {
+                title: '',
+                projectId: '',
+                description: '',
+                driveLink: '',
+                dateDue: '',
+                assignedTo: [],
+                status: 'todo',
+                notes: [],
+                history: []
+            };
+
+            const [d, setD] = useState(initialTaskData);
+            const [newNote, setNewNote] = useState('');
+            const [activeTab, setActiveTab] = useState('details');
+            const notesEndRef = useRef(null);
+
+            const pmUsers = useMemo(() => users.filter(u => u.permissions?.pm_access || u.role === 'admin'), [users]);
+
+            useEffect(() => {
+                if (isOpen) {
+                    if (task) {
+                        // Prepare task data: ensure notes and history are arrays/objects
+                        const taskWithArrays = {
+                            ...task,
+                            notes: task.notes ? Object.values(task.notes) : [],
+                            history: task.history ? Object.values(task.history) : []
+                        };
+                        setD(taskWithArrays);
+                    } else {
+                        setD(initialTaskData);
+                    }
+                    setActiveTab('details'); // Reset tab on open
+                }
+            }, [isOpen, task]);
+
+            useEffect(() => {
+                notesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            }, [d.notes]);
+
+            const handleToggleAssignee = (userId) => {
+                const currentAssignees = safeArr(d.assignedTo);
+                setD(prev => ({
+                    ...prev,
+                    assignedTo: currentAssignees.includes(userId)
+                        ? currentAssignees.filter(id => id !== userId)
+                        : [...currentAssignees, userId]
+                }));
+            };
+
+            const handleAddNote = () => {
+                if (!newNote.trim()) return;
+                const noteData = { text: newNote, date: new Date().toISOString(), author: currentUser.name };
+                
+                const logData = { action: 'إضافة ملاحظة', user: currentUser.name, date: new Date().toISOString() };
+                
+                // Update local state immediately
+                setD(prev => ({
+                    ...prev,
+                    notes: [...safeArr(prev.notes), noteData],
+                    history: [...safeArr(prev.history), logData]
+                }));
+
+                // Push to Firebase (if editing an existing task)
+                if (task?.id) {
+                    push(ref(db, `tasks/${task.id}/notes`), noteData);
+                    push(ref(db, `tasks/${task.id}/history`), logData);
+                }
+                setNewNote('');
+            };
+
+            const handleSaveInternal = () => {
+                if (!d.title || !d.projectId || safeArr(d.assignedTo).length === 0) {
+                    return alert('الرجاء إدخال اسم المهمة واختيار المشروع والمسند إليهم.');
+                }
+                
+                const isNew = !task?.id;
+                let logAction = isNew ? 'إنشاء مهمة جديدة' : 'تحديث بيانات المهمة';
+                
+                if (!isNew && (d.status !== task.status)) {
+                    logAction = `تغيير حالة المهمة إلى ${d.status === 'todo' ? 'قيد الانتظار' : d.status === 'progress' ? 'جاري التنفيذ' : 'مكتملة'}`;
+                }
+
+                const logData = { action: logAction, user: currentUser.name, date: new Date().toISOString() };
+                const updatedHistory = [...safeArr(d.history), logData];
+
+                const savePayload = {
+                    title: d.title,
+                    projectId: d.projectId,
+                    description: d.description || '',
+                    driveLink: d.driveLink || '',
+                    dateDue: d.dateDue || '',
+                    assignedTo: safeArr(d.assignedTo),
+                    status: d.status,
+                    dateCreated: task?.dateCreated || new Date().toISOString(), // Keep original creation date
+                    createdBy: task?.createdBy || currentUser.name,
+                    notes: d.notes,
+                    history: updatedHistory
+                };
+
+                onSave(savePayload, task?.id);
+            };
+
+            const getStatusColor = (status) => {
+                if (status === 'todo') return 'bg-gray-100 text-gray-700';
+                if (status === 'progress') return 'bg-blue-100 text-blue-700';
+                if (status === 'done') return 'bg-green-100 text-green-700';
+                return 'bg-gray-100 text-gray-700';
+            };
+
+            if (!isOpen) return null;
+
+            return (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white w-full max-w-4xl rounded-2xl p-6 shadow-2xl max-h-[95vh] overflow-y-auto">
+                        <div className="flex justify-between items-center border-b pb-3 mb-4">
+                            <h3 className="font-black text-xl text-brand-900">{task ? 'تعديل المهمة' : 'إنشاء مهمة جديدة'}</h3>
+                            <button onClick={onClose} className="text-gray-500 hover:text-gray-700"><Icon name="x"/></button>
+                        </div>
+
+                        {/* Tabs */}
+                        <div className="flex gap-4 mb-4 border-b">
+                            <button onClick={() => setActiveTab('details')} className={`font-bold pb-2 transition ${activeTab === 'details' ? 'text-pm-600 border-b-2 border-pm-600' : 'text-gray-500'}`}><Icon name="clipboard-check" size={18} className="inline-block ml-2"/> التفاصيل</button>
+                            <button onClick={() => setActiveTab('notes')} className={`font-bold pb-2 transition ${activeTab === 'notes' ? 'text-pm-600 border-b-2 border-pm-600' : 'text-gray-500'}`}><Icon name="message-circle" size={18} className="inline-block ml-2"/> الملاحظات ({safeArr(d.notes).length})</button>
+                            <button onClick={() => setActiveTab('history')} className={`font-bold pb-2 transition ${activeTab === 'history' ? 'text-pm-600 border-b-2 border-pm-600' : 'text-gray-500'}`}><Icon name="history" size={18} className="inline-block ml-2"/> سجل الأحداث</button>
+                        </div>
+
+                        {/* Content Area */}
+                        <div className="min-h-[350px] max-h-[70vh] overflow-y-auto p-2">
+                            {/* --- DETAILS TAB --- */}
+                            {activeTab === 'details' && (
+                                <div className="space-y-4">
+                                    <input className="w-full text-2xl font-bold border-b p-2 focus:outline-none" placeholder="عنوان المهمة" value={d.title} onChange={e => setD({...d, title: e.target.value})} />
+                                    
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border p-4 rounded-xl">
+                                        <div><label className="text-xs font-bold block mb-1 text-gray-500">المشروع</label>
+                                            <select className="w-full border rounded-lg p-2 text-sm bg-gray-50" value={d.projectId} onChange={e => setD({...d, projectId: e.target.value})}>
+                                                <option value="">اختر المشروع</option>
+                                                {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                            </select>
+                                        </div>
+                                        <div><label className="text-xs font-bold block mb-1 text-gray-500">تاريخ الإنجاز المطلوب</label>
+                                            <input type="date" className="w-full border rounded-lg p-2 text-sm bg-gray-50 date-en" value={d.dateDue || ''} onChange={e => setD({...d, dateDue: e.target.value})} />
+                                        </div>
+                                        <div><label className="text-xs font-bold block mb-1 text-gray-500">حالة المهمة</label>
+                                            <select className="w-full border rounded-lg p-2 text-sm font-bold" value={d.status} onChange={e => setD({...d, status: e.target.value})} className={`w-full border rounded-lg p-2 text-sm font-bold ${getStatusColor(d.status)}`}>
+                                                <option value="todo">قيد الانتظار</option>
+                                                <option value="progress">جاري التنفيذ</option>
+                                                <option value="done">مكتملة</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* الوصف والرابط */}
+                                    <div><label className="text-xs font-bold block mb-1 text-gray-500">وصف المهمة</label>
+                                        <textarea className="w-full border rounded-lg p-3 h-24 resize-none bg-gray-50" placeholder="وصف تفصيلي للمهمة..." value={d.description} onChange={e => setD({...d, description: e.target.value})} />
+                                    </div>
+                                    <div><label className="text-xs font-bold block mb-1 text-gray-500">رابط (جوجل درايف أو غيره)</label>
+                                        <input type="url" className="w-full border rounded-lg p-2 text-sm bg-gray-50 date-en" placeholder="https://drive.google.com/..." value={d.driveLink} onChange={e => setD({...d, driveLink: e.target.value})} />
+                                        {d.driveLink && <a href={d.driveLink} target="_blank" className="text-xs text-blue-500 underline mt-1 block">فتح الرابط <Icon name="external-link" size={12} className="inline mr-1"/></a>}
+                                    </div>
+
+                                    {/* الإسناد المتعدد */}
+                                    <div className="border p-4 rounded-xl"><label className="text-sm font-bold block mb-2 text-brand-900">المسند إليهم (يمكن اختيار أكثر من شخص)</label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {pmUsers.map(u => (
+                                                <button 
+                                                    key={u.id} 
+                                                    onClick={() => handleToggleAssignee(u.id)}
+                                                    className={`px-3 py-1 rounded-full text-xs font-bold transition ${safeArr(d.assignedTo).includes(u.id) ? 'bg-pm-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                                >
+                                                    {u.name}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* --- NOTES TAB (Chat-like) --- */}
+                            {activeTab === 'notes' && (
+                                <div className="flex flex-col h-full">
+                                    <div className="flex-1 bg-white border rounded-xl p-4 mb-4 overflow-y-auto max-h-[60vh] space-y-3 shadow-inner">
+                                        {safeArr(d.notes).length === 0 && <div className="text-center text-gray-400 text-sm mt-10">لا توجد ملاحظات بعد.</div>}
+                                        {safeArr(d.notes).map((n, i) => (
+                                            <div key={i} className={`flex ${n.author === currentUser.name ? 'justify-end' : 'justify-start'}`}>
+                                                <div className={`max-w-[80%] p-3 rounded-xl shadow-md ${n.author === currentUser.name ? 'bg-pm-600 text-white rounded-bl-lg' : 'bg-gray-100 text-gray-800 rounded-br-lg'}`}>
+                                                    <p className="font-bold text-xs mb-1">{n.author === currentUser.name ? 'أنت' : n.author}</p>
+                                                    <p className="text-sm break-words">{n.text}</p>
+                                                    <span className={`text-[10px] block mt-1 ${n.author === currentUser.name ? 'text-gray-200' : 'text-gray-400'} text-left date-en`}>
+                                                        {formatTime(n.date)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        <div ref={notesEndRef} />
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <input className="flex-1 border rounded-xl p-3 text-sm focus:ring-1 focus:ring-pm-600 outline-none" placeholder="اكتب ملاحظة جديدة..." value={newNote} onChange={e => setNewNote(e.target.value)} onKeyPress={e => e.key === 'Enter' && handleAddNote()} />
+                                        <button onClick={handleAddNote} className="bg-pm-600 hover:bg-pm-700 text-white p-3 rounded-xl"><Icon name="send" size={20}/></button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* --- HISTORY TAB --- */}
+                            {activeTab === 'history' && (
+                                <div className="bg-white border rounded-xl p-4 shadow-inner">
+                                    <div className="text-xs space-y-2 max-h-[60vh] overflow-y-auto">
+                                        {safeArr(d.history).slice().reverse().map((h, i) => (
+                                            <div key={i} className="flex justify-between items-start border-b pb-2 last:border-0 last:pb-0">
+                                                <span className="font-bold text-gray-700 w-3/5">{h.action}</span>
+                                                <div className="text-gray-500 text-left w-2/5">
+                                                    <div className='text-[11px]'>{h.user}</div>
+                                                    <div className="date-en text-[10px] text-gray-400">{new Date(h.date).toLocaleDateString('en-GB')} <span className='mr-1'>{new Date(h.date).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}</span></div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {safeArr(d.history).length === 0 && <div className="text-center text-gray-400 text-sm mt-10">لا يوجد سجل أحداث لهذه المهمة.</div>}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="mt-6 pt-4 border-t flex gap-3">
+                            <button onClick={onClose} className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200">إلغاء</button>
+                            <button onClick={handleSaveInternal} className="flex-1 bg-pm-600 text-white py-3 rounded-xl font-bold hover:bg-pm-700 shadow-lg">حفظ المهمة</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+
         const PMApp = ({ user, users, projects, tasks, onBack }) => {
             const [page, setPage] = useState('dashboard');
-            const [newProjectName, setNewProjectName] = useState('');
-            const [newTask, setNewTask] = useState({ title: '', projectId: '', assignedTo: '', status: 'todo' });
+            // New states for the advanced task modal
+            const [modalOpen, setModalOpen] = useState(false);
+            const [editingTask, setEditingTask] = useState(null);
             const [sidebarOpen, setSidebarOpen] = useState(false);
 
             // Helper for Kanban
@@ -1209,29 +1525,53 @@ c30VzdGF0aWNvbi5jb20LzUxMi85NTYzLzk1NjMzMjYucG5nIiwic2l6ZXMiOiI1MTJ4NTEyIiwidHlw
                     status: 'active'
                 });
                 setNewProjectName('');
-                // alert('تم إضافة المشروع بنجاح');
             };
 
-            const handleAddTask = () => {
-                if (!newTask.title.trim() || !newTask.projectId) return alert('يرجى تعبئة البيانات المطلوبة');
-                push(ref(db, 'tasks'), { 
-                    ...newTask, 
-                    dateCreated: new Date().toISOString(),
-                    createdBy: user.name
-                });
-                setNewTask({ title: '', projectId: '', assignedTo: '', status: 'todo' });
-                // alert('تم إضافة المهمة بنجاح');
+            const handleSaveTask = (taskData, taskId) => {
+                const { notes, history, ...payload } = taskData; // Separate sub-collections
+                
+                if (taskId) {
+                    // Update main data
+                    update(ref(db, `tasks/${taskId}`), payload);
+                    // Notes and History are updated live within the modal, so no need to mass push here, just ensure the task modal is closed.
+                } else {
+                    // Create new task
+                    push(ref(db, 'tasks'), { 
+                        ...payload,
+                        notes: notes, // Save initial notes/history (usually empty + 1 log)
+                        history: history 
+                    });
+                }
+                setModalOpen(false);
+                setEditingTask(null);
             };
 
             const updateTaskStatus = (taskId, newStatus) => {
+                const taskToUpdate = tasks.find(t => t.id === taskId);
+                if (!taskToUpdate) return;
+                
+                let logAction = `تغيير حالة المهمة إلى ${newStatus === 'todo' ? 'قيد الانتظار' : newStatus === 'progress' ? 'جاري التنفيذ' : 'مكتملة'}`;
+                const logData = { action: logAction, user: user.name, date: new Date().toISOString() };
+                
                 update(ref(db, `tasks/${taskId}`), { status: newStatus });
+                push(ref(db, `tasks/${taskId}/history`), logData);
             };
 
             const deleteTask = (taskId) => {
-                // if(confirm('هل أنت متأكد من حذف المهمة؟')) remove(ref(db, `tasks/${taskId}`));
-                // No confirm here, this is not the main way to handle dialogs.
-                // For simplicity in this direct copy, I'll rely on the real app's dialogs or just remove it if confirmation is required later.
-                remove(ref(db, `tasks/${taskId}`));
+                // Use custom modal or silent delete, NOT window.confirm()
+                if (window.confirm('هل أنت متأكد من حذف المهمة؟')) {
+                    remove(ref(db, `tasks/${taskId}`));
+                }
+            };
+            
+            const openEditModal = (task) => {
+                setEditingTask(task);
+                setModalOpen(true);
+            };
+
+            const openAddModal = (initialStatus = 'todo') => {
+                setEditingTask({ status: initialStatus }); // Pass status for pre-filling
+                setModalOpen(true);
             };
 
             return (
@@ -1296,7 +1636,8 @@ c30VzdGF0aWNvbi5jb20LzUxMi85NTYzLzk1NjMzMjYucG5nIiwic2l6ZXMiOiI1MTJ4NTEyIiwidHlw
                                                 <div className="bg-white p-6 rounded-2xl shadow-sm border">
                                                     <h3 className="font-bold mb-4">مهامي المسندة</h3>
                                                     <div className="space-y-3">
-                                                        {tasks.filter(t => t.assignedTo === user.id && t.status !== 'done').map(t => (
+                                                        {/* الآن يتم البحث في المسند إليهم المتعددين */}
+                                                        {tasks.filter(t => safeArr(t.assignedTo).includes(user.id) && t.status !== 'done').map(t => (
                                                             <div key={t.id} className="flex justify-between items-center p-3 bg-orange-50 border border-orange-100 rounded-lg">
                                                                 <div>
                                                                     <div className="font-bold text-brand-900">{t.title}</div>
@@ -1305,7 +1646,7 @@ c30VzdGF0aWNvbi5jb20LzUxMi85NTYzLzk1NjMzMjYucG5nIiwic2l6ZXMiOiI1MTJ4NTEyIiwidHlw
                                                                 <span className="bg-white px-2 py-1 rounded text-xs font-bold text-orange-600">قيد العمل</span>
                                                             </div>
                                                         ))}
-                                                        {tasks.filter(t => t.assignedTo === user.id && t.status !== 'done').length === 0 && <div className="text-gray-400 text-sm text-center">لا توجد مهام مسندة لك</div>}
+                                                        {tasks.filter(t => safeArr(t.assignedTo).includes(user.id) && t.status !== 'done').length === 0 && <div className="text-gray-400 text-sm text-center">لا توجد مهام مسندة لك</div>}
                                                     </div>
                                                 </div>
                                             </div>
@@ -1351,28 +1692,13 @@ c30VzdGF0aWNvbi5jb20LzUxMi85NTYzLzk1NjMzMjYucG5nIiwic2l6ZXMiOiI1MTJ4NTEyIiwidHlw
 
                                     {page === 'tasks' && (
                                         <div className="h-full flex flex-col">
-                                            <div className="bg-white p-4 rounded-xl shadow-sm border mb-6 flex flex-wrap gap-3 items-end">
-                                                <div className="flex-1 min-w-[200px]">
-                                                    <label className="text-xs font-bold block mb-1">عنوان المهمة</label>
-                                                    <input className="w-full border rounded-lg p-2 text-sm" value={newTask.title} onChange={e=>setNewTask({...newTask, title:e.target.value})} placeholder="أدخل العنوان..." />
-                                                </div>
-                                                <div className="w-48">
-                                                    <label className="text-xs font-bold block mb-1">المشروع</label>
-                                                    <select className="w-full border rounded-lg p-2 text-sm" value={newTask.projectId} onChange={e=>setNewTask({...newTask, projectId:e.target.value})}>
-                                                        <option value="">اختر المشروع</option>
-                                                        {projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
-                                                    </select>
-                                                </div>
-                                                <div className="w-48">
-                                                    <label className="text-xs font-bold block mb-1">إسناد إلى</label>
-                                                    <select className="w-full border rounded-lg p-2 text-sm" value={newTask.assignedTo} onChange={e=>setNewTask({...newTask, assignedTo:e.target.value})}>
-                                                        <option value="">اختر الموظف</option>
-                                                        {users.filter(u => u.id !== 'admin' && (u.role === 'admin' || u.permissions?.pm_access)).map(u=><option key={u.id} value={u.id}>{u.name}</option>)}
-                                                    </select>
-                                                </div>
-                                                <button onClick={handleAddTask} className="bg-pm-600 text-white px-4 py-2 rounded-lg font-bold h-[38px] hover:bg-pm-700">إضافة مهمة</button>
+                                            {/* زر الإضافة الجديد الذي يفتح المودال */}
+                                            <div className="mb-6">
+                                                <button onClick={() => openAddModal('todo')} className="bg-pm-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-pm-700 flex items-center gap-2 shadow-md">
+                                                    <Icon name="plus" size={18}/> <span>إضافة مهمة جديدة</span>
+                                                </button>
                                             </div>
-
+                                            {/* Kanban Board */}
                                             <div className="flex-1 overflow-x-auto">
                                                 <div className="flex gap-4 min-w-[1000px] h-full pb-4">
                                                     {/* Column: Todo */}
@@ -1380,16 +1706,9 @@ c30VzdGF0aWNvbi5jb20LzUxMi85NTYzLzk1NjMzMjYucG5nIiwic2l6ZXMiOiI1MTJ4NTEyIiwidHlw
                                                         <div className="p-4 font-black text-gray-600 flex justify-between"><span>قيد الانتظار</span> <span className="bg-white px-2 rounded-full text-sm">{getTasksByStatus('todo').length}</span></div>
                                                         <div className="p-2 space-y-2 overflow-y-auto flex-1">
                                                             {getTasksByStatus('todo').map(t => (
-                                                                <div key={t.id} className="bg-white p-3 rounded-lg shadow-sm border hover:shadow-md transition group">
-                                                                    <div className="font-bold text-brand-900 mb-1">{t.title}</div>
-                                                                    <div className="text-xs text-gray-500 mb-2 bg-gray-50 inline-block px-1 rounded">{projects.find(p=>p.id===t.projectId)?.name}</div>
-                                                                    <div className="flex justify-between items-center mt-2">
-                                                                        <div className="flex items-center gap-1 text-xs text-gray-600"><Icon name="user" size={12}/> {users.find(u=>u.id===t.assignedTo)?.name || 'غير مسند'}</div>
-                                                                        <button onClick={()=>updateTaskStatus(t.id, 'progress')} className="text-blue-600 bg-blue-50 p-1 rounded hover:bg-blue-100 text-xs font-bold">بدء العمل &larr;</button>
-                                                                    </div>
-                                                                    <button onClick={()=>deleteTask(t.id)} className="hidden group-hover:block absolute top-2 left-2 text-red-400 hover:text-red-600"><Icon name="trash-2" size={14}/></button>
-                                                                </div>
+                                                                <TaskCard key={t.id} task={t} users={users} projects={projects} onEdit={openEditModal} />
                                                             ))}
+                                                            {getTasksByStatus('todo').length === 0 && <div className="text-center text-gray-400 text-xs py-4">لا توجد مهام في الانتظار</div>}
                                                         </div>
                                                     </div>
 
@@ -1398,18 +1717,9 @@ c30VzdGF0aWNvbi5jb20LzUxMi85NTYzLzk1NjMzMjYucG5nIiwic2l6ZXMiOiI1MTJ4NTEyIiwidHlw
                                                         <div className="p-4 font-black text-blue-700 flex justify-between"><span>جاري التنفيذ</span> <span className="bg-white px-2 rounded-full text-sm">{getTasksByStatus('progress').length}</span></div>
                                                         <div className="p-2 space-y-2 overflow-y-auto flex-1">
                                                             {getTasksByStatus('progress').map(t => (
-                                                                <div key={t.id} className="bg-white p-3 rounded-lg shadow-sm border border-blue-100 hover:shadow-md transition relative group">
-                                                                    <div className="font-bold text-brand-900 mb-1">{t.title}</div>
-                                                                    <div className="text-xs text-gray-500 mb-2 bg-gray-50 inline-block px-1 rounded">{projects.find(p=>p.id===t.projectId)?.name}</div>
-                                                                    <div className="flex justify-between items-center mt-2">
-                                                                        <div className="flex items-center gap-1 text-xs text-gray-600"><Icon name="user" size={12}/> {users.find(u=>u.id===t.assignedTo)?.name}</div>
-                                                                        <div className="flex gap-1">
-                                                                            <button onClick={()=>updateTaskStatus(t.id, 'todo')} className="text-gray-500 bg-gray-100 p-1 rounded hover:bg-gray-200 text-xs">&rarr;</button>
-                                                                            <button onClick={()=>updateTaskStatus(t.id, 'done')} className="text-green-600 bg-green-50 p-1 rounded hover:bg-green-100 text-xs font-bold">إكمال &larr;</button>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
+                                                                <TaskCard key={t.id} task={t} users={users} projects={projects} onEdit={openEditModal} />
                                                             ))}
+                                                            {getTasksByStatus('progress').length === 0 && <div className="text-center text-gray-400 text-xs py-4">لا توجد مهام قيد التنفيذ</div>}
                                                         </div>
                                                     </div>
 
@@ -1418,15 +1728,9 @@ c30VzdGF0aWNvbi5jb20LzUxMi85NTYzLzk1NjMzMjYucG5nIiwic2l6ZXMiOiI1MTJ4NTEyIiwidHlw
                                                         <div className="p-4 font-black text-green-700 flex justify-between"><span>مكتملة</span> <span className="bg-white px-2 rounded-full text-sm">{getTasksByStatus('done').length}</span></div>
                                                         <div className="p-2 space-y-2 overflow-y-auto flex-1">
                                                             {getTasksByStatus('done').map(t => (
-                                                                <div key={t.id} className="bg-white p-3 rounded-lg shadow-sm border border-green-100 opacity-75 hover:opacity-100 transition group">
-                                                                    <div className="font-bold text-gray-600 line-through mb-1">{t.title}</div>
-                                                                    <div className="text-xs text-gray-400 mb-2">{projects.find(p=>p.id===t.projectId)?.name}</div>
-                                                                    <div className="flex justify-between items-center mt-2">
-                                                                        <div className="text-xs text-green-600 font-bold flex items-center gap-1"><Icon name="check-circle" size={12}/> تم الإنجاز</div>
-                                                                        <button onClick={()=>updateTaskStatus(t.id, 'progress')} className="text-gray-400 hover:text-gray-600 text-xs">إعادة</button>
-                                                                    </div>
-                                                                </div>
+                                                                <TaskCard key={t.id} task={t} users={users} projects={projects} onEdit={openEditModal} />
                                                             ))}
+                                                            {getTasksByStatus('done').length === 0 && <div className="text-center text-gray-400 text-xs py-4">لا توجد مهام مكتملة</div>}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1438,6 +1742,19 @@ c30VzdGF0aWNvbi5jb20LzUxMi85NTYzLzk1NjMzMjYucG5nIiwic2l6ZXMiOiI1MTJ4NTEyIiwidHlw
                             </div>
                         </div>
                     </main>
+                    
+                    {/* New Task Modal */}
+                    {modalOpen && (
+                        <TaskModal 
+                            isOpen={modalOpen}
+                            onClose={() => setModalOpen(false)}
+                            task={editingTask}
+                            onSave={handleSaveTask}
+                            users={users}
+                            projects={projects}
+                            currentUser={user}
+                        />
+                    )}
                 </div>
             );
         };
