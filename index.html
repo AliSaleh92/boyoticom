@@ -15,7 +15,8 @@
             colors: {
               brand: { 900: '#2C3340', 800: '#1e232e', 50: '#f0f9ff' },
               accent: { 400: '#E6BC76', 500: '#CE9B52', 600: '#b0823e' },
-              crm: { 500: '#6366f1', 600: '#4f46e5' }
+              crm: { 500: '#6366f1', 600: '#4f46e5' },
+              pm: { 500: '#0d9488', 600: '#0f766e', 50: '#f0fdfa' } // Teal for PM
             },
             fontFamily: { sans: ['Cairo', 'sans-serif'] }
           }
@@ -45,6 +46,10 @@
       .leaflet-container { width: 100%; height: 100%; z-index: 1; border-radius: 0.75rem; }
       .portal-card { transition: all 0.3s ease; }
       .portal-card:hover { transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1); }
+      /* Custom Scrollbar for Kanban */
+      .kanban-col::-webkit-scrollbar { width: 6px; }
+      .kanban-col::-webkit-scrollbar-track { background: transparent; }
+      .kanban-col::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
     </style>
 </head>
 <body class="notranslate">
@@ -92,9 +97,7 @@
         };
         const safeStr = (val) => (val === null || val === undefined) ? '' : String(val);
         const safeArr = (val) => Array.isArray(val) ? val : [];
-        // Helper to format ISO string to time (HH:MM)
         const formatTime = (isoString) => new Date(isoString).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
-        // Helper to format ISO string to date (DD/MM/YYYY)
         const formatDate = (isoString) => new Date(isoString).toLocaleDateString('en-GB');
         
         const Logo = ({ size = 40 }) => {
@@ -156,12 +159,14 @@
             const [localUser, setLocalUser] = useState(user || {});
             const [crmRole, setCrmRole] = useState(user?.permissions?.crm_role || 'none');
             const [attRole, setAttRole] = useState(user?.permissions?.att_role || 'none');
+            const [pmRole, setPmRole] = useState(user?.permissions?.pm_role || 'none');
 
             useEffect(() => {
                 if(user) {
                     setLocalUser(user);
                     setCrmRole(user.permissions?.crm_role || 'none');
                     setAttRole(user.permissions?.att_role || 'none');
+                    setPmRole(user.permissions?.pm_role || 'none');
                 }
             }, [user]);
 
@@ -178,11 +183,15 @@
                     att_access: attRole !== 'none',
                     att_role: attRole,
                     att_reports: attRole === 'supervisor',
-                    att_zones: attRole === 'supervisor'
+                    att_zones: attRole === 'supervisor',
+
+                    pm_access: pmRole !== 'none',
+                    pm_role: pmRole
                 };
                 const apps = [];
                 if (crmRole !== 'none') apps.push('crm');
                 if (attRole !== 'none') apps.push('attendance');
+                if (pmRole !== 'none') apps.push('pm');
                 onSave(localUser.id, localUser.name, localUser.email, apps, perms);
             };
 
@@ -193,7 +202,7 @@
                             <div className="font-bold text-xl text-brand-900">تعديل صلاحيات: {user.name}</div>
                             <div className="text-xs text-gray-500">{user.email}</div>
                         </div>
-                        <div className="space-y-4">
+                        <div className="space-y-4 max-h-[60vh] overflow-y-auto p-2">
                             <div className="border rounded-xl p-4 space-y-3">
                                 <h4 className="font-bold text-md text-brand-900">بيانات الموظف</h4>
                                 <input className="w-full border rounded p-3" placeholder="الاسم الثلاثي" value={localUser.name} onChange={e=>setLocalUser({...localUser, name:e.target.value})} />
@@ -215,6 +224,14 @@
                                     <button onClick={()=>setAttRole('supervisor')} className={`p-2 rounded border text-sm ${attRole==='supervisor'?'bg-accent-600 text-white':'bg-white'}`}>مشرف</button>
                                 </div>
                             </div>
+                            <div className="border rounded-xl p-4">
+                                <div className="flex items-center gap-2 mb-3 text-pm-600 font-bold"><Icon name="briefcase"/> إدارة المشاريع</div>
+                                <div className="grid grid-cols-3 gap-2">
+                                    <button onClick={()=>setPmRole('none')} className={`p-2 rounded border text-sm ${pmRole==='none'?'bg-gray-200':'bg-white'}`}>لا يوجد</button>
+                                    <button onClick={()=>setPmRole('employee')} className={`p-2 rounded border text-sm ${pmRole==='employee'?'bg-pm-600 text-white':'bg-white'}`}>موظف</button>
+                                    <button onClick={()=>setPmRole('manager')} className={`p-2 rounded border text-sm ${pmRole==='manager'?'bg-pm-600 text-white':'bg-white'}`}>مدير</button>
+                                </div>
+                            </div>
                         </div>
                         <div className="flex gap-2 mt-6 pt-4 border-t">
                             <button onClick={onClose} className="flex-1 bg-gray-100 py-3 rounded-xl font-bold">إلغاء</button>
@@ -232,9 +249,9 @@
 
             const handleSaveNew = (userData) => {
                 if(!userData.uid) return alert('UID مطلوب');
-                set(ref(db, `users/${userData.uid}`), { name: userData.name, email: userData.email, role: 'user', allowedApps: [], permissions: {crm_role: 'none', att_role: 'none'} }).then(() => {
+                set(ref(db, `users/${userData.uid}`), { name: userData.name, email: userData.email, role: 'user', allowedApps: [], permissions: {crm_role: 'none', att_role: 'none', pm_role: 'none'} }).then(() => {
                     setAddModal(false);
-                    setEditUser({ id: userData.uid, name: userData.name, email: userData.email, role: 'user', allowedApps: [], permissions: {crm_role: 'none', att_role: 'none'} }); 
+                    setEditUser({ id: userData.uid, name: userData.name, email: userData.email, role: 'user', allowedApps: [], permissions: {crm_role: 'none', att_role: 'none', pm_role: 'none'} }); 
                 }).catch(err => { console.error("Error", err); alert("فشل حفظ المستخدم الجديد."); });
             };
 
@@ -287,6 +304,7 @@
             const p = user.permissions || {};
             const canAccessCRM = isAdmin || p.crm_access;
             const canAccessAttendance = isAdmin || p.att_access;
+            const canAccessPM = isAdmin || p.pm_access;
 
             return (
                 <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 relative">
@@ -295,18 +313,23 @@
                             <button onClick={()=>setShowUserManager(true)} className="bg-brand-900 text-white px-5 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-xl hover:bg-brand-800 transition transform hover:scale-105"><Icon name="users" size={20}/> <span>إدارة الموظفين</span></button>
                         </div>
                     )}
-                    <div className="max-w-4xl w-full">
+                    <div className="max-w-5xl w-full">
                         <div className="flex flex-col md:flex-row justify-between items-center mb-12 gap-6">
                             <div className="flex items-center gap-5"><div className="w-20 h-20 bg-brand-900 rounded-2xl text-white flex items-center justify-center text-3xl font-black shadow-2xl shadow-brand-900/30"><Logo size={60} /></div><div><h1 className="text-3xl font-black text-brand-900 mb-1">مرحباً، {user.name} 👋</h1><p className="text-gray-500 font-medium">{isAdmin ? 'لوحة تحكم المدير العام' : 'اختر النظام للمتابعة'}</p></div></div>
                             <button onClick={()=>signOut(auth)} className="text-red-500 bg-red-50 px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-red-100 transition"><Icon name="log-out"/> <span>خروج</span></button>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             {canAccessCRM ? (
-                                <div onClick={() => onSelectApp('crm')} className="portal-card bg-white p-10 rounded-[2rem] shadow-lg border-2 border-transparent hover:border-crm-500 cursor-pointer group relative overflow-hidden"><div className="absolute top-0 left-0 w-full h-2 bg-crm-500"></div><div className="w-24 h-24 bg-crm-500 text-white rounded-3xl flex items-center justify-center mb-8 shadow-2xl shadow-crm-500/30 group-hover:scale-110 transition-transform duration-300"><Icon name="layout-grid" size={48} /></div><h2 className="text-3xl font-black text-gray-800 mb-3">إدارة العملاء</h2><p className="text-gray-500 leading-relaxed text-lg">نظامك المتكامل لإدارة العملاء والصفقات والتقارير.</p><div className="mt-10 flex items-center text-crm-600 font-bold text-lg group-hover:translate-x-2 transition-transform"><span>الدخول للنظام</span> <Icon name="arrow-left" className="mr-2"/></div></div>
-                            ) : ( <div className="bg-gray-50 p-10 rounded-[2rem] border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-center opacity-60 grayscale cursor-not-allowed"><Icon name="lock" size={48} className="text-gray-400 mb-4"/><h2 className="text-2xl font-bold text-gray-500">إدارة العملاء</h2><p className="text-gray-400 mt-2">غير مصرح لك بالدخول</p></div> )}
+                                <div onClick={() => onSelectApp('crm')} className="portal-card bg-white p-8 rounded-[2rem] shadow-lg border-2 border-transparent hover:border-crm-500 cursor-pointer group relative overflow-hidden"><div className="absolute top-0 left-0 w-full h-2 bg-crm-500"></div><div className="w-20 h-20 bg-crm-500 text-white rounded-3xl flex items-center justify-center mb-6 shadow-2xl shadow-crm-500/30 group-hover:scale-110 transition-transform duration-300"><Icon name="layout-grid" size={40} /></div><h2 className="text-2xl font-black text-gray-800 mb-2">إدارة العملاء</h2><p className="text-gray-500 text-sm leading-relaxed">نظامك المتكامل لإدارة العملاء والصفقات والتقارير.</p><div className="mt-6 flex items-center text-crm-600 font-bold group-hover:translate-x-2 transition-transform"><span>الدخول للنظام</span> <Icon name="arrow-left" className="mr-2" size={16}/></div></div>
+                            ) : ( <div className="bg-gray-50 p-8 rounded-[2rem] border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-center opacity-60 grayscale cursor-not-allowed"><Icon name="lock" size={40} className="text-gray-400 mb-4"/><h2 className="text-xl font-bold text-gray-500">إدارة العملاء</h2><p className="text-gray-400 text-sm mt-2">غير مصرح لك بالدخول</p></div> )}
+                            
                             {canAccessAttendance ? (
-                                <div onClick={() => onSelectApp('attendance')} className="portal-card bg-white p-10 rounded-[2rem] shadow-lg border-2 border-transparent hover:border-accent-500 cursor-pointer group relative overflow-hidden"><div className="absolute top-0 left-0 w-full h-2 bg-accent-500"></div><div className="w-24 h-24 bg-accent-500 text-white rounded-3xl flex items-center justify-center mb-8 shadow-2xl shadow-accent-500/30 group-hover:scale-110 transition-transform duration-300"><Icon name="clock" size={48} /></div><h2 className="text-3xl font-black text-gray-800 mb-3">الحضور والانصراف</h2><p className="text-gray-500 leading-relaxed text-lg">تسجيل الحضور اليومي وتتبع ساعات العمل.</p><div className="mt-10 flex items-center text-accent-600 font-bold text-lg group-hover:translate-x-2 transition-transform"><span>الدخول للنظام</span> <Icon name="arrow-left" className="mr-2"/></div></div>
-                            ) : ( <div className="bg-gray-50 p-10 rounded-[2rem] border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-center opacity-60 grayscale cursor-not-allowed"><Icon name="lock" size={48} className="text-gray-400 mb-4"/><h2 className="text-2xl font-bold text-gray-500">الحضور والانصراف</h2><p className="text-gray-400 mt-2">غير مصرح لك بالدخول</p></div> )}
+                                <div onClick={() => onSelectApp('attendance')} className="portal-card bg-white p-8 rounded-[2rem] shadow-lg border-2 border-transparent hover:border-accent-500 cursor-pointer group relative overflow-hidden"><div className="absolute top-0 left-0 w-full h-2 bg-accent-500"></div><div className="w-20 h-20 bg-accent-500 text-white rounded-3xl flex items-center justify-center mb-6 shadow-2xl shadow-accent-500/30 group-hover:scale-110 transition-transform duration-300"><Icon name="clock" size={40} /></div><h2 className="text-2xl font-black text-gray-800 mb-2">الحضور والانصراف</h2><p className="text-gray-500 text-sm leading-relaxed">تسجيل الحضور اليومي وتتبع ساعات العمل.</p><div className="mt-6 flex items-center text-accent-600 font-bold group-hover:translate-x-2 transition-transform"><span>الدخول للنظام</span> <Icon name="arrow-left" className="mr-2" size={16}/></div></div>
+                            ) : ( <div className="bg-gray-50 p-8 rounded-[2rem] border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-center opacity-60 grayscale cursor-not-allowed"><Icon name="lock" size={40} className="text-gray-400 mb-4"/><h2 className="text-xl font-bold text-gray-500">الحضور والانصراف</h2><p className="text-gray-400 text-sm mt-2">غير مصرح لك بالدخول</p></div> )}
+
+                            {canAccessPM ? (
+                                <div onClick={() => onSelectApp('pm')} className="portal-card bg-white p-8 rounded-[2rem] shadow-lg border-2 border-transparent hover:border-pm-500 cursor-pointer group relative overflow-hidden"><div className="absolute top-0 left-0 w-full h-2 bg-pm-500"></div><div className="w-20 h-20 bg-pm-500 text-white rounded-3xl flex items-center justify-center mb-6 shadow-2xl shadow-pm-500/30 group-hover:scale-110 transition-transform duration-300"><Icon name="briefcase" size={40} /></div><h2 className="text-2xl font-black text-gray-800 mb-2">المشاريع والمهام</h2><p className="text-gray-500 text-sm leading-relaxed">إدارة المشاريع، وتوزيع المهام، ومتابعة الإنجاز.</p><div className="mt-6 flex items-center text-pm-600 font-bold group-hover:translate-x-2 transition-transform"><span>الدخول للنظام</span> <Icon name="arrow-left" className="mr-2" size={16}/></div></div>
+                            ) : ( <div className="bg-gray-50 p-8 rounded-[2rem] border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-center opacity-60 grayscale cursor-not-allowed"><Icon name="lock" size={40} className="text-gray-400 mb-4"/><h2 className="text-xl font-bold text-gray-500">المشاريع والمهام</h2><p className="text-gray-400 text-sm mt-2">غير مصرح لك بالدخول</p></div> )}
                         </div>
                     </div>
                     {showUserManager && <UserManagerMain users={users} currentUser={user} onClose={()=>setShowUserManager(false)} onLoginAs={onLoginAs} />}
@@ -993,6 +1016,252 @@
             );
         };
 
+        // --- 7. PROJECT MANAGEMENT APP ---
+        const PMApp = ({ user, users, projects, tasks, onBack }) => {
+            const [page, setPage] = useState('dashboard');
+            const [newProjectName, setNewProjectName] = useState('');
+            const [newTask, setNewTask] = useState({ title: '', projectId: '', assignedTo: '', status: 'todo' });
+            const [sidebarOpen, setSidebarOpen] = useState(false);
+
+            // Helper for Kanban
+            const getTasksByStatus = (status) => tasks.filter(t => t.status === status);
+
+            const handleAddProject = () => {
+                if (!newProjectName.trim()) return;
+                push(ref(db, 'projects'), { 
+                    name: newProjectName, 
+                    createdBy: user.name, 
+                    dateCreated: new Date().toISOString(),
+                    status: 'active'
+                });
+                setNewProjectName('');
+                alert('تم إضافة المشروع بنجاح');
+            };
+
+            const handleAddTask = () => {
+                if (!newTask.title.trim() || !newTask.projectId) return alert('يرجى تعبئة البيانات المطلوبة');
+                push(ref(db, 'tasks'), { 
+                    ...newTask, 
+                    dateCreated: new Date().toISOString(),
+                    createdBy: user.name
+                });
+                setNewTask({ title: '', projectId: '', assignedTo: '', status: 'todo' });
+                alert('تم إضافة المهمة بنجاح');
+            };
+
+            const updateTaskStatus = (taskId, newStatus) => {
+                update(ref(db, `tasks/${taskId}`), { status: newStatus });
+            };
+
+            const deleteTask = (taskId) => {
+                if(confirm('هل أنت متأكد من حذف المهمة؟')) remove(ref(db, `tasks/${taskId}`));
+            };
+
+            return (
+                <div className="flex min-h-screen bg-slate-50">
+                    {/* Sidebar Overlay */}
+                    {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setSidebarOpen(false)}></div>}
+
+                    <aside className={`fixed inset-y-0 right-0 z-50 w-64 bg-white border-l transform transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:h-screen ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+                        <div className="p-6 flex justify-between items-center gap-2 font-black text-xl text-brand-900 border-b">
+                            <div className="flex items-center gap-2"><Logo size={32} /> بيوتكم</div>
+                            <button onClick={() => setSidebarOpen(false)} className="md:hidden text-gray-500"><Icon name="x" /></button>
+                        </div>
+                        <nav className="flex-1 p-4 space-y-2">
+                            <button onClick={()=>{setPage('dashboard');setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='dashboard'?'bg-pm-600 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="layout-dashboard"/> لوحة التحكم</button>
+                            <button onClick={()=>{setPage('projects');setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='projects'?'bg-pm-600 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="briefcase"/> المشاريع</button>
+                            <button onClick={()=>{setPage('tasks');setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='tasks'?'bg-pm-600 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="check-square"/> المهام (Kanban)</button>
+                        </nav>
+                        <div className="p-4 border-t">
+                            <button onClick={onBack} className="w-full bg-gray-100 text-gray-600 p-2 rounded-lg font-bold flex items-center justify-center gap-2"><Icon name="grid" size={16}/> تبديل التطبيق</button>
+                        </div>
+                    </aside>
+
+                    <main className="flex-1 flex flex-col h-screen overflow-hidden">
+                        <header className="bg-white border-b p-4 flex justify-between items-center sticky top-0 z-30">
+                            <div className="flex items-center gap-2"><button onClick={()=>setSidebarOpen(true)} className="md:hidden text-gray-600 p-1"><Icon name="menu" size={24}/></button><div className="font-bold text-xl text-brand-900">نظام إدارة المشاريع</div></div>
+                            <div className="flex items-center gap-2"><div className="text-sm font-bold">{user.name}</div><div className="w-8 h-8 bg-pm-600 rounded-full text-white flex items-center justify-center font-bold">{user.name[0]}</div></div>
+                        </header>
+
+                        <div className="flex-1 overflow-y-auto p-6">
+                            <div className="max-w-6xl mx-auto">
+                                {page === 'dashboard' && (
+                                    <div className="space-y-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <div className="bg-white p-6 rounded-2xl shadow-sm border flex items-center justify-between">
+                                                <div><div className="text-gray-500 text-sm font-bold">إجمالي المشاريع</div><div className="text-3xl font-black text-pm-600">{projects.length}</div></div>
+                                                <div className="p-3 bg-pm-50 rounded-xl text-pm-600"><Icon name="briefcase" size={32}/></div>
+                                            </div>
+                                            <div className="bg-white p-6 rounded-2xl shadow-sm border flex items-center justify-between">
+                                                <div><div className="text-gray-500 text-sm font-bold">المهام قيد التنفيذ</div><div className="text-3xl font-black text-orange-500">{tasks.filter(t=>t.status==='progress').length}</div></div>
+                                                <div className="p-3 bg-orange-50 rounded-xl text-orange-500"><Icon name="clock" size={32}/></div>
+                                            </div>
+                                            <div className="bg-white p-6 rounded-2xl shadow-sm border flex items-center justify-between">
+                                                <div><div className="text-gray-500 text-sm font-bold">المهام المكتملة</div><div className="text-3xl font-black text-green-500">{tasks.filter(t=>t.status==='done').length}</div></div>
+                                                <div className="p-3 bg-green-50 rounded-xl text-green-500"><Icon name="check-circle" size={32}/></div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                            <div className="bg-white p-6 rounded-2xl shadow-sm border">
+                                                <h3 className="font-bold mb-4">آخر المشاريع المضافة</h3>
+                                                <div className="space-y-3">
+                                                    {projects.slice(-5).reverse().map(p => (
+                                                        <div key={p.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                                            <div className="font-bold text-brand-900">{p.name}</div>
+                                                            <div className="text-xs text-gray-500 date-en">{formatDate(p.dateCreated)}</div>
+                                                        </div>
+                                                    ))}
+                                                    {projects.length === 0 && <div className="text-gray-400 text-sm text-center">لا توجد مشاريع</div>}
+                                                </div>
+                                            </div>
+                                            <div className="bg-white p-6 rounded-2xl shadow-sm border">
+                                                <h3 className="font-bold mb-4">مهامي المسندة</h3>
+                                                <div className="space-y-3">
+                                                    {tasks.filter(t => t.assignedTo === user.id && t.status !== 'done').map(t => (
+                                                        <div key={t.id} className="flex justify-between items-center p-3 bg-orange-50 border border-orange-100 rounded-lg">
+                                                            <div>
+                                                                <div className="font-bold text-brand-900">{t.title}</div>
+                                                                <div className="text-xs text-gray-500">{projects.find(p=>p.id===t.projectId)?.name}</div>
+                                                            </div>
+                                                            <span className="bg-white px-2 py-1 rounded text-xs font-bold text-orange-600">قيد العمل</span>
+                                                        </div>
+                                                    ))}
+                                                    {tasks.filter(t => t.assignedTo === user.id && t.status !== 'done').length === 0 && <div className="text-gray-400 text-sm text-center">لا توجد مهام مسندة لك</div>}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {page === 'projects' && (
+                                    <div className="space-y-6">
+                                        <div className="bg-white p-6 rounded-2xl shadow-sm border">
+                                            <h3 className="font-bold mb-4 text-lg">إضافة مشروع جديد</h3>
+                                            <div className="flex gap-2">
+                                                <input className="flex-1 border rounded-xl p-3 outline-none focus:border-pm-600" placeholder="اسم المشروع..." value={newProjectName} onChange={e=>setNewProjectName(e.target.value)} />
+                                                <button onClick={handleAddProject} className="bg-pm-600 text-white px-6 rounded-xl font-bold hover:bg-pm-700">إضافة</button>
+                                            </div>
+                                        </div>
+                                        <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
+                                            <table className="w-full text-right">
+                                                <thead className="bg-gray-50 text-brand-900 font-bold">
+                                                    <tr>
+                                                        <th className="p-4">اسم المشروع</th>
+                                                        <th className="p-4">تاريخ الإنشاء</th>
+                                                        <th className="p-4">المنشئ</th>
+                                                        <th className="p-4">الحالة</th>
+                                                        <th className="p-4">المهام</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y">
+                                                    {projects.map(p => (
+                                                        <tr key={p.id} className="hover:bg-gray-50">
+                                                            <td className="p-4 font-bold">{p.name}</td>
+                                                            <td className="p-4 text-sm date-en">{formatDate(p.dateCreated)}</td>
+                                                            <td className="p-4 text-sm">{p.createdBy}</td>
+                                                            <td className="p-4"><span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">نشط</span></td>
+                                                            <td className="p-4 font-bold text-pm-600">{tasks.filter(t=>t.projectId===p.id).length}</td>
+                                                        </tr>
+                                                    ))}
+                                                    {projects.length === 0 && <tr><td colSpan="5" className="p-8 text-center text-gray-400">لم يتم إضافة مشاريع بعد</td></tr>}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {page === 'tasks' && (
+                                    <div className="h-full flex flex-col">
+                                        <div className="bg-white p-4 rounded-xl shadow-sm border mb-6 flex flex-wrap gap-3 items-end">
+                                            <div className="flex-1 min-w-[200px]">
+                                                <label className="text-xs font-bold block mb-1">عنوان المهمة</label>
+                                                <input className="w-full border rounded-lg p-2 text-sm" value={newTask.title} onChange={e=>setNewTask({...newTask, title:e.target.value})} placeholder="أدخل العنوان..." />
+                                            </div>
+                                            <div className="w-48">
+                                                <label className="text-xs font-bold block mb-1">المشروع</label>
+                                                <select className="w-full border rounded-lg p-2 text-sm" value={newTask.projectId} onChange={e=>setNewTask({...newTask, projectId:e.target.value})}>
+                                                    <option value="">اختر المشروع</option>
+                                                    {projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+                                                </select>
+                                            </div>
+                                            <div className="w-48">
+                                                <label className="text-xs font-bold block mb-1">إسناد إلى</label>
+                                                <select className="w-full border rounded-lg p-2 text-sm" value={newTask.assignedTo} onChange={e=>setNewTask({...newTask, assignedTo:e.target.value})}>
+                                                    <option value="">اختر الموظف</option>
+                                                    {users.filter(u=>u.id!=='admin').map(u=><option key={u.id} value={u.id}>{u.name}</option>)}
+                                                </select>
+                                            </div>
+                                            <button onClick={handleAddTask} className="bg-pm-600 text-white px-4 py-2 rounded-lg font-bold h-[38px] hover:bg-pm-700">إضافة مهمة</button>
+                                        </div>
+
+                                        <div className="flex-1 overflow-x-auto">
+                                            <div className="flex gap-4 min-w-[1000px] h-full pb-4">
+                                                {/* Column: Todo */}
+                                                <div className="flex-1 bg-gray-100 rounded-xl flex flex-col kanban-col">
+                                                    <div className="p-4 font-black text-gray-600 flex justify-between"><span>قيد الانتظار</span> <span className="bg-white px-2 rounded-full text-sm">{getTasksByStatus('todo').length}</span></div>
+                                                    <div className="p-2 space-y-2 overflow-y-auto flex-1">
+                                                        {getTasksByStatus('todo').map(t => (
+                                                            <div key={t.id} className="bg-white p-3 rounded-lg shadow-sm border hover:shadow-md transition group">
+                                                                <div className="font-bold text-brand-900 mb-1">{t.title}</div>
+                                                                <div className="text-xs text-gray-500 mb-2 bg-gray-50 inline-block px-1 rounded">{projects.find(p=>p.id===t.projectId)?.name}</div>
+                                                                <div className="flex justify-between items-center mt-2">
+                                                                    <div className="flex items-center gap-1 text-xs text-gray-600"><Icon name="user" size={12}/> {users.find(u=>u.id===t.assignedTo)?.name || 'غير مسند'}</div>
+                                                                    <button onClick={()=>updateTaskStatus(t.id, 'progress')} className="text-blue-600 bg-blue-50 p-1 rounded hover:bg-blue-100 text-xs font-bold">بدء العمل &larr;</button>
+                                                                </div>
+                                                                <button onClick={()=>deleteTask(t.id)} className="hidden group-hover:block absolute top-2 left-2 text-red-400 hover:text-red-600"><Icon name="trash-2" size={14}/></button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                {/* Column: In Progress */}
+                                                <div className="flex-1 bg-blue-50 rounded-xl flex flex-col kanban-col">
+                                                    <div className="p-4 font-black text-blue-700 flex justify-between"><span>جاري التنفيذ</span> <span className="bg-white px-2 rounded-full text-sm">{getTasksByStatus('progress').length}</span></div>
+                                                    <div className="p-2 space-y-2 overflow-y-auto flex-1">
+                                                        {getTasksByStatus('progress').map(t => (
+                                                            <div key={t.id} className="bg-white p-3 rounded-lg shadow-sm border border-blue-100 hover:shadow-md transition relative group">
+                                                                <div className="font-bold text-brand-900 mb-1">{t.title}</div>
+                                                                <div className="text-xs text-gray-500 mb-2 bg-gray-50 inline-block px-1 rounded">{projects.find(p=>p.id===t.projectId)?.name}</div>
+                                                                <div className="flex justify-between items-center mt-2">
+                                                                    <div className="flex items-center gap-1 text-xs text-gray-600"><Icon name="user" size={12}/> {users.find(u=>u.id===t.assignedTo)?.name}</div>
+                                                                    <div className="flex gap-1">
+                                                                        <button onClick={()=>updateTaskStatus(t.id, 'todo')} className="text-gray-500 bg-gray-100 p-1 rounded hover:bg-gray-200 text-xs">&rarr;</button>
+                                                                        <button onClick={()=>updateTaskStatus(t.id, 'done')} className="text-green-600 bg-green-50 p-1 rounded hover:bg-green-100 text-xs font-bold">إكمال &larr;</button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                {/* Column: Done */}
+                                                <div className="flex-1 bg-green-50 rounded-xl flex flex-col kanban-col">
+                                                    <div className="p-4 font-black text-green-700 flex justify-between"><span>مكتملة</span> <span className="bg-white px-2 rounded-full text-sm">{getTasksByStatus('done').length}</span></div>
+                                                    <div className="p-2 space-y-2 overflow-y-auto flex-1">
+                                                        {getTasksByStatus('done').map(t => (
+                                                            <div key={t.id} className="bg-white p-3 rounded-lg shadow-sm border border-green-100 opacity-75 hover:opacity-100 transition group">
+                                                                <div className="font-bold text-gray-600 line-through mb-1">{t.title}</div>
+                                                                <div className="text-xs text-gray-400 mb-2">{projects.find(p=>p.id===t.projectId)?.name}</div>
+                                                                <div className="flex justify-between items-center mt-2">
+                                                                    <div className="text-xs text-green-600 font-bold flex items-center gap-1"><Icon name="check-circle" size={12}/> تم الإنجاز</div>
+                                                                    <button onClick={()=>updateTaskStatus(t.id, 'progress')} className="text-gray-400 hover:text-gray-600 text-xs">إعادة</button>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            );
+        };
+
         // --- 7. MAIN ORCHESTRATOR ---
         const App = () => {
             const [user, setUser] = useState(null); 
@@ -1004,6 +1273,8 @@
             const [zones, setZones] = useState([]); 
             const [logs, setLogs] = useState([]); 
             const [permissions, setPermissions] = useState([]); 
+            const [projects, setProjects] = useState([]);
+            const [tasks, setTasks] = useState([]);
             const [loading, setLoading] = useState(true);
 
             useEffect(() => { 
@@ -1029,6 +1300,8 @@
                         onValue(ref(db, 'zones'), s => setZones(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})) : [])); 
                         onValue(ref(db, 'attendance'), s => setLogs(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})) : [])); 
                         onValue(ref(db, 'permissions'), s => setPermissions(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})) : [])); 
+                        onValue(ref(db, 'projects'), s => setProjects(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})) : []));
+                        onValue(ref(db, 'tasks'), s => setTasks(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})) : []));
                     } else { 
                         setUser(null); setDbUser(null); setOriginalAdmin(null);
                     } 
@@ -1080,6 +1353,7 @@
                     {(() => {
                         if (currentApp === 'crm') return <CRMApp user={dbUser} clients={clients} users={users} onSaveClient={handleSaveClient} onImport={handleImport} onBack={() => setCurrentApp('portal')} />;
                         if (currentApp === 'attendance') return <AttendanceApp user={dbUser} zones={zones} usersList={users} logs={logs} permissions={permissions} onBack={() => setCurrentApp('portal')} />;
+                        if (currentApp === 'pm') return <PMApp user={dbUser} users={users} projects={projects} tasks={tasks} onBack={() => setCurrentApp('portal')} />;
                         return <Portal user={dbUser} users={users} onSelectApp={setCurrentApp} onLoginAs={handleLoginAs} />;
                     })()}
                 </>
