@@ -4,8 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="google" content="notranslate" />
+    <meta name="theme-color" content="#2C3340" />
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Boyoticom Portal</title>
     
+    <!-- PWA Manifest (Data URI for single file portability) -->
+    <link rel="manifest" href="data:application/manifest+json;base64,eyJuYW1lIjoiQm95b3RpY29tIEVSUCIsInNob3J0X25hbWUiOiJCb3lvdGljb20iLCJzdGFydF91cmwiOiIuIiwiZGlzcGxheSI6InN0YW5kYWxvbmUiLCJiYWNrZ3JvdW5kX2NvbG9yIjoiI2Y4ZmFmYyIsInRoZW1lX2NvbG9yIjoiIzJDMzM0MCIsImljb25zIjpbeyJzcmMiOiJodHRwczovL2Nkbi1pY29ucy1wbmcuZmxhdGljb24uY29tLzUxMi85NTYzLzk1NjMzMjYucG5nIiwic2l6ZXMiOiIxOTJ4MTkyIiwidHlwZSI6ImltYWdlL3BuZyJ9LHsic3JjIjoiaHR0cHM6Ly9jZG4taWNvbnXMtcG5nLmZsYXRpY29uLmNvbS81MTIvOTU2My85NTYzMzI2LnBuZyIsInNpemVzIjoiNTEyeDUxMiIsInR5cGUiOiJpbWFnZS9wbmcifV19" />
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/9563/9563326.png">
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -110,24 +117,57 @@
         const calculateDuration = (start, end) => { if (!start || !end) return '-'; const diffMs = new Date(end) - new Date(start); const diffHrs = Math.floor((diffMs % 86400000) / 3600000); const diffMins = Math.round(((diffMs % 86400000) % 3600000) / 60000); return `${diffHrs}س ${diffMins}د`; };
 
         // --- SUPPORT FOOTER COMPONENT ---
-        const SupportFooter = () => (
-            <div className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur border-t border-gray-200 py-2 px-4 flex flex-wrap justify-center items-center gap-4 text-[11px] text-gray-500 z-[100] shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-                <span className="font-bold text-brand-900">للدعم الفني:</span>
-                <div className="flex items-center gap-4">
-                    <a href="https://wa.me/966567501919" target="_blank" className="flex items-center gap-1.5 hover:text-green-600 transition group" title="WhatsApp">
-                        <div className="bg-green-50 text-green-600 p-1 rounded-full group-hover:bg-green-600 group-hover:text-white transition"><Icon name="message-circle" size={12}/></div>
-                        <span className="dir-ltr font-mono font-bold">056 750 1919</span>
-                    </a>
-                    <a href="tel:0567501919" className="flex items-center gap-1.5 hover:text-blue-600 transition group" title="Call">
-                        <div className="bg-blue-50 text-blue-600 p-1 rounded-full group-hover:bg-blue-600 group-hover:text-white transition"><Icon name="phone" size={12}/></div>
-                    </a>
-                    <a href="mailto:asaleh@boyoticom.com" className="flex items-center gap-1.5 hover:text-red-600 transition group" title="Email">
-                        <div className="bg-red-50 text-red-600 p-1 rounded-full group-hover:bg-red-600 group-hover:text-white transition"><Icon name="mail" size={12}/></div>
-                        <span className="font-mono font-bold">asaleh@boyoticom.com</span>
-                    </a>
+        const SupportFooter = () => {
+            const [deferredPrompt, setDeferredPrompt] = useState(null);
+            const [isIOS, setIsIOS] = useState(false);
+
+            useEffect(() => {
+                const handler = (e) => {
+                    e.preventDefault();
+                    setDeferredPrompt(e);
+                };
+                window.addEventListener('beforeinstallprompt', handler);
+                const isIosDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+                setIsIOS(isIosDevice);
+                return () => window.removeEventListener('beforeinstallprompt', handler);
+            }, []);
+
+            const handleInstallClick = () => {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    deferredPrompt.userChoice.then((choiceResult) => {
+                        setDeferredPrompt(null);
+                    });
+                } else if (isIOS) {
+                    alert("لتثبيت التطبيق على الآيفون:\n1. اضغط على زر المشاركة (Share) في أسفل المتصفح.\n2. اختر 'إضافة إلى الصفحة الرئيسية' (Add to Home Screen).");
+                } else {
+                    alert("التطبيق مثبت بالفعل أو غير مدعوم على هذا المتصفح. حاول استخدام Chrome أو Safari.");
+                }
+            };
+
+            return (
+                <div className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur border-t border-gray-200 py-2 px-4 flex flex-wrap justify-center items-center gap-4 text-[11px] text-gray-500 z-[100] shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                    <button onClick={handleInstallClick} className="bg-brand-900 text-white px-3 py-1 rounded-full flex items-center gap-1.5 font-bold hover:bg-brand-800 transition shadow-sm animate-pulse">
+                        <Icon name="download" size={12}/> <span>تثبيت التطبيق</span>
+                    </button>
+                    <div className="w-px h-4 bg-gray-300 hidden sm:block"></div>
+                    <span className="font-bold text-brand-900">للدعم الفني:</span>
+                    <div className="flex items-center gap-4">
+                        <a href="https://wa.me/966567501919" target="_blank" className="flex items-center gap-1.5 hover:text-green-600 transition group" title="WhatsApp">
+                            <div className="bg-green-50 text-green-600 p-1 rounded-full group-hover:bg-green-600 group-hover:text-white transition"><Icon name="message-circle" size={12}/></div>
+                            <span className="dir-ltr font-mono font-bold">056 750 1919</span>
+                        </a>
+                        <a href="tel:0567501919" className="flex items-center gap-1.5 hover:text-blue-600 transition group" title="Call">
+                            <div className="bg-blue-50 text-blue-600 p-1 rounded-full group-hover:bg-blue-600 group-hover:text-white transition"><Icon name="phone" size={12}/></div>
+                        </a>
+                        <a href="mailto:asaleh@boyoticom.com" className="flex items-center gap-1.5 hover:text-red-600 transition group" title="Email">
+                            <div className="bg-red-50 text-red-600 p-1 rounded-full group-hover:bg-red-600 group-hover:text-white transition"><Icon name="mail" size={12}/></div>
+                            <span className="font-mono font-bold">asaleh@boyoticom.com</span>
+                        </a>
+                    </div>
                 </div>
-            </div>
-        );
+            );
+        };
 
         // --- CONSTANTS ---
         const STATUS_LIST = [ { key: 'New', label: 'عميل جديد', color: 'bg-blue-50 text-blue-700 border-blue-200' }, { key: 'Contacted1', label: 'تم التواصل 1', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' }, { key: 'Contacted2', label: 'تم التواصل 2', color: 'bg-purple-50 text-purple-700 border-purple-200' }, { key: 'Contacted3', label: 'تم التواصل 3', color: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200' }, { key: 'Deposit', label: 'دفع عربون', color: 'bg-amber-50 text-amber-700 border-amber-200' }, { key: 'Sold', label: 'تم البيع', color: 'bg-emerald-100 text-emerald-800 border-emerald-200' }, { key: 'Cancelled', label: 'ملغي', color: 'bg-red-50 text-red-700 border-red-200' }, ];
@@ -1287,7 +1327,7 @@
             );
         };
 
-        // --- 7. MAIN ORCHESTRATOR ---
+        // --- 8. MAIN APP ORCHESTRATOR (App Component) ---
         const App = () => {
             const [user, setUser] = useState(null); 
             const [dbUser, setDbUser] = useState(null); 
