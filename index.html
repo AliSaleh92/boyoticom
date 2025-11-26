@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Boyoticom Portal</title>
     
-    <!-- PWA Manifest (Data URI for single file portability) -->
+    <!-- PWA Manifest (Data URI) -->
     <link rel="manifest" href="data:application/manifest+json;base64,eyJuYW1lIjoiQm95b3RpY29tIEVSUCIsInNob3J0X25hbWUiOiJCb3lvdGljb20iLCJzdGFydF91cmwiOiIuIiwiZGlzcGxheSI6InN0YW5kYWxvbmUiLCJiYWNrZ3JvdW5kX2NvbG9yIjoiI2Y4ZmFmYyIsInRoZW1lX2NvbG9yIjoiIzJDMzM0MCIsImljb25zIjpbeyJzcmMiOiJodHRwczovL2Nkbi1pY29ucy1wbmcuZmxhdGljb24uY29tLzUxMi85NTYzLzk1NjMzMjYucG5nIiwic2l6ZXMiOiIxOTJ4MTkyIiwidHlwZSI6ImltYWdlL3BuZyJ9LHsic3JjIjoiaHR0cHM6Ly9jZG4taWNvbnXMtcG5nLmZsYXRpY29uLmNvbS81MTIvOTU2My85NTYzMzI2LnBuZyIsInNpemVzIjoiNTEyeDUxMiIsInR5cGUiOiJpbWFnZS9wbmcifV19" />
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/9563/9563326.png">
 
@@ -23,7 +23,7 @@
               brand: { 900: '#2C3340', 800: '#1e232e', 50: '#f0f9ff' },
               accent: { 400: '#E6BC76', 500: '#CE9B52', 600: '#b0823e' },
               crm: { 500: '#6366f1', 600: '#4f46e5' },
-              pm: { 500: '#0d9488', 600: '#0f766e', 50: '#f0fdfa' } // Teal for PM
+              pm: { 500: '#0d9488', 600: '#0f766e', 50: '#f0fdfa' }
             },
             fontFamily: { sans: ['Cairo', 'sans-serif'] }
           }
@@ -53,7 +53,6 @@
       .leaflet-container { width: 100%; height: 100%; z-index: 1; border-radius: 0.75rem; }
       .portal-card { transition: all 0.3s ease; }
       .portal-card:hover { transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1); }
-      /* Custom Scrollbar for Kanban */
       .kanban-col::-webkit-scrollbar { width: 6px; }
       .kanban-col::-webkit-scrollbar-track { background: transparent; }
       .kanban-col::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
@@ -116,10 +115,59 @@
         const exportToExcel = (data, fileName) => { const worksheet = XLSX.utils.json_to_sheet(data); const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1"); XLSX.writeFile(workbook, `${fileName}.xlsx`); };
         const calculateDuration = (start, end) => { if (!start || !end) return '-'; const diffMs = new Date(end) - new Date(start); const diffHrs = Math.floor((diffMs % 86400000) / 3600000); const diffMins = Math.round(((diffMs % 86400000) % 3600000) / 60000); return `${diffHrs}س ${diffMins}د`; };
 
-        // --- SUPPORT FOOTER COMPONENT (Simple Icons Only) ---
+        // --- INSTALL INSTRUCTIONS MODAL ---
+        const InstallModal = ({ isOpen, onClose, platform }) => {
+            if (!isOpen) return null;
+            return (
+                <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4" onClick={onClose}>
+                    <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl relative animate-slide-up" onClick={e => e.stopPropagation()}>
+                        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><Icon name="x" size={20}/></button>
+                        
+                        <div className="text-center mb-6">
+                            <div className="w-16 h-16 bg-brand-900 rounded-2xl flex items-center justify-center mx-auto mb-4 text-white shadow-lg">
+                                <Icon name="download" size={32} />
+                            </div>
+                            <h3 className="font-bold text-xl text-brand-900">تثبيت التطبيق</h3>
+                            <p className="text-sm text-gray-500 mt-2">للوصول السريع، أضف التطبيق إلى شاشتك الرئيسية.</p>
+                        </div>
+
+                        <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 text-sm text-gray-700 space-y-4">
+                            {platform === 'ios' ? (
+                                <>
+                                    <div className="flex items-center gap-3">
+                                        <span className="bg-gray-200 w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs">1</span>
+                                        <span>اضغط على زر <span className="font-bold">المشاركة</span> <Icon name="share" size={14} className="inline mx-1"/> في الأسفل.</span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <span className="bg-gray-200 w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs">2</span>
+                                        <span>اختر <span className="font-bold">"إضافة إلى الصفحة الرئيسية"</span>.</span>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="flex items-center gap-3">
+                                        <span className="bg-gray-200 w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs">1</span>
+                                        <span>اضغط على زر <span className="font-bold">القائمة</span> (ثلاث نقاط) في المتصفح.</span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <span className="bg-gray-200 w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs">2</span>
+                                        <span>اختر <span className="font-bold">"تثبيت التطبيق"</span> أو <span className="font-bold">"الإضافة للشاشة الرئيسية"</span>.</span>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
+                        <button onClick={onClose} className="w-full bg-brand-900 text-white py-3 rounded-xl font-bold mt-6 hover:bg-brand-800">حسناً، فهمت</button>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- SUPPORT FOOTER COMPONENT ---
         const SupportFooter = () => {
             const [deferredPrompt, setDeferredPrompt] = useState(null);
-            const [isIOS, setIsIOS] = useState(false);
+            const [showModal, setShowModal] = useState(false);
+            const [platform, setPlatform] = useState('other');
 
             useEffect(() => {
                 const handler = (e) => {
@@ -127,8 +175,11 @@
                     setDeferredPrompt(e);
                 };
                 window.addEventListener('beforeinstallprompt', handler);
-                const isIosDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-                setIsIOS(isIosDevice);
+                
+                const ua = navigator.userAgent;
+                if (/iPad|iPhone|iPod/.test(ua) && !window.MSStream) setPlatform('ios');
+                else if (/Android/.test(ua)) setPlatform('android');
+                
                 return () => window.removeEventListener('beforeinstallprompt', handler);
             }, []);
 
@@ -136,37 +187,34 @@
                 if (deferredPrompt) {
                     deferredPrompt.prompt();
                     deferredPrompt.userChoice.then((choiceResult) => {
-                        setDeferredPrompt(null);
+                        if (choiceResult.outcome === 'accepted') setDeferredPrompt(null);
                     });
-                } else if (isIOS) {
-                    alert("لتثبيت التطبيق على الآيفون:\n1. اضغط على زر المشاركة (Share) في أسفل المتصفح.\n2. اختر 'إضافة إلى الصفحة الرئيسية' (Add to Home Screen).");
                 } else {
-                    alert("التطبيق مثبت بالفعل أو غير مدعوم على هذا المتصفح. حاول استخدام Chrome أو Safari.");
+                    setShowModal(true);
                 }
             };
 
             return (
-                <div className="w-full flex justify-center items-center gap-6 py-8 mt-auto opacity-60 hover:opacity-100 transition-opacity">
-                    {/* Install Button (Minimal) */}
-                    <button onClick={handleInstallClick} className="bg-gray-200 text-gray-600 p-2 rounded-full hover:bg-brand-900 hover:text-white transition" title="تثبيت التطبيق">
-                        <Icon name="download" size={18}/>
-                    </button>
-
-                    <div className="w-px h-4 bg-gray-300"></div>
-
-                    {/* Support Icons Only */}
-                    <div className="flex items-center gap-5 text-gray-400">
-                        <a href="https://wa.me/966567501919" target="_blank" className="hover:text-green-600 hover:scale-110 transition transform" title="WhatsApp">
-                            <Icon name="message-circle" size={20}/>
-                        </a>
-                        <a href="tel:0567501919" className="hover:text-blue-600 hover:scale-110 transition transform" title="Call">
-                            <Icon name="phone" size={20}/>
-                        </a>
-                        <a href="mailto:asaleh@boyoticom.com" className="hover:text-red-600 hover:scale-110 transition transform" title="Email">
-                            <Icon name="mail" size={20}/>
-                        </a>
+                <>
+                    <div className="w-full flex justify-center items-center gap-6 py-8 mt-auto opacity-60 hover:opacity-100 transition-opacity">
+                        <button onClick={handleInstallClick} className="bg-gray-200 text-gray-600 p-2 rounded-full hover:bg-brand-900 hover:text-white transition shadow-sm" title="تثبيت التطبيق">
+                            <Icon name="download" size={18}/>
+                        </button>
+                        <div className="w-px h-4 bg-gray-300"></div>
+                        <div className="flex items-center gap-5 text-gray-400">
+                            <a href="https://wa.me/966567501919" target="_blank" className="hover:text-green-600 hover:scale-110 transition transform" title="WhatsApp">
+                                <Icon name="message-circle" size={20}/>
+                            </a>
+                            <a href="tel:0567501919" className="hover:text-blue-600 hover:scale-110 transition transform" title="Call">
+                                <Icon name="phone" size={20}/>
+                            </a>
+                            <a href="mailto:asaleh@boyoticom.com" className="hover:text-red-600 hover:scale-110 transition transform" title="Email">
+                                <Icon name="mail" size={20}/>
+                            </a>
+                        </div>
                     </div>
-                </div>
+                    <InstallModal isOpen={showModal} onClose={()=>setShowModal(false)} platform={platform} />
+                </>
             );
         };
 
