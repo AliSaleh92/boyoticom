@@ -1,7 +1,0 @@
-{
-  "name": "Boyoticom Portal",
-  "description": "A unified employee portal for CRM and Attendance management, featuring real-time tracking, reporting, and role-based access control.",
-  "requestFramePermissions": [
-    "geolocation"
-  ]
-}
