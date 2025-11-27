@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" translate="no">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="google" content="notranslate" />
+    <meta name="theme-color" content="#2C3340" />
+    <title>Boyoticom PM</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              brand: { 900: '#2C3340', 800: '#1e232e', 50: '#f0f9ff' },
+              accent: { 400: '#E6BC76', 500: '#CE9B52', 600: '#b0823e' },
+              crm: { 500: '#6366f1', 600: '#4f46e5' },
+              pm: { 500: '#0d9488', 600: '#0f766e', 50: '#f0fdfa' }
+            },
+            fontFamily: { sans: ['Cairo', 'sans-serif'] }
+          }
+        }
+      }
+    </script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+      body { font-family: 'Cairo', sans-serif; background-color: #f8fafc; color: #2C3340; }
+      .date-en { font-family: sans-serif; direction: ltr; display: inline-block; }
+      .loader { border: 3px solid #f3f3f3; border-radius: 50%; border-top: 3px solid #2C3340; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+      .kanban-col::-webkit-scrollbar { width: 6px; }
+      .kanban-col::-webkit-scrollbar-track { background: transparent; }
+      .kanban-col::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+    </style>
+</head>
+<body class="notranslate">
+    <div id="root"></div>
+
+    <script type="text/babel" data-type="module">
+        const firebaseConfig = {
+          apiKey: "AIzaSyAOMnl9ikDMngZZH-eSa3ldqtDCh6qsy_U",
+          authDomain: "boyoticom-15c4b.firebaseapp.com",
+          databaseURL: "https://boyoticom-15c4b-default-rtdb.firebaseio.com",
+          projectId: "boyoticom-15c4b",
+          storageBucket: "boyoticom-15c4b.firebasestorage.app",
+          messagingSenderId: "433583401372",
+          appId: "1:433583401372:web:2d483367ad0e0184a10059"
+        };
+
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getDatabase, ref, set, push, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getDatabase(app);
+
+        const { useState, useEffect, useMemo, useRef, Component } = window.React;
+
+        // --- SHARED UTILS ---
+        const Icon = ({ name, size = 20, className = "" }) => {
+            useEffect(() => { if (window.lucide) window.lucide.createIcons(); }, [name]);
+            return <i data-lucide={name} width={size} height={size} className={className}></i>;
+        };
+        const safeStr = (val) => (val === null || val === undefined) ? '' : String(val);
+        const safeArr = (val) => Array.isArray(val) ? val : [];
+        const formatTime = (isoString) => new Date(isoString).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+        const formatDate = (isoString) => new Date(isoString).toLocaleDateString('en-GB');
+        const Logo = ({ size = 40 }) => {
+            const [imgError, setImgError] = useState(false);
+            if (imgError) { return (<div className="bg-brand-900 rounded-xl flex items-center justify-center text-accent-500" style={{ width: size, height: size }}><Icon name="box" size={size * 0.6} /></div>); }
+            return (<img src="/logo.png" alt="شعار" className="object-contain" style={{ width: size, height: size }} onError={() => setImgError(true)} />);
+        };
+
+        // --- PM COMPONENTS ---
+        const TaskCard = ({ task, users, projects, onEdit }) => {
+            const project = projects.find(p => p.id === task.projectId);
+            const assignees = safeArr(task.assignedTo).map(id => users.find(u => u.id === id)?.name || id);
+            const dateDue = task.dateDue || '-';
+            return (
+                <div className="bg-white p-3 rounded-lg shadow-sm border hover:shadow-md transition group relative cursor-pointer" onClick={() => onEdit(task)}>
+                    <button onClick={(e) => { e.stopPropagation(); onEdit(task); }} className="absolute top-2 left-2 text-pm-400 hover:text-pm-600 p-1 rounded-full bg-white transition z-10"><Icon name="pencil" size={14}/></button>
+                    <div className="font-bold text-brand-900 mb-1">{task.title}</div>
+                    {project && (<div className="text-xs text-gray-500 mb-2 bg-gray-50 inline-block px-1 rounded-full">{project.name}</div>)}
+                    <div className="flex justify-between items-center mt-2 text-xs">
+                        <div className="flex items-center gap-1 text-gray-600" title="المسند إليهم"><Icon name="users" size={12}/> {assignees.length > 0 ? assignees.join(', ') : 'غير مسند'}</div>
+                        {task.dateDue && (<div className={`flex items-center gap-1 date-en font-bold ${new Date(dateDue) < new Date() ? 'text-red-500' : 'text-pm-600'}`} title="تاريخ الإنجاز"><Icon name="calendar" size={12}/>{dateDue}</div>)}
+                    </div>
+                </div>
+            );
+        };
+
+        const TaskModal = ({ isOpen, onClose, task, onSave, users, projects, currentUser }) => {
+            const initialTaskData = { title: '', projectId: '', description: '', driveLink: '', dateDue: '', assignedTo: [], status: 'todo', notes: [], history: [] };
+            const [d, setD] = useState(initialTaskData); const [newNote, setNewNote] = useState(''); const [activeTab, setActiveTab] = useState('details'); const notesEndRef = useRef(null);
+            const pmUsers = useMemo(() => users.filter(u => u.permissions?.pm_access || u.role === 'admin'), [users]);
+            useEffect(() => { if (isOpen) { if (task) { setD({ ...task, notes: task.notes ? Object.values(task.notes) : [], history: task.history ? Object.values(task.history) : [] }); } else { setD(initialTaskData); } setActiveTab('details'); } }, [isOpen, task]);
+            useEffect(() => { notesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [d.notes]);
+            const handleToggleAssignee = (userId) => { const currentAssignees = safeArr(d.assignedTo); setD(prev => ({ ...prev, assignedTo: currentAssignees.includes(userId) ? currentAssignees.filter(id => id !== userId) : [...currentAssignees, userId] })); };
+            const handleAddNote = () => { if (!newNote.trim()) return; const noteData = { text: newNote, date: new Date().toISOString(), author: currentUser.name }; const logData = { action: 'إضافة ملاحظة', user: currentUser.name, date: new Date().toISOString() }; setD(prev => ({ ...prev, notes: [...safeArr(prev.notes), noteData], history: [...safeArr(prev.history), logData] })); if (task?.id) { push(ref(db, `tasks/${task.id}/notes`), noteData); push(ref(db, `tasks/${task.id}/history`), logData); } setNewNote(''); };
+            const handleSaveInternal = () => { if (!d.title || !d.projectId || safeArr(d.assignedTo).length === 0) { return alert('الرجاء إدخال اسم المهمة واختيار المشروع والمسند إليهم.'); } const isNew = !task?.id; let logAction = isNew ? 'إنشاء مهمة جديدة' : 'تحديث بيانات المهمة'; if (!isNew && (d.status !== task.status)) { logAction = `تغيير حالة المهمة إلى ${d.status === 'todo' ? 'قيد الانتظار' : d.status === 'progress' ? 'جاري التنفيذ' : 'مكتملة'}`; } const logData = { action: logAction, user: currentUser.name, date: new Date().toISOString() }; const updatedHistory = [...safeArr(d.history), logData]; const savePayload = { title: d.title, projectId: d.projectId, description: d.description || '', driveLink: d.driveLink || '', dateDue: d.dateDue || '', assignedTo: safeArr(d.assignedTo), status: d.status, dateCreated: task?.dateCreated || new Date().toISOString(), createdBy: task?.createdBy || currentUser.name, notes: d.notes, history: updatedHistory }; onSave(savePayload, task?.id); };
+            const getStatusColor = (status) => { if (status === 'todo') return 'bg-gray-100 text-gray-700'; if (status === 'progress') return 'bg-blue-100 text-blue-700'; if (status === 'done') return 'bg-green-100 text-green-700'; return 'bg-gray-100 text-gray-700'; };
+            if (!isOpen) return null;
+            return (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white w-full max-w-4xl rounded-2xl p-6 shadow-2xl max-h-[95vh] overflow-y-auto">
+                        <div className="flex justify-between items-center border-b pb-3 mb-4"><h3 className="font-black text-xl text-brand-900">{task ? 'تعديل المهمة' : 'إنشاء مهمة جديدة'}</h3><button onClick={onClose} className="text-gray-500 hover:text-gray-700"><Icon name="x"/></button></div>
+                        <div className="flex gap-4 mb-4 border-b">
+                            <button onClick={() => setActiveTab('details')} className={`font-bold pb-2 transition ${activeTab === 'details' ? 'text-pm-600 border-b-2 border-pm-600' : 'text-gray-500'}`}><Icon name="clipboard-check" size={18} className="inline-block ml-2"/> التفاصيل</button>
+                            <button onClick={() => setActiveTab('notes')} className={`font-bold pb-2 transition ${activeTab === 'notes' ? 'text-pm-600 border-b-2 border-pm-600' : 'text-gray-500'}`}><Icon name="message-circle" size={18} className="inline-block ml-2"/> الملاحظات ({safeArr(d.notes).length})</button>
+                            <button onClick={() => setActiveTab('history')} className={`font-bold pb-2 transition ${activeTab === 'history' ? 'text-pm-600 border-b-2 border-pm-600' : 'text-gray-500'}`}><Icon name="history" size={18} className="inline-block ml-2"/> سجل الأحداث</button>
+                        </div>
+                        <div className="min-h-[350px] max-h-[70vh] overflow-y-auto p-2">
+                            {activeTab === 'details' && (
+                                <div className="space-y-4">
+                                    <input className="w-full text-2xl font-bold border-b p-2 focus:outline-none" placeholder="عنوان المهمة" value={d.title} onChange={e => setD({...d, title: e.target.value})} />
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border p-4 rounded-xl">
+                                        <div><label className="text-xs font-bold block mb-1 text-gray-500">المشروع</label><select className="w-full border rounded-lg p-2 text-sm bg-gray-50" value={d.projectId} onChange={e => setD({...d, projectId: e.target.value})}><option value="">اختر المشروع</option>{projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
+                                        <div><label className="text-xs font-bold block mb-1 text-gray-500">تاريخ الإنجاز المطلوب</label><input type="date" className="w-full border rounded-lg p-2 text-sm bg-gray-50 date-en" value={d.dateDue || ''} onChange={e => setD({...d, dateDue: e.target.value})} /></div>
+                                        <div><label className="text-xs font-bold block mb-1 text-gray-500">حالة المهمة</label><select className="w-full border rounded-lg p-2 text-sm font-bold" value={d.status} onChange={e => setD({...d, status: e.target.value})} className={`w-full border rounded-lg p-2 text-sm font-bold ${getStatusColor(d.status)}`}><option value="todo">قيد الانتظار</option><option value="progress">جاري التنفيذ</option><option value="done">مكتملة</option></select></div>
+                                    </div>
+                                    <div><label className="text-xs font-bold block mb-1 text-gray-500">وصف المهمة</label><textarea className="w-full border rounded-lg p-3 h-24 resize-none bg-gray-50" placeholder="وصف تفصيلي للمهمة..." value={d.description} onChange={e => setD({...d, description: e.target.value})} /></div>
+                                    <div><label className="text-xs font-bold block mb-1 text-gray-500">رابط (جوجل درايف أو غيره)</label><input type="url" className="w-full border rounded-lg p-2 text-sm bg-gray-50 date-en" placeholder="https://drive.google.com/..." value={d.driveLink} onChange={e => setD({...d, driveLink: e.target.value})} />{d.driveLink && <a href={d.driveLink} target="_blank" className="text-xs text-blue-500 underline mt-1 block">فتح الرابط <Icon name="external-link" size={12} className="inline mr-1"/></a>}</div>
+                                    <div className="border p-4 rounded-xl"><label className="text-sm font-bold block mb-2 text-brand-900">المسند إليهم (يمكن اختيار أكثر من شخص)</label><div className="flex flex-wrap gap-2">{pmUsers.map(u => (<button key={u.id} onClick={() => handleToggleAssignee(u.id)} className={`px-3 py-1 rounded-full text-xs font-bold transition ${safeArr(d.assignedTo).includes(u.id) ? 'bg-pm-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{u.name}</button>))}</div></div>
+                                </div>
+                            )}
+                            {activeTab === 'notes' && (<div className="flex flex-col h-full"><div className="flex-1 bg-white border rounded-xl p-4 mb-4 overflow-y-auto max-h-[60vh] space-y-3 shadow-inner">{safeArr(d.notes).length === 0 && <div className="text-center text-gray-400 text-sm mt-10">لا توجد ملاحظات بعد.</div>}{safeArr(d.notes).map((n, i) => (<div key={i} className={`flex ${n.author === currentUser.name ? 'justify-end' : 'justify-start'}`}><div className={`max-w-[80%] p-3 rounded-xl shadow-md ${n.author === currentUser.name ? 'bg-pm-600 text-white rounded-bl-lg' : 'bg-gray-100 text-gray-800 rounded-br-lg'}`}><p className="font-bold text-xs mb-1">{n.author === currentUser.name ? 'أنت' : n.author}</p><p className="text-sm break-words">{n.text}</p><span className={`text-[10px] block mt-1 ${n.author === currentUser.name ? 'text-gray-200' : 'text-gray-400'} text-left date-en`}>{formatTime(n.date)}</span></div></div>))}<div ref={notesEndRef} /></div><div className="flex gap-2"><input className="flex-1 border rounded-xl p-3 text-sm focus:ring-1 focus:ring-pm-600 outline-none" placeholder="اكتب ملاحظة جديدة..." value={newNote} onChange={e => setNewNote(e.target.value)} onKeyPress={e => e.key === 'Enter' && handleAddNote()} /><button onClick={handleAddNote} className="bg-pm-600 hover:bg-pm-700 text-white p-3 rounded-xl"><Icon name="send" size={20}/></button></div></div>)}
+                            {activeTab === 'history' && (<div className="bg-white border rounded-xl p-4 shadow-inner"><div className="text-xs space-y-2 max-h-[60vh] overflow-y-auto">{safeArr(d.history).slice().reverse().map((h, i) => (<div key={i} className="flex justify-between items-start border-b pb-2 last:border-0 last:pb-0"><span className="font-bold text-gray-700 w-3/5">{h.action}</span><div className="text-gray-500 text-left w-2/5"><div className='text-[11px]'>{h.user}</div><div className="date-en text-[10px] text-gray-400">{new Date(h.date).toLocaleDateString('en-GB')} <span className='mr-1'>{new Date(h.date).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}</span></div></div></div>))}{safeArr(d.history).length === 0 && <div className="text-center text-gray-400 text-sm mt-10">لا يوجد سجل أحداث لهذه المهمة.</div>}</div></div>)}
+                        </div>
+                        <div className="mt-6 pt-4 border-t flex gap-3"><button onClick={onClose} className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200">إلغاء</button><button onClick={handleSaveInternal} className="flex-1 bg-pm-600 text-white py-3 rounded-xl font-bold hover:bg-pm-700 shadow-lg">حفظ المهمة</button></div>
+                    </div>
+                </div>
+            );
+        };
+
+        const PMApp = ({ user, users, projects, tasks }) => {
+            const [page, setPage] = useState('dashboard');
+            const [modalOpen, setModalOpen] = useState(false);
+            const [editingTask, setEditingTask] = useState(null);
+            const [sidebarOpen, setSidebarOpen] = useState(false);
+            const [newProjectName, setNewProjectName] = useState(''); 
+            
+            const getTasksByStatus = (status) => tasks.filter(t => t.status === status);
+            const handleAddProject = () => { if (!newProjectName.trim()) return; push(ref(db, 'projects'), { name: newProjectName, createdBy: user.name, dateCreated: new Date().toISOString(), status: 'active' }); setNewProjectName(''); };
+            const handleSaveTask = (taskData, taskId) => { const { notes, history, ...payload } = taskData; if (taskId) { update(ref(db, `tasks/${taskId}`), payload); } else { push(ref(db, 'tasks'), { ...payload, notes: notes, history: history }); } setModalOpen(false); setEditingTask(null); };
+            const openEditModal = (task) => { setEditingTask(task); setModalOpen(true); };
+            const openAddModal = (initialStatus = 'todo') => { setEditingTask({ status: initialStatus }); setModalOpen(true); };
+
+            return (
+                <div className="flex min-h-screen bg-slate-50">
+                    {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setSidebarOpen(false)}></div>}
+                    <aside className={`fixed inset-y-0 right-0 z-50 w-64 bg-white border-l transform transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:h-screen ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+                        <div className="p-6 flex justify-between items-center gap-2 font-black text-xl text-brand-900 border-b"><div className="flex items-center gap-2"><Logo size={32} /> بيوتكم</div><button onClick={() => setSidebarOpen(false)} className="md:hidden text-gray-500"><Icon name="x" /></button></div>
+                        <nav className="flex-1 p-4 space-y-2">
+                            <button onClick={()=>{setPage('dashboard');setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='dashboard'?'bg-pm-600 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="layout-dashboard"/> لوحة التحكم</button>
+                            <button onClick={()=>{setPage('projects');setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='projects'?'bg-pm-600 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="briefcase"/> المشاريع</button>
+                            <button onClick={()=>{setPage('tasks');setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='tasks'?'bg-pm-600 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="check-square"/> المهام (Kanban)</button>
+                        </nav>
+                        <div className="p-4 border-t"><button onClick={() => window.location.href='index.html'} className="w-full bg-gray-100 text-gray-600 p-2 rounded-lg font-bold flex items-center justify-center gap-2"><Icon name="grid" size={16}/> تبديل التطبيق</button></div>
+                    </aside>
+
+                    <main className="flex-1 flex flex-col h-screen overflow-hidden">
+                        <header className="bg-white border-b p-4 flex justify-between items-center sticky top-0 z-30"><div className="flex items-center gap-2"><button onClick={()=>setSidebarOpen(true)} className="md:hidden text-gray-600 p-1"><Icon name="menu" size={24}/></button><div className="font-bold text-xl text-brand-900">نظام إدارة المشاريع</div></div><div className="flex items-center gap-2"><div className="text-sm font-bold">{user.name}</div><div className="w-8 h-8 bg-pm-600 rounded-full text-white flex items-center justify-center font-bold">{user.name[0]}</div></div></header>
+                        <div className="flex-1 overflow-y-auto p-6">
+                            <div className="max-w-6xl mx-auto flex flex-col min-h-full">
+                                <div className="flex-1">
+                                    {page === 'dashboard' && (<div className="space-y-6"><div className="grid grid-cols-1 md:grid-cols-3 gap-4"><div className="bg-white p-6 rounded-2xl shadow-sm border flex items-center justify-between"><div><div className="text-gray-500 text-sm font-bold">إجمالي المشاريع</div><div className="text-3xl font-black text-pm-600">{projects.length}</div></div><div className="p-3 bg-pm-50 rounded-xl text-pm-600"><Icon name="briefcase" size={32}/></div></div><div className="bg-white p-6 rounded-2xl shadow-sm border flex items-center justify-between"><div><div className="text-gray-500 text-sm font-bold">المهام قيد التنفيذ</div><div className="text-3xl font-black text-orange-500">{tasks.filter(t=>t.status==='progress').length}</div></div><div className="p-3 bg-orange-50 rounded-xl text-orange-500"><Icon name="clock" size={32}/></div></div><div className="bg-white p-6 rounded-2xl shadow-sm border flex items-center justify-between"><div><div className="text-gray-500 text-sm font-bold">المهام المكتملة</div><div className="text-3xl font-black text-green-500">{tasks.filter(t=>t.status==='done').length}</div></div><div className="p-3 bg-green-50 rounded-xl text-green-500"><Icon name="check-circle" size={32}/></div></div></div><div className="grid grid-cols-1 lg:grid-cols-2 gap-6"><div className="bg-white p-6 rounded-2xl shadow-sm border"><h3 className="font-bold mb-4">آخر المشاريع المضافة</h3><div className="space-y-3">{projects.slice(-5).reverse().map(p => (<div key={p.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg"><div className="font-bold text-brand-900">{p.name}</div><div className="text-xs text-gray-500 date-en">{formatDate(p.dateCreated)}</div></div>))}{projects.length === 0 && <div className="text-gray-400 text-sm text-center">لا توجد مشاريع</div>}</div></div><div className="bg-white p-6 rounded-2xl shadow-sm border"><h3 className="font-bold mb-4">مهامي المسندة</h3><div className="space-y-3">{tasks.filter(t => safeArr(t.assignedTo).includes(user.id) && t.status !== 'done').map(t => (<div key={t.id} className="flex justify-between items-center p-3 bg-orange-50 border border-orange-100 rounded-lg"><div><div className="font-bold text-brand-900">{t.title}</div><div className="text-xs text-gray-500">{projects.find(p=>p.id===t.projectId)?.name}</div></div><span className="bg-white px-2 py-1 rounded text-xs font-bold text-orange-600">قيد العمل</span></div>))}{tasks.filter(t => safeArr(t.assignedTo).includes(user.id) && t.status !== 'done').length === 0 && <div className="text-gray-400 text-sm text-center">لا توجد مهام مسندة لك</div>}</div></div></div></div>)}
+                                    {page === 'projects' && (<div className="space-y-6"><div className="bg-white p-6 rounded-2xl shadow-sm border"><h3 className="font-bold mb-4 text-lg">إضافة مشروع جديد</h3><div className="flex gap-2"><input className="flex-1 border rounded-xl p-3 outline-none focus:border-pm-600" placeholder="اسم المشروع..." value={newProjectName} onChange={e=>setNewProjectName(e.target.value)} /><button onClick={handleAddProject} className="bg-pm-600 text-white px-6 rounded-xl font-bold hover:bg-pm-700">إضافة</button></div></div><div className="bg-white rounded-2xl shadow-sm border overflow-hidden"><table className="w-full text-right"><thead className="bg-gray-50 text-brand-900 font-bold"><tr><th className="p-4">اسم المشروع</th><th className="p-4">تاريخ الإنشاء</th><th className="p-4">المنشئ</th><th className="p-4">الحالة</th><th className="p-4">المهام</th></tr></thead><tbody className="divide-y">{projects.map(p => (<tr key={p.id} className="hover:bg-gray-50"><td className="p-4 font-bold">{p.name}</td><td className="p-4 text-sm date-en">{formatDate(p.dateCreated)}</td><td className="p-4 text-sm">{p.createdBy}</td><td className="p-4"><span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">نشط</span></td><td className="p-4 font-bold text-pm-600">{tasks.filter(t=>t.projectId===p.id).length}</td></tr>))}{projects.length === 0 && <tr><td colSpan="5" className="p-8 text-center text-gray-400">لم يتم إضافة مشاريع بعد</td></tr>}</tbody></table></div></div>)}
+                                    {page === 'tasks' && (<div className="h-full flex flex-col"><div className="mb-6"><button onClick={() => openAddModal('todo')} className="bg-pm-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-pm-700 flex items-center gap-2 shadow-md"><Icon name="plus" size={18}/> <span>إضافة مهمة جديدة</span></button></div><div className="flex-1 overflow-x-auto"><div className="flex gap-4 min-w-[1000px] h-full pb-4"><div className="flex-1 bg-gray-100 rounded-xl flex flex-col kanban-col"><div className="p-4 font-black text-gray-600 flex justify-between"><span>قيد الانتظار</span> <span className="bg-white px-2 rounded-full text-sm">{getTasksByStatus('todo').length}</span></div><div className="p-2 space-y-2 overflow-y-auto flex-1">{getTasksByStatus('todo').map(t => (<TaskCard key={t.id} task={t} users={users} projects={projects} onEdit={openEditModal} />))}{getTasksByStatus('todo').length === 0 && <div className="text-center text-gray-400 text-xs py-4">لا توجد مهام في الانتظار</div>}</div></div><div className="flex-1 bg-blue-50 rounded-xl flex flex-col kanban-col"><div className="p-4 font-black text-blue-700 flex justify-between"><span>جاري التنفيذ</span> <span className="bg-white px-2 rounded-full text-sm">{getTasksByStatus('progress').length}</span></div><div className="p-2 space-y-2 overflow-y-auto flex-1">{getTasksByStatus('progress').map(t => (<TaskCard key={t.id} task={t} users={users} projects={projects} onEdit={openEditModal} />))}{getTasksByStatus('progress').length === 0 && <div className="text-center text-gray-400 text-xs py-4">لا توجد مهام قيد التنفيذ</div>}</div></div><div className="flex-1 bg-green-50 rounded-xl flex flex-col kanban-col"><div className="p-4 font-black text-green-700 flex justify-between"><span>مكتملة</span> <span className="bg-white px-2 rounded-full text-sm">{getTasksByStatus('done').length}</span></div><div className="p-2 space-y-2 overflow-y-auto flex-1">{getTasksByStatus('done').map(t => (<TaskCard key={t.id} task={t} users={users} projects={projects} onEdit={openEditModal} />))}{getTasksByStatus('done').length === 0 && <div className="text-center text-gray-400 text-xs py-4">لا توجد مهام مكتملة</div>}</div></div></div></div></div>)}
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+                    {modalOpen && ( <TaskModal isOpen={modalOpen} onClose={() => setModalOpen(false)} task={editingTask} onSave={handleSaveTask} users={users} projects={projects} currentUser={user} /> )}
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [user, setUser] = useState(null); 
+            const [dbUser, setDbUser] = useState(null); 
+            const [projects, setProjects] = useState([]);
+            const [tasks, setTasks] = useState([]);
+            const [users, setUsers] = useState([]);
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => { 
+                const unsub = onAuthStateChanged(auth, u => { 
+                    if (u) { 
+                        setUser(u); 
+                        onValue(ref(db, 'users'), s => { 
+                            const data = s.val() || {}; 
+                            const list = Object.keys(data).map(k => ({ id: k, ...data[k] })); 
+                            setUsers(list); 
+                            const profile = list.find(x => x.email.toLowerCase() === u.email.toLowerCase()); 
+                            if (u.email.toLowerCase() === 'asleh@boyoticom.com') { 
+                                setDbUser({ ...profile, id: u.uid, role: 'admin', name: 'Ali Saleh', email: u.email }); 
+                            } else { 
+                                setDbUser(profile ? { ...profile, id: u.uid } : { id: u.uid, email: u.email, role: 'employee', name: 'مستخدم جديد' }); 
+                            }
+                        }); 
+                        onValue(ref(db, 'projects'), s => setProjects(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})) : []));
+                        onValue(ref(db, 'tasks'), s => setTasks(s.val() ? Object.keys(s.val()).map(k => ({id:k, ...s.val()[k]})) : []));
+                    } else { 
+                        window.location.href = 'index.html';
+                    } 
+                    setLoading(false); 
+                }); 
+                return () => unsub(); 
+            }, []);
+
+            if (loading || !dbUser) return <div className="h-screen flex items-center justify-center"><div className="loader"></div></div>;
+
+            return <PMApp user={dbUser} users={users} projects={projects} tasks={tasks} />;
+        };
+
+        const root = window.ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
