@@ -1,0 +1,484 @@
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" translate="no">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="google" content="notranslate" />
+    <meta name="theme-color" content="#2C3340" />
+    <title>Boyoticom HR</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              brand: { 900: '#2C3340', 800: '#1e232e', 50: '#f0f9ff' },
+              hr: { 500: '#db2777', 600: '#be185d', 50: '#fdf2f8' }
+            },
+            fontFamily: { sans: ['Cairo', 'sans-serif'] }
+          }
+        }
+      }
+    </script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/recharts@2.12.0/umd/Recharts.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+      body { font-family: 'Cairo', sans-serif; background-color: #f8fafc; color: #2C3340; }
+      .date-en { font-family: sans-serif; direction: ltr; display: inline-block; }
+      .loader { border: 3px solid #f3f3f3; border-radius: 50%; border-top: 3px solid #2C3340; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="notranslate">
+    <div id="root"></div>
+
+    <script type="text/babel" data-type="module">
+        const firebaseConfig = {
+          apiKey: "AIzaSyAOMnl9ikDMngZZH-eSa3ldqtDCh6qsy_U",
+          authDomain: "boyoticom-15c4b.firebaseapp.com",
+          databaseURL: "https://boyoticom-15c4b-default-rtdb.firebaseio.com",
+          projectId: "boyoticom-15c4b",
+          storageBucket: "boyoticom-15c4b.firebasestorage.app",
+          messagingSenderId: "433583401372",
+          appId: "1:433583401372:web:2d483367ad0e0184a10059"
+        };
+
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getDatabase, ref, set, push, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getDatabase(app);
+
+        const { useState, useEffect, useMemo, useRef } = window.React;
+        const Recharts = window.Recharts || {};
+        const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip: RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } = Recharts;
+
+        // --- SHARED UTILS ---
+        const Icon = ({ name, size = 20, className = "" }) => {
+            useEffect(() => { if (window.lucide) window.lucide.createIcons(); }, [name]);
+            return <i data-lucide={name} width={size} height={size} className={className}></i>;
+        };
+        const safeStr = (val) => (val === null || val === undefined) ? '' : String(val);
+        const safeArr = (val) => Array.isArray(val) ? val : [];
+        const formatMoney = (amount) => new Intl.NumberFormat('ar-SA', { style: 'currency', currency: 'SAR' }).format(amount || 0);
+        const Logo = ({ size = 40 }) => {
+            const [imgError, setImgError] = useState(false);
+            if (imgError) { return (<div className="bg-brand-900 rounded-xl flex items-center justify-center text-accent-500" style={{ width: size, height: size }}><Icon name="box" size={size * 0.6} /></div>); }
+            return (<img src="/logo.png" alt="شعار" className="object-contain" style={{ width: size, height: size }} onError={() => setImgError(true)} />);
+        };
+        const exportToExcel = (data, fileName) => { const worksheet = XLSX.utils.json_to_sheet(data); const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1"); XLSX.writeFile(workbook, `${fileName}.xlsx`); };
+
+
+        // --- HR COMPONENTS ---
+
+        // 1. Employee Detail Modal
+        const EmployeeModal = ({ isOpen, onClose, employee, onSave }) => {
+            const [activeTab, setActiveTab] = useState('basic');
+            const [d, setD] = useState({
+                // Basic
+                name: '', email: '', phone: '', nationality: '', nationalId: '', joinDate: '', jobTitle: '',
+                // Financial
+                salary: { basic: 0, housing: 0, transport: 0, other: 0 },
+                bank: { bankName: '', iban: '' },
+                // Documents
+                documents: [] 
+            });
+
+            // New Document State
+            const [newDoc, setNewDoc] = useState({ name: '', expiryDate: '', number: '' });
+
+            useEffect(() => {
+                if (isOpen && employee) {
+                    setD({
+                        ...employee,
+                        salary: employee.salary || { basic: 0, housing: 0, transport: 0, other: 0 },
+                        bank: employee.bank || { bankName: '', iban: '' },
+                        documents: employee.documents || []
+                    });
+                }
+            }, [isOpen, employee]);
+
+            const handleSaveInternal = () => {
+                onSave(d);
+                onClose();
+            };
+
+            const addDocument = () => {
+                if(!newDoc.name) return;
+                setD(prev => ({ ...prev, documents: [...safeArr(prev.documents), { ...newDoc, id: Date.now() }] }));
+                setNewDoc({ name: '', expiryDate: '', number: '' });
+            };
+
+            const removeDocument = (id) => {
+                 setD(prev => ({ ...prev, documents: safeArr(prev.documents).filter(doc => doc.id !== id) }));
+            };
+
+            const totalSalary = Number(d.salary.basic) + Number(d.salary.housing) + Number(d.salary.transport) + Number(d.salary.other);
+
+            if (!isOpen) return null;
+
+            return (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white w-full max-w-4xl rounded-2xl p-6 shadow-2xl max-h-[95vh] overflow-y-auto">
+                        <div className="flex justify-between items-center mb-6 border-b pb-4">
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 bg-hr-50 rounded-full flex items-center justify-center text-hr-600 font-bold text-xl">{d.name.charAt(0)}</div>
+                                <div>
+                                    <h3 className="font-bold text-xl text-brand-900">{d.name}</h3>
+                                    <p className="text-gray-500 text-sm">{d.jobTitle || 'موظف'}</p>
+                                </div>
+                            </div>
+                            <button onClick={onClose}><Icon name="x"/></button>
+                        </div>
+
+                        <div className="flex gap-4 mb-6 border-b">
+                            <button onClick={() => setActiveTab('basic')} className={`font-bold pb-2 transition ${activeTab === 'basic' ? 'text-hr-600 border-b-2 border-hr-600' : 'text-gray-500'}`}>البيانات الأساسية</button>
+                            <button onClick={() => setActiveTab('financial')} className={`font-bold pb-2 transition ${activeTab === 'financial' ? 'text-hr-600 border-b-2 border-hr-600' : 'text-gray-500'}`}>الراتب والبنك</button>
+                            <button onClick={() => setActiveTab('docs')} className={`font-bold pb-2 transition ${activeTab === 'docs' ? 'text-hr-600 border-b-2 border-hr-600' : 'text-gray-500'}`}>الوثائق الرسمية</button>
+                        </div>
+
+                        <div className="min-h-[300px]">
+                            {activeTab === 'basic' && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div><label className="text-xs font-bold text-gray-500">الاسم الكامل</label><input className="w-full border p-2 rounded-lg" value={d.name} onChange={e=>setD({...d, name:e.target.value})} /></div>
+                                    <div><label className="text-xs font-bold text-gray-500">البريد الإلكتروني</label><input className="w-full border p-2 rounded-lg bg-gray-50 date-en" disabled value={d.email} /></div>
+                                    <div><label className="text-xs font-bold text-gray-500">المسمى الوظيفي</label><input className="w-full border p-2 rounded-lg" value={d.jobTitle} onChange={e=>setD({...d, jobTitle:e.target.value})} /></div>
+                                    <div><label className="text-xs font-bold text-gray-500">رقم الهاتف</label><input className="w-full border p-2 rounded-lg date-en" value={d.phone} onChange={e=>setD({...d, phone:e.target.value})} /></div>
+                                    <div><label className="text-xs font-bold text-gray-500">الجنسية</label><input className="w-full border p-2 rounded-lg" value={d.nationality} onChange={e=>setD({...d, nationality:e.target.value})} /></div>
+                                    <div><label className="text-xs font-bold text-gray-500">رقم الهوية / الإقامة</label><input className="w-full border p-2 rounded-lg date-en" value={d.nationalId} onChange={e=>setD({...d, nationalId:e.target.value})} /></div>
+                                    <div><label className="text-xs font-bold text-gray-500">تاريخ الانضمام</label><input type="date" className="w-full border p-2 rounded-lg date-en" value={d.joinDate} onChange={e=>setD({...d, joinDate:e.target.value})} /></div>
+                                </div>
+                            )}
+
+                            {activeTab === 'financial' && (
+                                <div className="space-y-6">
+                                    <div className="bg-hr-50 p-4 rounded-xl border border-hr-500">
+                                        <h4 className="font-bold text-hr-600 mb-4 flex items-center gap-2"><Icon name="banknote"/> تفاصيل الراتب</h4>
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                            <div><label className="text-xs block mb-1">الراتب الأساسي</label><input type="number" className="w-full border p-2 rounded bg-white" value={d.salary.basic} onChange={e=>setD({...d, salary: {...d.salary, basic: e.target.value}})} /></div>
+                                            <div><label className="text-xs block mb-1">بدل سكن</label><input type="number" className="w-full border p-2 rounded bg-white" value={d.salary.housing} onChange={e=>setD({...d, salary: {...d.salary, housing: e.target.value}})} /></div>
+                                            <div><label className="text-xs block mb-1">بدل نقل</label><input type="number" className="w-full border p-2 rounded bg-white" value={d.salary.transport} onChange={e=>setD({...d, salary: {...d.salary, transport: e.target.value}})} /></div>
+                                            <div><label className="text-xs block mb-1">أخرى</label><input type="number" className="w-full border p-2 rounded bg-white" value={d.salary.other} onChange={e=>setD({...d, salary: {...d.salary, other: e.target.value}})} /></div>
+                                        </div>
+                                        <div className="mt-4 pt-4 border-t border-hr-200 flex justify-between items-center">
+                                            <span className="font-bold">إجمالي الراتب الشهري:</span>
+                                            <span className="text-2xl font-black text-hr-600">{formatMoney(totalSalary)}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="border p-4 rounded-xl">
+                                        <h4 className="font-bold text-gray-700 mb-4 flex items-center gap-2"><Icon name="building"/> المعلومات البنكية</h4>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div><label className="text-xs block mb-1">اسم البنك</label><input className="w-full border p-2 rounded" value={d.bank.bankName} onChange={e=>setD({...d, bank: {...d.bank, bankName: e.target.value}})} /></div>
+                                            <div><label className="text-xs block mb-1">رقم الآيبان (IBAN)</label><input className="w-full border p-2 rounded date-en" placeholder="SA..." value={d.bank.iban} onChange={e=>setD({...d, bank: {...d.bank, iban: e.target.value}})} /></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeTab === 'docs' && (
+                                <div className="space-y-4">
+                                    <div className="flex gap-2 p-3 bg-gray-50 rounded-xl border">
+                                        <input className="flex-1 border p-2 rounded text-sm" placeholder="اسم الوثيقة (هوية، جواز...)" value={newDoc.name} onChange={e=>setNewDoc({...newDoc, name: e.target.value})} />
+                                        <input className="w-32 border p-2 rounded text-sm date-en" placeholder="رقم الوثيقة" value={newDoc.number} onChange={e=>setNewDoc({...newDoc, number: e.target.value})} />
+                                        <div className="w-32"><label className="text-[9px] block text-gray-400 px-1">تاريخ الانتهاء</label><input type="date" className="w-full border p-1 rounded text-sm date-en" value={newDoc.expiryDate} onChange={e=>setNewDoc({...newDoc, expiryDate: e.target.value})} /></div>
+                                        <button onClick={addDocument} className="bg-hr-600 text-white p-2 rounded-lg"><Icon name="plus" size={20}/></button>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        {safeArr(d.documents).map((doc) => {
+                                            const isExpired = doc.expiryDate && new Date(doc.expiryDate) < new Date();
+                                            const isNear = doc.expiryDate && new Date(doc.expiryDate) < new Date(Date.now() + 30*24*60*60*1000);
+                                            return (
+                                                <div key={doc.id} className="flex justify-between items-center p-3 border rounded-lg hover:bg-gray-50">
+                                                    <div>
+                                                        <div className="font-bold text-gray-800">{doc.name}</div>
+                                                        <div className="text-xs text-gray-500 date-en">{doc.number}</div>
+                                                    </div>
+                                                    <div className="flex items-center gap-4">
+                                                        <div className={`text-sm date-en font-bold ${isExpired ? 'text-red-600' : isNear ? 'text-orange-500' : 'text-green-600'}`}>
+                                                            {doc.expiryDate || 'بدون تاريخ'}
+                                                            {isExpired && <span className="mr-1 text-[10px] bg-red-100 px-1 rounded">منتهية</span>}
+                                                            {(!isExpired && isNear) && <span className="mr-1 text-[10px] bg-orange-100 px-1 rounded">قريباً</span>}
+                                                        </div>
+                                                        <button onClick={()=>removeDocument(doc.id)} className="text-red-400 hover:text-red-600"><Icon name="trash-2" size={16}/></button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                        {safeArr(d.documents).length === 0 && <div className="text-center text-gray-400 py-6">لا توجد وثائق مضافة</div>}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="mt-6 pt-4 border-t flex gap-3">
+                            <button onClick={onClose} className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold">إلغاء</button>
+                            <button onClick={handleSaveInternal} className="flex-1 bg-hr-600 text-white py-3 rounded-xl font-bold shadow-lg hover:bg-hr-500">حفظ التغييرات</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // 2. HR Dashboard
+        const HRDashboard = ({ users }) => {
+            // Stats
+            const totalEmployees = users.filter(u => u.role !== 'admin').length;
+            const totalSalaries = users.reduce((acc, u) => {
+                const s = u.salary || {};
+                return acc + (Number(s.basic||0) + Number(s.housing||0) + Number(s.transport||0) + Number(s.other||0));
+            }, 0);
+            
+            // Document Alerts
+            let expiringDocs = [];
+            users.forEach(u => {
+                safeArr(u.documents).forEach(d => {
+                    const expiry = new Date(d.expiryDate);
+                    const now = new Date();
+                    const warningDate = new Date(); warningDate.setDate(now.getDate() + 30); // 30 days warning
+                    if (d.expiryDate && expiry < warningDate) {
+                        expiringDocs.push({ user: u.name, doc: d.name, date: d.expiryDate, isExpired: expiry < now });
+                    }
+                });
+            });
+
+            return (
+                <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border flex items-center justify-between">
+                            <div><p className="text-gray-500 text-sm font-bold">عدد الموظفين</p><h3 className="text-3xl font-black text-brand-900">{totalEmployees}</h3></div>
+                            <div className="p-3 bg-brand-900 text-white rounded-xl"><Icon name="users" size={30}/></div>
+                        </div>
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border flex items-center justify-between">
+                            <div><p className="text-gray-500 text-sm font-bold">إجمالي الرواتب الشهرية</p><h3 className="text-3xl font-black text-hr-600">{formatMoney(totalSalaries)}</h3></div>
+                            <div className="p-3 bg-hr-50 text-hr-600 rounded-xl"><Icon name="banknote" size={30}/></div>
+                        </div>
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border flex items-center justify-between">
+                            <div><p className="text-gray-500 text-sm font-bold">وثائق تنتهي قريباً</p><h3 className="text-3xl font-black text-orange-500">{expiringDocs.length}</h3></div>
+                            <div className="p-3 bg-orange-50 text-orange-600 rounded-xl"><Icon name="alert-circle" size={30}/></div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border">
+                            <h3 className="font-bold text-lg mb-4 text-brand-900 border-b pb-2">تنبيهات الوثائق</h3>
+                            <div className="space-y-3 max-h-64 overflow-y-auto">
+                                {expiringDocs.map((item, i) => (
+                                    <div key={i} className={`flex justify-between items-center p-3 rounded-lg border ${item.isExpired ? 'bg-red-50 border-red-100' : 'bg-orange-50 border-orange-100'}`}>
+                                        <div>
+                                            <div className="font-bold text-gray-800">{item.user}</div>
+                                            <div className="text-xs text-gray-500">{item.doc}</div>
+                                        </div>
+                                        <div className="text-xs font-bold date-en">
+                                            {item.date} {item.isExpired ? '(منتهية)' : '(قريباً)'}
+                                        </div>
+                                    </div>
+                                ))}
+                                {expiringDocs.length === 0 && <div className="text-center text-gray-400 py-10">جميع الوثائق سارية المفعول ✅</div>}
+                            </div>
+                        </div>
+                        
+                         <div className="bg-white p-6 rounded-2xl shadow-sm border">
+                            <h3 className="font-bold text-lg mb-4 text-brand-900 border-b pb-2">توزيع الموظفين (حسب المسمى)</h3>
+                            {/* Simple Logic for Job Title Distribution if needed later */}
+                            <div className="flex items-center justify-center h-48 text-gray-400 bg-gray-50 rounded-xl">
+                               سيتم إضافة الرسم البياني قريباً
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const PayrollView = ({ users }) => {
+            const payrollData = users.filter(u => u.role !== 'admin').map(u => {
+                const s = u.salary || {};
+                const total = Number(s.basic||0) + Number(s.housing||0) + Number(s.transport||0) + Number(s.other||0);
+                return {
+                    id: u.id,
+                    name: u.name,
+                    title: u.jobTitle || '-',
+                    bank: u.bank?.bankName || '-',
+                    iban: u.bank?.iban || '-',
+                    basic: Number(s.basic||0),
+                    housing: Number(s.housing||0),
+                    transport: Number(s.transport||0),
+                    total: total
+                };
+            });
+
+            return (
+                <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                        <h3 className="text-xl font-bold text-brand-900">مسير الرواتب الشهري</h3>
+                        <button onClick={() => exportToExcel(payrollData, 'Payroll_Sheet')} className="bg-green-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-green-700 shadow"><Icon name="file-spreadsheet" size={18}/> تصدير Excel</button>
+                    </div>
+                    <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                        <table className="w-full text-right text-sm">
+                            <thead className="bg-gray-50 text-brand-900 font-bold">
+                                <tr>
+                                    <th className="p-4">الموظف</th>
+                                    <th className="p-4">المسمى</th>
+                                    <th className="p-4">البنك</th>
+                                    <th className="p-4">أساسي</th>
+                                    <th className="p-4">سكن</th>
+                                    <th className="p-4">نقل</th>
+                                    <th className="p-4 text-hr-600">الإجمالي</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y">
+                                {payrollData.map(row => (
+                                    <tr key={row.id} className="hover:bg-gray-50">
+                                        <td className="p-4 font-bold">{row.name}</td>
+                                        <td className="p-4 text-gray-500">{row.title}</td>
+                                        <td className="p-4">
+                                            <div>{row.bank}</div>
+                                            <div className="text-[10px] text-gray-400 date-en">{row.iban}</div>
+                                        </td>
+                                        <td className="p-4 date-en">{row.basic.toLocaleString()}</td>
+                                        <td className="p-4 date-en">{row.housing.toLocaleString()}</td>
+                                        <td className="p-4 date-en">{row.transport.toLocaleString()}</td>
+                                        <td className="p-4 font-black text-hr-600 date-en">{formatMoney(row.total)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+        };
+
+        const HRApp = ({ user, users, onSaveUser }) => {
+            const [page, setPage] = useState('dashboard');
+            const [sidebarOpen, setSidebarOpen] = useState(false);
+            const [selectedUser, setSelectedUser] = useState(null);
+            const [isModalOpen, setIsModalOpen] = useState(false);
+            const [search, setSearch] = useState('');
+
+            // Filter out admin from list
+            const employees = users.filter(u => u.role !== 'admin' && u.name.toLowerCase().includes(search.toLowerCase()));
+
+            const handleEditUser = (u) => {
+                setSelectedUser(u);
+                setIsModalOpen(true);
+            };
+
+            const handleSave = (updatedData) => {
+                onSaveUser(updatedData);
+            };
+
+            return (
+                <div className="flex min-h-screen bg-slate-50">
+                     {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setSidebarOpen(false)}></div>}
+                    <aside className={`fixed inset-y-0 right-0 z-50 w-64 bg-white border-l transform transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:h-screen ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+                        <div className="p-6 flex justify-between items-center gap-2 font-black text-xl text-brand-900 border-b"><div className="flex items-center gap-2"><Logo size={32} /> بيوتكم</div><button onClick={() => setSidebarOpen(false)} className="md:hidden text-gray-500"><Icon name="x" /></button></div>
+                        <nav className="flex-1 p-4 space-y-2">
+                            <button onClick={()=>{setPage('dashboard');setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='dashboard'?'bg-hr-600 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="layout-dashboard"/> لوحة التحكم</button>
+                            <button onClick={()=>{setPage('employees');setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='employees'?'bg-hr-600 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="users"/> الموظفين</button>
+                            <button onClick={()=>{setPage('payroll');setSidebarOpen(false)}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition ${page==='payroll'?'bg-hr-600 text-white':'text-gray-500 hover:bg-gray-50'}`}><Icon name="banknote"/> الرواتب</button>
+                        </nav>
+                        <div className="p-4 border-t"><button onClick={() => window.location.href='index.html'} className="w-full bg-gray-100 text-gray-600 p-2 rounded-lg font-bold flex items-center justify-center gap-2"><Icon name="grid" size={16}/> تبديل التطبيق</button></div>
+                    </aside>
+
+                    <main className="flex-1 flex flex-col h-screen overflow-hidden">
+                        <header className="bg-white border-b p-4 flex justify-between items-center sticky top-0 z-30"><div className="flex items-center gap-2"><button onClick={()=>setSidebarOpen(true)} className="md:hidden text-gray-600 p-1"><Icon name="menu" size={24}/></button><div className="font-bold text-xl text-brand-900">الموارد البشرية</div></div><div className="flex items-center gap-2"><div className="text-sm font-bold">{user.name}</div><div className="w-8 h-8 bg-hr-600 rounded-full text-white flex items-center justify-center font-bold">{user.name[0]}</div></div></header>
+                        
+                        <div className="flex-1 overflow-y-auto p-6">
+                            <div className="max-w-[1400px] mx-auto flex flex-col min-h-full">
+                                {page === 'dashboard' && <HRDashboard users={users} />}
+                                
+                                {page === 'employees' && (
+                                    <div className="space-y-4">
+                                        <div className="flex justify-between items-center">
+                                            <div className="relative w-64"><input className="w-full border rounded-xl p-3 pl-10 bg-white shadow-sm outline-none focus:ring-2 focus:ring-hr-500" placeholder="بحث عن موظف..." value={search} onChange={e=>setSearch(e.target.value)} /><Icon name="search" size={18} className="absolute left-3 top-3.5 text-gray-400"/></div>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                            {employees.map(u => (
+                                                <div key={u.id} className="bg-white p-5 rounded-2xl shadow-sm border hover:shadow-md transition cursor-pointer group" onClick={() => handleEditUser(u)}>
+                                                    <div className="flex items-center gap-4 mb-4">
+                                                        <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 font-bold text-xl group-hover:bg-hr-50 group-hover:text-hr-600 transition">{u.name.charAt(0)}</div>
+                                                        <div>
+                                                            <div className="font-bold text-lg text-brand-900">{u.name}</div>
+                                                            <div className="text-sm text-gray-500">{u.jobTitle || 'موظف'}</div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-2 text-sm text-gray-600 border-t pt-3">
+                                                        <div className="flex justify-between"><span>تاريخ الانضمام:</span> <span className="date-en font-bold">{u.joinDate || '-'}</span></div>
+                                                        <div className="flex justify-between"><span>الجوال:</span> <span className="date-en">{u.phone || '-'}</span></div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {page === 'payroll' && <PayrollView users={users} />}
+                            </div>
+                        </div>
+                    </main>
+
+                    <EmployeeModal isOpen={isModalOpen} onClose={()=>setIsModalOpen(false)} employee={selectedUser} onSave={handleSave} />
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [user, setUser] = useState(null); 
+            const [dbUser, setDbUser] = useState(null); 
+            const [users, setUsers] = useState([]);
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => { 
+                const unsub = onAuthStateChanged(auth, u => { 
+                    if (u) { 
+                        setUser(u); 
+                        onValue(ref(db, 'users'), s => { 
+                            const data = s.val() || {}; 
+                            const list = Object.keys(data).map(k => ({ id: k, ...data[k] })); 
+                            setUsers(list); 
+                            const profile = list.find(x => x.email.toLowerCase() === u.email.toLowerCase()); 
+                            if (u.email.toLowerCase() === 'asleh@boyoticom.com') { 
+                                setDbUser({ ...profile, id: u.uid, role: 'admin', name: 'Ali Saleh', email: u.email }); 
+                            } else { 
+                                setDbUser(profile ? { ...profile, id: u.uid } : { id: u.uid, email: u.email, role: 'employee', name: 'مستخدم جديد' }); 
+                            }
+                        }); 
+                    } else { 
+                        window.location.href = 'index.html';
+                    } 
+                    setLoading(false); 
+                }); 
+                return () => unsub(); 
+            }, []);
+
+            const handleSaveUser = (updatedData) => {
+                const { id, ...data } = updatedData;
+                update(ref(db, `users/${id}`), data);
+            };
+
+            if (loading || !dbUser) return <div className="h-screen flex items-center justify-center"><div className="loader"></div></div>;
+
+            // Permission Check
+            const canAccess = dbUser.role === 'admin' || dbUser.permissions?.hr_access;
+            if (!canAccess) return <div className="h-screen flex flex-col items-center justify-center bg-gray-50 p-4 text-center"><Icon name="lock" size={64} className="text-gray-300 mb-4"/><h1 className="text-2xl font-bold text-gray-600">غير مصرح لك بالدخول</h1><p className="text-gray-400 mt-2">ليس لديك صلاحية الوصول لنظام الموارد البشرية.</p><button onClick={() => window.location.href='index.html'} className="mt-8 bg-brand-900 text-white px-6 py-3 rounded-xl font-bold">العودة للرئيسية</button></div>;
+
+            return <HRApp user={dbUser} users={users} onSaveUser={handleSaveUser} />;
+        };
+
+        const root = window.ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
