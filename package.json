@@ -4,7 +4,7 @@
   "private": true,
   "description": "Boyoticom ERP Static Site",
   "scripts": {
-    "build": "echo 'No build step required for static HTML'"
+    "build": "mkdir -p dist && cp *.html dist/ && cp *.json dist/ && (cp *.png dist/ || true)"
   },
   "dependencies": {},
   "devDependencies": {}
